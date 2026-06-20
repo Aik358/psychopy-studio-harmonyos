@@ -1,0 +1,30 @@
+{
+	"/": [
+		"src/routes/+layout.js",
+		"src/routes/+layout.js"
+	],
+	"/api/plugins": [
+		"src/routes/api/plugins/+server.js"
+	],
+	"/api/report": [
+		"src/routes/api/report/+server.js"
+	],
+	"/api/surveys": [
+		"src/routes/api/surveys/+server.js"
+	],
+	"/api/token/authorize": [
+		"src/routes/api/token/authorize/+server.js"
+	],
+	"/api/token/refresh": [
+		"src/routes/api/token/refresh/+server.js"
+	],
+	"/builder": [
+		"src/routes/+layout.js"
+	],
+	"/coder": [
+		"src/routes/+layout.js"
+	],
+	"/runner": [
+		"src/routes/+layout.js"
+	]
+}

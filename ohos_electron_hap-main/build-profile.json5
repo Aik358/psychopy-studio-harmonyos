@@ -1,0 +1,62 @@
+{
+  "app": {
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.3(15)",
+        "compatibleSdkVersionStage": "beta6",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "nativeLib": {
+            "collectAllLibs": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "release",
+        "buildOption": {
+          "debuggable": false
+        }
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "storePassword": "00000020E5AA3F2A5575793E3F9ACF2CD24B95B7D99FFA8FA84ECA665C8A945D6D3ADDE3E56BFD6FB4EDE6FBA81DE161",
+          "certpath": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "00000020E5AA3F2A5575793E3F9ACF2CD24B95B7D99FFA8FA84ECA665C8A945D6D3ADDE3E56BFD6FB4EDE6FBA81DE161",
+          "profile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.p12"
+        },
+        "type": "HarmonyOS"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "electron",
+      "srcPath": "./electron",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "web_engine",
+      "srcPath": "./web_engine"
+    }
+  ]
+}

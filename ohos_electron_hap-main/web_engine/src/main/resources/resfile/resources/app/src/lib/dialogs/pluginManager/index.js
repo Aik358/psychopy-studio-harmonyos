@@ -1,0 +1,1 @@
+export { default as PluginManagerDlg } from "./Dialog.svelte"
