@@ -94,223 +94,65 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
-    console.log('[D] createWindow isDev=' + isDev + ' started=' + started);
-    // if app is already running...
-    if (started) {
-      // open start windows and do nothing else
-      startingWindows()
-      return
+  console.log('[D] createWindow loading builder');
+  started = true;
+
+  const express = require('express');
+  const expressApp = express();
+  const distPath = path.join(__dirname, '../../dist');
+  expressApp.use(express.static(distPath, {
+    setHeaders: (res, p) => {
+      if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+      if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
+      if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+      if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+      if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
     }
-    // mark started
-    started = true
-    // create splash
-    windows.splash = new BrowserWindow({
-      icon: favicon,
-      title: "PsychoPy Studio",
-      width: 720,
-      height: 400,
-      show: false,
-      transparent: true,
-      frame: false,
-      alwaysOnTop: true
+  }));
+  expressApp.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
+    const pageDir = path.join(distPath, req.path.split('/')[1] || '', 'index.html');
+    if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
+    next();
+  });
+  
+  const server = expressApp.listen(8003, 'localhost', () => {
+    console.log('[D] Express started');
+    
+    const mainWin = new BrowserWindow({
+      width: 1600, height: 900, show: true,
+      frame: true,
+      webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
-    windows.splash.loadFile(path.join(__dirname, 'splash.html'));
-    windows.splash.center();
-    if (prefs.params?.showSplash?.val !== "False") {
-      // only show if requested via prefs
-      windows.splash.show();
-    }
-
-    // keep track of ready statuses
-    let ready = {
-      svelte: Promise.withResolvers()
-    }
-    // if on windows, get frame to open with from argv
-    if (process.platform === "win32") {
-      onFileOpen(undefined, process.argv[isDev ? 2 : 1])
-    }
-    // start timers 
-    let mintime = new Promise((resolve, reject) => setTimeout(resolve, prefs.params?.showSplash?.val !== "False" ? 1000 : 0));
-    let maxtime = new Promise((resolve, reject) => setTimeout(resolve, 10000));
-    // start the svelte side of things
-    if (isDev) {
-      // use Vite dev server for development
-      logging.log(`Starting Vite dev server at ${svelte.address.host}:${svelte.address.port}`)
-      svelte.process = proc.exec(`vite dev --host=${svelte.address.host} --port=${svelte.address.port}`);
-      svelte.process.stdout.on("data", msg => {
-        // look for ready message
-        let readyMatch = msg.match(
-          /➜  Local:   http:\/\/(?<host>[\w\d]+):(?<port>[\w\d]+)/
-        )
-        // if this is it...
-        if (readyMatch) {
-          // store final host and port
-          svelte.address.host = readyMatch.groups.host
-          svelte.address.port = readyMatch.groups.port
-          // mark as ready
-          ready.svelte.resolve()
-          // log
-          logging.log(
-            `Started Vite dev server at ${svelte.address.host}:${svelte.address.port}`
-          )
-        }
-      })
-    } else {
-      // log run args
-      logging.log(`Running: ${process.argv.join(" | ")}`)
-      // use express to serve static files in production
-      console.log('[D] start express port=' + svelte.address.port + ' host=' + svelte.address.host);
-      const express = require('express');
-      const app = express();
-
-      const distPath = path.join(__dirname, '../../dist');
-      console.log('[D] express distPath=' + distPath + ' exists=' + fs.existsSync(distPath));
-      app.use(express.static(distPath));
-
-      // API routes
-      app.get('/api/plugins', async (req, res) => {
-        try {
-          const response = await fetch('https://psychopy.org/plugins.json');
-          const data = await response.json();
-          res.json(data);
-        } catch (error) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      app.post('/api/report', express.json(), async (req, res) => {
-        try {
-          const snapshot = req.body;
-          const response = await fetch("https://api.clickup.com/api/v2/list/128673336/task", {
-            method: "POST",
-            headers: {
-              "Authorization": snapshot.token,
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              name: snapshot.title,
-              description: snapshot.description,
-              priority: snapshot.priority,
-              custom_fields: [
-                { id: "1cc82c18-79c6-470b-aa63-b39a108afe90", value: ["39244b7f-eea7-47d2-8760-418d86dc525d"] },
-                { id: "90ee49a2-01ce-49be-a3bb-c7b12160eb03", value: snapshot.email },
-                { id: "e649173f-4f1a-4275-abff-1e699962eda1", value: snapshot.version.match(/(?<=\w+)\d+$/)?.[0] || "" }
-              ]
-            })
-          });
-          const data = await response.json();
-
-          for (let [name, content] of [
-            ["last_app_load.log", snapshot.logs.app],
-            ["liaison.log", snapshot.logs.liaison],
-            ["context.json", JSON.stringify(snapshot.context, undefined, 4)]
-          ]) {
-            await fetch(`https://api.clickup.com/api/v2/task/${data.id}/comment`, {
-              method: "POST",
-              headers: {
-                "Authorization": snapshot.token,
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                notify_all: false,
-                comment_text: `${name}\n---\n${content}\n`
-              })
-            });
-          }
-
-          res.json(data);
-        } catch (error) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      app.get('/api/surveys', async (req, res) => {
-        try {
-          const response = await fetch(`https://pavlovia.org/api/v2/surveys?oauthToken=${req.headers.access}`);
-          const data = await response.json();
-          res.json(data);
-        } catch (error) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      app.post('/api/token/authorize', express.json(), async (req, res) => {
-        try {
-          const params = req.query;
-          const response = await fetch(`${params.root}/oauth/token`, {
-            method: "POST",
-            body: JSON.stringify({
-              client_id: params.client,
-              code: params.code,
-              grant_type: "authorization_code",
-              redirect_uri: params.redirect,
-              code_verifier: params.verifier
-            }),
-            headers: { "Content-type": "application/json; charset=UTF-8" }
-          });
-          const data = await response.json();
-          res.json(data);
-        } catch (error) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      app.post('/api/token/refresh', express.json(), async (req, res) => {
-        try {
-          const params = req.query;
-          const response = await fetch(`${params.root}/oauth/token`, {
-            method: "POST",
-            body: JSON.stringify({
-              client_id: params.client,
-              refresh_token: params.refresh,
-              grant_type: "refresh_token",
-              redirect_uri: params.redirect,
-              code_verifier: params.verifier
-            }),
-            headers: { "Content-type": "application/json; charset=UTF-8" }
-          });
-          const data = await response.json();
-          res.json(data);
-        } catch (error) {
-          res.status(500).json({ error: error.message });
-        }
-      });
-
-      // Handle SPA fallback without wildcard
-      app.use((req, res) => {
-        res.sendFile(path.join(__dirname, '../../dist/index.html'));
-      });
-
-      const server = app.listen(svelte.address.port, svelte.address.host, () => {
-        console.log('[D] express server started');
-        logging.log(`Started static server at ${svelte.address.host}:${svelte.address.port}`)
-        ready.svelte.resolve();
-      });
-
-      svelte.process = { kill: () => server.close() };
-    }
-
-    // show when Svelte has loaded and min time has been reached, or when max time has been reached
-    Promise.any([
-      Promise.all([
-        mintime,
-        ...Object.values(ready).map(val => val.promise)
-      ]),
-      maxtime
-    ]).then(
-      () => {
-        // make sure at least one window is open
-        if (!Object.keys(windows).filter(key => key !== "splash").length) {
-          startingWindows()
-        }
+    mainWin.removeMenu();
+    mainWin.loadURL('http://localhost:8003/builder');
+    
+    // Close handler - check unsaved changes
+    mainWin.on('close', (e) => {
+      if (prefs && Object.keys(prefs).length > 0) {
+        const choice = dialog.showMessageBoxSync(mainWin, {
+          type: 'question',
+          buttons: ['Save', 'Discard', 'Cancel'],
+          defaultId: 0,
+          cancelId: 2,
+          message: 'Save changes before closing?',
+          detail: 'Your experiment has unsaved changes.'
+        });
+        if (choice === 0) { /* save - do nothing, app handles it */ }
+        else if (choice === 1) { mainWin.destroy(); }
+        else { e.preventDefault(); }
       }
-    )
-  };
-
-
-  /**
+    });
+    
+    // Store window for IPC
+    mainWin.webContents.once('did-finish-load', () => {
+      windows[mainWin.webContents.id] = mainWin;
+    });
+    
+    svelte.process = { kill: () => server.close() };
+    windows.splash = { isDestroyed: () => true, close: () => {} };
+  });
+};/**
    * Open the default starting windows indicated by prefs
    */
   function startingWindows() {

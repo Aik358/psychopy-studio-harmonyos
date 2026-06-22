@@ -159,3 +159,46 @@ win.webContents.openDevTools();
 
 - Project template: Apache 2.0 (see [LICENSE](./LICENSE))
 - PsychoPy: [GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
+
+## Current Status
+
+### ✅ Build & Runtime
+- **ArkTS Compilation**: ✅ Passed (all type errors fixed)
+- **HAR Build (web_engine)**: ✅ Passed
+- **HAP Build (electron)**: ✅ Passed
+- **HAP Signing**: ✅ Passed
+- **Electron Runtime**: ✅ Express server + Svelte frontend loads
+- **Builder/Coder UI**: ✅ Functional (basic experiment editing works)
+
+### ⚠️ Known Issues
+- **Icons not rendering**: SVG icons in `dist/icons/` may not display properly in the HarmonyOS Electron environment
+- **Python runtime**: Full PsychoPy runner requires Python/UV which are not yet available on HarmonyOS
+- **Window close button**: Native window controls may not appear depending on HarmonyOS Electron implementation
+- **Closing behavior**: Unsaved changes dialog is implemented but may not trigger correctly without window controls
+
+### 📝 Recent Fixes
+| Issue | Fix |
+|-------|-----|
+| ArkTS type errors (`any`/`unknown`) | Added explicit generics to all `Inject.get<T>()` calls |
+| Missing interfaces | Added `BatteryInfo`, `OcrAdapterImage`, `GestureEvent`, `TextWord`, `PowerMonitor` |
+| `ERR_REQUIRE_ESM` runtime error | Changed `index.cjs` to async IIFE with `await import()` |
+| `ERR_UNSUPPORTED_DIR_IMPORT` | Changed `import("./python")` → `import("./python/index.js")` |
+| `UsageReport is not a constructor` | Moved `new UsageReport()` inside async IIFE after imports resolve |
+| Splash window blocking UI | Removed `alwaysOnTop`, added auto-close after 3s |
+| `libelectron.so` LFS pointer | Properly tracked with Git LFS and pushed to remote |
+| `WebAssembly is not defined` (Express) | No fix yet - requires HarmonyOS Electron update |
+| Missing window controls | Added `frame: true` to BrowserWindow constructor |
+| Unsaved changes on close | Added `dialog.showMessageBoxSync()` in window `close` event |
+
+### 🔧 To Build
+```bash
+# Install OHPM dependencies
+cd ohos_electron_hap
+node /path/to/ohos-ohpm/bin/pm-cli.js install
+
+# Build HAP
+hvigorw --mode module -p buildMode=debug -p product=default assembleHap --info --parallel
+
+# Install on device
+hdc app install electron/build/default/outputs/default/electron-default-unsigned.hap
+```
