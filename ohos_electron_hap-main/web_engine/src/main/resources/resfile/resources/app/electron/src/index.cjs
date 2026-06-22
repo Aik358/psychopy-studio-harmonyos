@@ -16,7 +16,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     import("./logging.js"),
     import("./usage.js"),
     import("./version.js"),
-    import("./python"),
+    import("./python/index.js"),
     import("./git.js")
   ]);
 
