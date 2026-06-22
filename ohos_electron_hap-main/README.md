@@ -1,227 +1,161 @@
-# HarmonyOS Electron HAP
+# PsychoPy Studio - HarmonyOS Port
 
-English | [简体中文](./README-CN.md)
+[简体中文](./README-CN.md)
 
-A HarmonyOS Application Package (HAP) project based on the HarmonyOS platform that enables running Electron applications on HarmonyOS devices.
+**PsychoPy Studio** ported to HarmonyOS (OpenHarmony) via the Electron-on-HarmonyOS runtime. This project packages the [PsychoPy](https://psychopy.org/) experiment builder as a native HarmonyOS Application Package (HAP).
 
 ## Project Structure
 
 ```
 ohos_electron_hap/
 ├── AppScope/                    # Application scope configuration
-├── chromium/                    # Chromium module
-├── electron/                    # Electron main module
-├── web_engine/                  # Web engine component
-├── hvigor/                      # Build tool configuration
-├── build-profile.json5          # Project build configuration
-├── hvigorfile.ts                # Build script
-└── oh-package.json5             # Project dependencies configuration
+├── electron/                    # Entry HAP module (Ability + pages)
+│   ├── src/main/ets/            # ArkUI pages (Index, SubWindow, etc.)
+│   └── libs/                    # Native .so libraries (libelectron.so, etc.)
+├── web_engine/                  # HAR module (core Electron runtime)
+│   ├── src/main/ets/            # ArkTS bridge layer
+│   │   ├── ability/             # WebAbility, WebBaseAbility
+│   │   ├── components/          # WebWindow, WebSubWindow, etc.
+│   │   ├── adapter/             # HarmonyOS API adapters
+│   │   └── jsbindings/          # JS↔ArkTS bindings
+│   ├── src/main/resources/
+│   │   └── resfile/resources/app/   # PsychoPy Electron app bundle
+│   │       ├── electron/src/    # Main process (index.cjs, preload.js)
+│   │       │   ├── python/      # Python integration modules
+│   │       │   ├── logging.js   # Logging (ESM)
+│   │       │   ├── usage.js     # Usage reporting (ESM)
+│   │       │   ├── version.js   # Version info (ESM)
+│   │       │   ├── git.js       # Git integration (ESM)
+│   │       │   └── index.cjs    # Main entry (CommonJS wrapper)
+│   │       └── dist/            # Svelte frontend build output
+│   └── oh_modules/              # OHPM dependencies
+├── hvigor/                      # Build tool config
+├── build-profile.json5          # Project build config
+└── oh-package.json5             # OHPM project dependencies
 ```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│            HarmonyOS Device              │
+│  ┌───────────────────────────────────┐  │
+│  │         ArkUI (Ability)           │  │
+│  │  ┌─────────────────────────────┐  │  │
+│  │  │   XComponent (Native)       │  │  │
+│  │  │   ┌──────────────────────┐  │  │  │
+│  │  │   │ libelectron.so       │  │  │  │
+│  │  │   │  ┌────────────────┐  │  │  │  │
+│  │  │   │  │ Electron Main  │  │  │  │  │
+│  │  │   │  │ Process (CJS)  │  │  │  │  │
+│  │  │   │  │  - index.cjs   │  │  │  │  │
+│  │  │   │  │  - Express srv │  │  │  │  │
+│  │  │   │  └────────────────┘  │  │  │  │
+│  │  │   └──────────────────────┘  │  │  │
+│  │  └─────────────────────────────┘  │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+## Prerequisites
+
+- **DevEco Studio** 5.0+ (with HarmonyOS SDK API 15+)
+- **Node.js** 18.x+
+- **ohpm** (HarmonyOS package manager) – available via `npm install -g ohos-ohpm`
+- HarmonyOS device or emulator (2in1 / Tablet)
 
 ## Quick Start
 
-### Environment Requirements
+### 1. Install OHPM Dependencies
 
-- **DevEco Studio**: 4.0 or higher
-- **HarmonyOS SDK**: API Level 10 or higher  
-- **Node.js**: 16.x or higher
-- **HDC Tool**: For device debugging and installation
+```bash
+cd ohos_electron_hap
+# Install ohpm CLI if not available:
+# npm install -g ohos-ohpm
+ohpm install
+```
 
-### 1. Prepare Resource Files
+This installs:
+- `inversify@6.0.1` – DI container for the ArkTS bridge
+- `reflect-metadata@0.2.1` – Reflection API
+- Local `web_engine` → `electron` module linkage
 
-Before starting the build, you need to prepare the following resources:
+### 2. Place Electron App Bundle
 
-#### Electron Application Code
-Place your Electron application code (compiled artifacts) into:
+Copy your compiled PsychoPy (or other Electron app) into:
+
 ```
 web_engine/src/main/resources/resfile/resources/app/
 ```
 
-### 2. Build HAP Package
+### 3. Build
 
-#### Using DevEco Studio
-1. Open the project with DevEco Studio
-2. Select **Build** → **Build Hap(s)/APP(s)** → **Build Hap(s)**
-3. Or click the run button in the top right corner to launch the application
-
-After building, the unsigned HAP package will be saved at:
-```
-electron/build/default/outputs/default/electron-default-unsigned.hap
-```
-
-### 3. Application Signing
-
-To run normally on devices, the HAP package needs to be signed:
-
-> Recommend using automatic signature verification
-1. Apply for Huawei Developer Certificate
-2. Configure signing information in DevEco Studio
-3. Rebuild to generate signed HAP package
-
-For detailed signing process, please refer to: [Application/Service Signing-DevEco Studio](https://developer.huawei.com/)
-
-### 4. Installation and Running
-
-#### Via DevEco Studio
-Click the run button directly to install on device
-
-#### Via Command Line
 ```bash
-hdc app install <signed-hap-package-path>
-# Example: hdc app install electron-default-signed.hap
+# Build web_engine HAR + electron HAP
+hvigorw -p module=electron@default,web_engine@default \
+  -p product=default -p buildMode=debug \
+  assembleHar assembleHap --parallel
 ```
 
-## Application Customization
+Or open in **DevEco Studio** → **Build** → **Build Hap(s)**.
 
-### Modify Application Name
-Edit file: `electron/src/main/resources/zh_CN/element/string.json`
-```json
-{
-  "string": [
-    {
-      "name": "EntryAbility_label",
-      "value": "Your Application Name"
-    }
-  ]
-}
+### 4. Install & Run
+
+```bash
+hdc app install electron/build/default/outputs/default/electron-default-unsigned.hap
 ```
 
-### Replace Application Icon
-Place new icon file into: `AppScope/resources/base/media/`
+Or click **Run** in DevEco Studio.
 
-### Configure Startup Window Size
-Edit `electron/src/main/module.json5`, add metadata in abilities:
-```json
-"metadata": [
-  {
-    "name": "ohos.ability.window.height",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.width",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.left",
-    "value": "center"
-  },
-  {
-    "name": "ohos.ability.window.top",
-    "value": "center"
-  }
-]
-```
+## Known Issues & Fixes
 
-## Permission Configuration
+### `ERR_REQUIRE_ESM` at runtime
 
-Application permissions are configured in the `requestPermissions` field of the `web_engine/src/main/module.json5` file.
+The Electron main process (`index.cjs`) loads several ES Modules (`logging.js`, `usage.js`, `version.js`, `git.js`, `python/index.js`). Since the parent `package.json` has `"type": "module"`, these `.js` files are treated as ESM and **cannot** be loaded via `require()` from a CommonJS `.cjs` file.
 
-### Basic Permissions (No Special Application Required)
-- `ohos.permission.INTERNET` - Network access
-- `ohos.permission.GET_NETWORK_INFO` - Get network information
-- `ohos.permission.RUNNING_LOCK` - Background running lock
-- `ohos.permission.PREPARE_APP_TERMINATE` - Application termination preparation
+**Fix applied:** The `index.cjs` uses an async IIFE with `await import()` to load all ES Modules before the app logic runs.
 
-### Permissions Requiring Application
-- `ohos.permission.CAMERA` - Camera permission
-- `ohos.permission.MICROPHONE` - Microphone permission
-- `ohos.permission.LOCATION` - Location permission
-- `ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY` - Download directory access
+### `Cannot find module 'inversify'`
 
-## HarmonyOS Specific Features
+The `web_engine` HAR module depends on `inversify` and `reflect-metadata` from the OHPM registry.
 
-### Floating Window
-```javascript
-const { BrowserWindow } = require('electron');
+**Fix:** Run `ohpm install` in the project root. If `ohpm` is not installed, use `npm install -g ohos-ohpm`.
 
-let floatWindow = new BrowserWindow({
-  windowInfo: {
-    type: 'floatWindow'  // mainWindow, subWindow, floatWindow
-  },
-  parent: mainWindow,
-  x: 100,
-  y: 100,
-  width: 800,
-  height: 600,
-  transparent: true,  // Transparent window
-  opacity: 0.5       // Opacity
-});
-```
+### ArkTS strict mode errors (`arkts-no-any-unknown`)
 
-### System Permission Request
-```javascript
-const { systemPreferences } = require('electron');
+The `web_engine` ArkTS source uses `Inject.get()` without explicit generic parameters, causing type inference failures.
 
-// Request camera permission
-systemPreferences.requestSystemPermission('camera').then(granted => {
-  console.log('Camera permission:', granted);
-});
-
-// Request directory permission
-systemPreferences.requestDirectoryPermission(null).then(granted => {
-  console.log('Directory permission:', granted);
-});
+**Fix applied:** All `Inject.get<T>()` calls now have explicit type parameters:
+```typescript
+// Before
+private dragDropAdapter: DragDropAdapter = Inject.get(DragDropAdapter);
+// After
+private dragDropAdapter: DragDropAdapter = Inject.get<DragDropAdapter>(DragDropAdapter);
 ```
 
 ## Debugging
 
-### Renderer Process Debugging
+### Main process (Electron)
+
+1. In `web_engine/src/main/ets/components/WebWindow.ets`, add `--inspect=9229` to launch args
+2. Forward the port: `hdc fport tcp:9229 tcp:9229`
+3. Open `chrome://inspect` in Chrome
+
+### Renderer process (Svelte)
+
 ```javascript
-const { BrowserWindow } = require('electron');
-const win = new BrowserWindow();
 win.webContents.openDevTools();
 ```
 
-### Main Process Debugging
-1. Add debugging parameters in `web_engine/src/main/ets/components/WebWindow.ets`:
-```typescript
-let inspect = '--inspect=9229';
-let vec_args = [..., inspect];
-```
+## Application Data
 
-2. Configure port forwarding:
-```bash
-hdc fport tcp:9229 tcp:9229
-```
+| Directory | Path |
+|-----------|------|
+| User data | `/data/storage/el2/base/files` |
+| App install | `/data/storage/el1/bundle` |
+| Preferences | `{userData}/psychopy4/preferences.json` |
 
-3. Access in Chrome browser: `chrome://inspect`
+## License
 
-## Application Data Directory
-
-- User data stored by default at: `/data/storage/el2/base/files`
-- Application installation directory: `/data/storage/el1/bundle`
-- Database directory: `/data/storage/el2/database`
-
-## Common Issues
-
-### Build Failure
-1. Check if SO library files are complete
-2. Confirm Electron application code is correctly placed
-3. Verify permission configuration is correct
-
-### Third-party Library Compatibility
-- **C++ addon**: Need to recompile for HarmonyOS platform adaptation
-- **Platform detection**: Need to adapt `process.platform === 'ohos'`
-- **Binary files**: May need to replace with HarmonyOS versions
-
-### Permission Issues
-If certain ACL permissions cannot be obtained, you can temporarily comment out related permissions:
-```json
-// "requestPermissions": [
-//   {
-//     "name": "ohos.permission.SYSTEM_FLOAT_WINDOW"
-//   }
-// ]
-```
-
-## Contributing
-
-1. Fork this repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Submit a Pull Request
-
-## Contact Us
-
-If you encounter issues or need support, please submit an Issue or contact the maintenance team.
+- Project template: Apache 2.0 (see [LICENSE](./LICENSE))
+- PsychoPy: [GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)

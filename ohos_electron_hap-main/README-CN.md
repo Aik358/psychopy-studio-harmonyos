@@ -1,227 +1,160 @@
-# HarmonyOS Electron HAP
+# PsychoPy Studio - 鸿蒙移植版
 
-[English](./README.md) | 简体中文
+[English](./README.md)
 
-这是一个基于 HarmonyOS 平台的 Electron 应用程序包（HAP）项目，支持在鸿蒙设备上运行 Electron 应用。
+**PsychoPy Studio** 移植到鸿蒙（OpenHarmony）平台的实现方案。该项目将 [PsychoPy](https://psychopy.org/) 实验设计工具打包为原生鸿蒙应用包（HAP）。
 
 ## 项目结构
 
 ```
 ohos_electron_hap/
 ├── AppScope/                    # 应用范围配置
-├── chromium/                    # Chromium 模块
-├── electron/                    # Electron 主模块
-├── web_engine/                  # Web 引擎组件
+├── electron/                    # 入口 HAP 模块（Ability + 页面）
+│   ├── src/main/ets/            # ArkUI 页面（Index, SubWindow 等）
+│   └── libs/                    # 原生 so 库（libelectron.so 等）
+├── web_engine/                  # HAR 模块（核心 Electron 运行时）
+│   ├── src/main/ets/            # ArkTS 桥接层
+│   │   ├── ability/             # WebAbility, WebBaseAbility
+│   │   ├── components/          # WebWindow, WebSubWindow 等
+│   │   ├── adapter/             # 鸿蒙 API 适配器
+│   │   └── jsbindings/          # JS↔ArkTS 绑定
+│   ├── src/main/resources/
+│   │   └── resfile/resources/app/   # PsychoPy Electron 应用包
+│   │       ├── electron/src/    # 主进程（index.cjs, preload.js）
+│   │       │   ├── python/      # Python 集成模块
+│   │       │   ├── logging.js   # 日志（ESM）
+│   │       │   ├── usage.js     # 使用统计（ESM）
+│   │       │   ├── version.js   # 版本信息（ESM）
+│   │       │   ├── git.js       # Git 集成（ESM）
+│   │       │   └── index.cjs    # 主入口（CommonJS 包装）
+│   │       └── dist/            # Svelte 前端构建产物
+│   └── oh_modules/              # OHPM 依赖
 ├── hvigor/                      # 构建工具配置
 ├── build-profile.json5          # 项目构建配置
-├── hvigorfile.ts                # 构建脚本
-└── oh-package.json5             # 项目依赖配置
+└── oh-package.json5             # OHPM 项目依赖
 ```
+
+## 架构
+
+```
+┌─────────────────────────────────────────┐
+│            HarmonyOS 设备                 │
+│  ┌───────────────────────────────────┐  │
+│  │         ArkUI (Ability)           │  │
+│  │  ┌─────────────────────────────┐  │  │
+│  │  │   XComponent（原生容器）       │  │  │
+│  │  │   ┌──────────────────────┐  │  │  │
+│  │  │   │ libelectron.so       │  │  │  │
+│  │  │   │  ┌────────────────┐  │  │  │  │
+│  │  │   │  │ Electron 主进程  │  │  │  │  │
+│  │  │   │  │    index.cjs    │  │  │  │  │
+│  │  │   │  │  Express 服务器  │  │  │  │  │
+│  │  │   │  └────────────────┘  │  │  │  │
+│  │  │   └──────────────────────┘  │  │  │
+│  │  └─────────────────────────────┘  │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+## 环境要求
+
+- **DevEco Studio** 5.0+（HarmonyOS SDK API 15+）
+- **Node.js** 18.x+
+- **ohpm**（鸿蒙包管理器）— 可通过 `npm install -g ohos-ohpm` 安装
+- 鸿蒙设备或模拟器（2in1 / 平板）
 
 ## 快速开始
 
-### 环境要求
+### 1. 安装 OHPM 依赖
 
-- **DevEco Studio**: 4.0 或更高版本
-- **HarmonyOS SDK**: API Level 10 或更高
-- **Node.js**: 16.x 或更高版本
-- **HDC工具**: 用于设备调试和安装
+```bash
+cd ohos_electron_hap
+# 如 ohpm 未安装：
+# npm install -g ohos-ohpm
+ohpm install
+```
 
-### 1. 准备资源文件
+将安装：
+- `inversify@6.0.1` – ArkTS 桥接层 DI 容器
+- `reflect-metadata@0.2.1` – 反射 API
+- 本地 `web_engine` → `electron` 模块链接
 
-在开始构建之前，需要准备以下资源：
+### 2. 放置 Electron 应用
 
-#### Electron 应用代码
-将您的 Electron 应用代码（编译后的产物）放入：
+将编译好的 PsychoPy（或其他 Electron 应用）复制到：
+
 ```
 web_engine/src/main/resources/resfile/resources/app/
 ```
 
-### 2. 构建 HAP 包
+### 3. 构建
 
-#### 使用 DevEco Studio
-1. 用 DevEco Studio 打开项目
-2. 选择 **Build** → **Build Hap(s)/APP(s)** → **Build Hap(s)**
-3. 或点击右上角的运行按钮启动应用
-
-构建完成后，未签名的 HAP 包将保存在：
-```
-electron/build/default/outputs/default/electron-default-unsigned.hap
-```
-
-### 3. 应用签名
-
-为了在设备上正常运行，需要对 HAP 包进行签名：
-
-> 建议使用自动签名验证
-1. 申请华为开发者证书
-2. 在 DevEco Studio 中配置签名信息
-3. 重新构建生成已签名的 HAP 包
-
-详细签名流程请参考：[应用/服务签名-DevEco Studio](https://developer.huawei.com/)
-
-### 4. 安装和运行
-
-#### 通过 DevEco Studio
-直接点击运行按钮安装到设备
-
-#### 通过命令行
 ```bash
-hdc app install <已签名hap包路径>
-# 示例: hdc app install electron-default-signed.hap
+# 构建 web_engine HAR + electron HAP
+hvigorw -p module=electron@default,web_engine@default \
+  -p product=default -p buildMode=debug \
+  assembleHar assembleHap --parallel
 ```
 
-## 应用定制
+或在 **DevEco Studio** 中 → **Build** → **Build Hap(s)**。
 
-### 修改应用名称
-编辑文件：`electron/src/main/resources/zh_CN/element/string.json`
-```json
-{
-  "string": [
-    {
-      "name": "EntryAbility_label",
-      "value": "您的应用名称"
-    }
-  ]
-}
+### 4. 安装运行
+
+```bash
+hdc app install electron/build/default/outputs/default/electron-default-unsigned.hap
 ```
 
-### 替换应用图标
-将新图标文件放入：`AppScope/resources/base/media/`
+或在 DevEco Studio 中点击运行。
 
-### 配置启动窗口大小
-编辑 `electron/src/main/module.json5`，在 abilities 中添加 metadata：
-```json
-"metadata": [
-  {
-    "name": "ohos.ability.window.height",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.width",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.left",
-    "value": "center"
-  },
-  {
-    "name": "ohos.ability.window.top",
-    "value": "center"
-  }
-]
-```
+## 常见问题与修复
 
-## 权限配置
+### 运行时 `ERR_REQUIRE_ESM`
 
-应用权限在 `web_engine/src/main/module.json5` 文件的 `requestPermissions` 字段中配置。
+Electron 主进程（`index.cjs`）需要加载多个 ES Module（`logging.js`、`usage.js`、`version.js` 等）。由于父级 `package.json` 中有 `"type": "module"`，这些 `.js` 文件被当作 ESM，不能从 CommonJS 的 `.cjs` 文件中用 `require()` 加载。
 
-### 基础权限（无需特殊申请）
-- `ohos.permission.INTERNET` - 网络访问
-- `ohos.permission.GET_NETWORK_INFO` - 获取网络信息
-- `ohos.permission.RUNNING_LOCK` - 后台运行锁
-- `ohos.permission.PREPARE_APP_TERMINATE` - 应用终止准备
+**已修复：** `index.cjs` 采用 async IIFE + `await import()` 异步加载所有 ES Module。
 
-### 需要申请的权限
-- `ohos.permission.CAMERA` - 相机权限
-- `ohos.permission.MICROPHONE` - 麦克风权限
-- `ohos.permission.LOCATION` - 位置权限
-- `ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY` - 下载目录访问
+### `Cannot find module 'inversify'`
 
-## HarmonyOS 特有功能
+`web_engine` HAR 模块依赖 OHPM 仓库的 `inversify` 和 `reflect-metadata`。
 
-### 悬浮窗
-```javascript
-const { BrowserWindow } = require('electron');
+**修复：** 在项目根目录运行 `ohpm install`。如 `ohpm` 未安装：`npm install -g ohos-ohpm`。
 
-let floatWindow = new BrowserWindow({
-  windowInfo: {
-    type: 'floatWindow'  // mainWindow, subWindow, floatWindow
-  },
-  parent: mainWindow,
-  x: 100,
-  y: 100,
-  width: 800,
-  height: 600,
-  transparent: true,  // 透明窗口
-  opacity: 0.5       // 透明度
-});
-```
+### ArkTS 严格模式错误（`arkts-no-any-unknown`）
 
-### 系统权限请求
-```javascript
-const { systemPreferences } = require('electron');
+`web_engine` 的 ArkTS 源码中使用 `Inject.get()` 时未指定泛型参数，导致类型推导失败。
 
-// 请求相机权限
-systemPreferences.requestSystemPermission('camera').then(granted => {
-  console.log('Camera permission:', granted);
-});
-
-// 请求目录权限
-systemPreferences.requestDirectoryPermission(null).then(granted => {
-  console.log('Directory permission:', granted);
-});
+**已修复：** 所有 `Inject.get<T>()` 调用添加了显式泛型：
+```typescript
+// 之前
+private dragDropAdapter: DragDropAdapter = Inject.get(DragDropAdapter);
+// 之后
+private dragDropAdapter: DragDropAdapter = Inject.get<DragDropAdapter>(DragDropAdapter);
 ```
 
 ## 调试
 
-### 渲染进程调试
+### 主进程（Electron）
+
+1. 在 `web_engine/src/main/ets/components/WebWindow.ets` 中添加 `--inspect=9229` 启动参数
+2. 端口转发：`hdc fport tcp:9229 tcp:9229`
+3. Chrome 打开 `chrome://inspect`
+
+### 渲染进程（Svelte）
+
 ```javascript
-const { BrowserWindow } = require('electron');
-const win = new BrowserWindow();
 win.webContents.openDevTools();
 ```
 
-### 主进程调试
-1. 在 `web_engine/src/main/ets/components/WebWindow.ets` 中添加调试参数：
-```typescript
-let inspect = '--inspect=9229';
-let vec_args = [..., inspect];
-```
+## 应用数据
 
-2. 配置端口转发：
-```bash
-hdc fport tcp:9229 tcp:9229
-```
+| 目录 | 路径 |
+|------|------|
+| 用户数据 | `/data/storage/el2/base/files` |
+| 应用安装 | `/data/storage/el1/bundle` |
+| 偏好设置 | `{userData}/psychopy4/preferences.json` |
 
-3. 在 Chrome 浏览器中访问：`chrome://inspect`
+## 许可
 
-## 应用数据目录
-
-- 用户数据默认存储在：`/data/storage/el2/base/files`
-- 应用安装目录：`/data/storage/el1/bundle`
-- 数据库目录：`/data/storage/el2/database`
-
-## 常见问题
-
-### 构建失败
-1. 检查 SO 库文件是否完整
-2. 确认 Electron 应用代码已正确放置
-3. 验证权限配置是否正确
-
-### 三方库兼容性
-- **C++ addon**: 需要重新编译适配鸿蒙平台
-- **平台检测**: 需要适配 `process.platform === 'ohos'`
-- **二进制文件**: 可能需要替换为鸿蒙版本
-
-### 权限问题
-如果某些 ACL 权限无法获得，可以暂时注释掉相关权限：
-```json
-// "requestPermissions": [
-//   {
-//     "name": "ohos.permission.SYSTEM_FLOAT_WINDOW"
-//   }
-// ]
-```
-
-## 贡献指南
-
-1. Fork 本仓库
-2. 创建功能分支：`git checkout -b feature/your-feature`
-3. 提交更改：`git commit -am 'Add some feature'`
-4. 推送到分支：`git push origin feature/your-feature`
-5. 提交 Pull Request
-
-## 联系我们
-
-如遇到问题或需要支持，请提交 Issue 或联系维护团队。
+- 项目模板：Apache 2.0（见 [LICENSE](./LICENSE)）
+- PsychoPy：[GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
