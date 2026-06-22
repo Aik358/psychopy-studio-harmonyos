@@ -6,6 +6,8 @@
 
 **PsychoPy Studio** 是一款开源的心理学/神经科学实验设计工具。本项目将其完整移植到 **HarmonyOS（鸿蒙）** 平台，通过 Electron-on-HarmonyOS 运行时，将 PsychoPy 的实验构建器、代码编辑器、运行器打包为原生鸿蒙应用（HAP），在平板/2in1 设备上原生运行。
 
+后续版本将把 **Python 后端（CPython/UV）** 集成到 HAP 中，让用户能够在自己的鸿蒙设备上直接 **编辑、编译并运行实验**，无需任何外部依赖。
+
 ## v0.1.0 功能
 
 - **PsychoPy Builder**：图形化实验编辑器（拖拽组件、流程时间线）

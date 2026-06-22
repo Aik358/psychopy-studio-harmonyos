@@ -6,6 +6,8 @@
 
 **PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP) that runs on tablets and 2-in-1 devices.
 
+Future releases will integrate the **Python backend (CPython/UV)** directly into the HAP, enabling users to edit, compile, and **run experiments entirely on their HarmonyOS devices** without external dependencies.
+
 ## v0.1.0 Features
 
 - **PsychoPy Builder**: Graphical experiment editor (drag & drop components, flow timeline)
