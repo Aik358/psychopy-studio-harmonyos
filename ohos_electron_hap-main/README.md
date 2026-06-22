@@ -1,4 +1,4 @@
-# PsychoPy Studio - HarmonyOS Port v0.1.0
+# PsychoPy Studio - HarmonyOS Port v0.1.1
 
 [简体中文](./README-CN.md)
 

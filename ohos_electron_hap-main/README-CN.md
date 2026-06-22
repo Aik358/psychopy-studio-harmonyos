@@ -1,4 +1,4 @@
-# PsychoPy Studio - 鸿蒙移植版 v0.1.0
+# PsychoPy Studio - 鸿蒙移植版 v0.1.1
 
 [English](./README.md)
 
