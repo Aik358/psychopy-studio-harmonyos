@@ -1,6 +1,7 @@
 import { appVersion }  from "./version.js";
 import { platform, arch } from "process";
 import os from "os"
+import logging from "./logging.js"
 
 export class UsageReport {
     constructor() {

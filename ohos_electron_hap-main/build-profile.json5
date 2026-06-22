@@ -11,7 +11,8 @@
           "nativeLib": {
             "collectAllLibs": true
           }
-        }
+        },
+        "targetSdkVersion": "26.0.0"
       }
     ],
     "buildModeSet": [
@@ -28,16 +29,16 @@
     "signingConfigs": [
       {
         "name": "default",
+        "type": "HarmonyOS",
         "material": {
-          "storePassword": "00000020E5AA3F2A5575793E3F9ACF2CD24B95B7D99FFA8FA84ECA665C8A945D6D3ADDE3E56BFD6FB4EDE6FBA81DE161",
-          "certpath": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.cer",
+          "certpath": "C:\\Users\\JH Z\\.ohos\\config\\default_ohos_electron_hap-main_r_4zslexLPxKQj3XBrQn0LHsM0qcDLhCYiYOqLXHZvI=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "00000020E5AA3F2A5575793E3F9ACF2CD24B95B7D99FFA8FA84ECA665C8A945D6D3ADDE3E56BFD6FB4EDE6FBA81DE161",
-          "profile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.p7b",
+          "keyPassword": "0000001BE7D0539B7DCFD77A81295F526C5FC53CBF143F5AEDA1238289AF0000F6373982CDBE75CB9FD37C",
+          "profile": "C:\\Users\\JH Z\\.ohos\\config\\default_ohos_electron_hap-main_r_4zslexLPxKQj3XBrQn0LHsM0qcDLhCYiYOqLXHZvI=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_ohos_electron_hap-mainiAWQjHvzjUoEXlYSxG3B0eFZQqxD2LX8c8XToleOvlw.p12"
-        },
-        "type": "HarmonyOS"
+          "storeFile": "C:\\Users\\JH Z\\.ohos\\config\\default_ohos_electron_hap-main_r_4zslexLPxKQj3XBrQn0LHsM0qcDLhCYiYOqLXHZvI=.p12",
+          "storePassword": "0000001B0DCABB190A222B4BDAF9D24286B303E406C394CC1EB87DFBBB9EB8A6EEB2328FFE172A9EAFCFE1"
+        }
       }
     ]
   },

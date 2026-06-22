@@ -127,30 +127,12 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     mainWin.removeMenu();
     mainWin.loadURL('http://localhost:8003/builder');
     
-    // Close handler - check unsaved changes
-    mainWin.on('close', (e) => {
-      if (prefs && Object.keys(prefs).length > 0) {
-        const choice = dialog.showMessageBoxSync(mainWin, {
-          type: 'question',
-          buttons: ['Save', 'Discard', 'Cancel'],
-          defaultId: 0,
-          cancelId: 2,
-          message: 'Save changes before closing?',
-          detail: 'Your experiment has unsaved changes.'
-        });
-        if (choice === 0) { /* save - do nothing, app handles it */ }
-        else if (choice === 1) { mainWin.destroy(); }
-        else { e.preventDefault(); }
-      }
-    });
-    
     // Store window for IPC
     mainWin.webContents.once('did-finish-load', () => {
       windows[mainWin.webContents.id] = mainWin;
     });
     
     svelte.process = { kill: () => server.close() };
-    windows.splash = { isDestroyed: () => true, close: () => {} };
   });
 };/**
    * Open the default starting windows indicated by prefs
@@ -179,7 +161,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       icon: favicon,
       width: 1600,
       height: 900,
-      show: false,
+      show: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js')
       }
@@ -209,36 +191,22 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     // create promise waiting for ready event
     let ready = Promise.withResolvers()
     // show when ready (if requested)
-    if (show) {
-      // show once ready, if requested
-      win.once("ready-to-show", evt => {
-        logging.log(`Loaded ${url}`)
-        win.show();
-        // fulscreen if requested
+    win.once("ready-to-show", evt => {
+      logging.log(`Loaded ${url}`)
+      ready.resolve(win.webContents.id)
+      if (show) {
         if (fullscreen) {
           win.maximize();
         }
-        // give focus
         win.focus();
-        // make sure the splash screen is closed
-        if (!windows.splash.isDestroyed()) {
+        if (windows.splash && !windows.splash.isDestroyed()) {
           windows.splash.close()
         }
-        // show dev tools if debugging
         if (prefs?.params?.debugMode?.val === "True") {
           win.webContents.openDevTools();
         }
-      })
-      // return ID once ready message is received (has to be sent via electron.windows.emit)
-      win.webContents.on("ipc-message", (evt, tag) => {
-        if (tag === "ready") {
-          ready.resolve(win.webContents.id)
-        }
-      })
-    } else {
-      // if not showing, return ID once ready to show
-      win.once("ready-to-show", evt => ready.resolve(win.webContents.id))
-    }
+      }
+    })
     // wait until ready
     return await ready.promise
   }
@@ -360,14 +328,25 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       windows: {
         new: ipcMain.handle("electron.windows.new", async (evt, target) => await newWindow(target)),
         get: ipcMain.handle("electron.windows.get", (evt, target) => Object.keys(windows).filter(
-          id => !windows[id].isDestroyed()
+          id => windows[id] && typeof windows[id].isDestroyed === 'function' && !windows[id].isDestroyed()
         ).filter(
           id => String(windows[id].webContents.getURL()).includes(target)
         )),
-        send: ipcMain.handle("electron.windows.send", (evt, id, tag, data) => windows[id].webContents.send(tag, data)),
-        focus: ipcMain.handle("electron.windows.focus", (evt, id) => windows[id || evt.sender.id].focus()),
-        devtools: ipcMain.handle("electron.windows.devtools", (evt, id) => windows[id || evt.sender.id].openDevTools()),
-        close: ipcMain.handle("electron.windows.close", (evt, id) => windows[id || evt.sender.id].close()),
+        send: ipcMain.handle("electron.windows.send", (evt, id, tag, data) => {
+          if (windows[id]) windows[id].webContents.send(tag, data)
+        }),
+        focus: ipcMain.handle("electron.windows.focus", (evt, id) => {
+          let win = windows[id || evt.sender.id]
+          if (win && win.focus) win.focus()
+        }),
+        devtools: ipcMain.handle("electron.windows.devtools", (evt, id) => {
+          let win = windows[id || evt.sender.id]
+          if (win && win.openDevTools) win.openDevTools()
+        }),
+        close: ipcMain.handle("electron.windows.close", (evt, id) => {
+          let win = windows[id || evt.sender.id]
+          if (win && win.close) win.close()
+        }),
       },
       paths: {
         documents: ipcMain.handle("electron.paths.documents", (evt) => app.getPath("documents")),

@@ -45,18 +45,19 @@ export async function openIn(file, target) {
  */
 export async function showWindow(target) {
     if (electron) {
-        // get windows matching target
-        let windows = await electron.windows.get(target);
-        // either get first ID, or make a new window and use its ID
-        let id;
-        if (windows.length) {
-            id = windows[0]
+        let existing = await electron.windows.get(target);
+        if (existing.length) {
+            await electron.windows.focus(existing[0])
         } else {
-            id = await electron.windows.new(target)
+            try {
+                await electron.windows.new(target)
+            } catch (err) {
+                // fallback
+            }
         }
-        // focus window
-        await electron.windows.focus(id)
     }
+    // navigate current window to target view
+    window.location.href = resolve(`/${target}`)
 }
 
 /**

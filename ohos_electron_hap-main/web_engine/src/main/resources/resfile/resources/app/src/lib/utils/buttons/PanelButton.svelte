@@ -1,7 +1,7 @@
 <script>
     import Tooltip from "$lib/utils/tooltip/Tooltip.svelte";
     import { slide } from "svelte/transition";
-    import { asset } from '$app/paths';
+    import Icon from "$lib/utils/icons/Icon.svelte";
 
     let {
         /** @prop @type {string} Label for this button */
@@ -26,12 +26,9 @@
     </Tooltip>
     {/if}
     {label}
-    <svg 
-        class=panel-indicator
-        class:open={open}
-    >
-        <use href={asset("/icons/sym-arrow-right.svg")}></use>
-    </svg>
+    <span class=panel-indicator class:open={open}>
+        <Icon src="/icons/sym-arrow-right.svg" size="0.5rem" />
+    </span>
 </button>
 {#if open}
 <div 
@@ -65,10 +62,13 @@
     }
     .panel-indicator {
         position: absolute;
-        aspect-ratio: 1/1;
         left: 1rem;
         bottom: 1rem;
         height: .5rem;
+        width: .5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: transform .2s;
     }
     .panel-indicator.open {
