@@ -26,6 +26,10 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const { handlers: pythonHandlers } = pythonModule;
   const { handlers: gitHandlers } = gitModule;
 
+  console.log('[D] esm loaded isDev=' + isDev);
+  console.log('[D] __dirname=' + __dirname);
+  console.log('[D] dist exists=' + fs.existsSync(path.join(__dirname, '../../dist')));
+
   // figure out best file to use for a favicon
   var favicon = path.join(__dirname, 'favicon')
   if (process.platform === "win32") {
@@ -90,6 +94,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
+    console.log('[D] createWindow isDev=' + isDev + ' started=' + started);
     // if app is already running...
     if (started) {
       // open start windows and do nothing else
@@ -154,10 +159,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       // log run args
       logging.log(`Running: ${process.argv.join(" | ")}`)
       // use express to serve static files in production
+      console.log('[D] start express port=' + svelte.address.port + ' host=' + svelte.address.host);
       const express = require('express');
       const app = express();
 
-      app.use(express.static(path.join(__dirname, '../../dist')));
+      const distPath = path.join(__dirname, '../../dist');
+      console.log('[D] express distPath=' + distPath + ' exists=' + fs.existsSync(distPath));
+      app.use(express.static(distPath));
 
       // API routes
       app.get('/api/plugins', async (req, res) => {
@@ -276,6 +284,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       });
 
       const server = app.listen(svelte.address.port, svelte.address.host, () => {
+        console.log('[D] express server started');
         logging.log(`Started static server at ${svelte.address.host}:${svelte.address.port}`)
         ready.svelte.resolve();
       });
