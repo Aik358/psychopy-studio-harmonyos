@@ -1,38 +1,54 @@
-# PsychoPy Studio - 鸿蒙移植版
+# PsychoPy Studio - 鸿蒙移植版 v0.1.0
 
 [English](./README.md)
 
-**PsychoPy Studio** 移植到鸿蒙（OpenHarmony）平台的实现方案。该项目将 [PsychoPy](https://psychopy.org/) 实验设计工具打包为原生鸿蒙应用包（HAP）。
+## 项目简介
 
-## 项目结构
+**PsychoPy Studio** 是一款开源的心理学/神经科学实验设计工具。本项目将其完整移植到 **HarmonyOS（鸿蒙）** 平台，通过 Electron-on-HarmonyOS 运行时，将 PsychoPy 的实验构建器、代码编辑器、运行器打包为原生鸿蒙应用（HAP），在平板/2in1 设备上原生运行。
 
+## v0.1.0 功能
+
+- **PsychoPy Builder**：图形化实验编辑器（拖拽组件、流程时间线）
+- **PsychoPy Coder**：Python/JS 代码编辑器
+- **PsychoPy Runner**：实验执行界面（需 Python 后端）
+- **视图切换**：Menu → View → Show Coder/Runner（当前窗口导航）
+- **SVG 图标**：全部工具栏和组件图标正常渲染
+- **启动动画**：自带启动页（加载状态 → 自动进入 Builder）
+- **Electron Express 服务**：localhost:8003 提供 SvelteKit 前端
+- **多窗口支持**：BrowserWindow API 已启用（焦点管理 WIP）
+
+## 构建步骤
+
+### 环境要求
+- DevEco Studio 5.0+（HarmonyOS SDK API 15）
+- Node.js 18.x+
+- 鸿蒙设备或模拟器（平板/2in1）
+
+### 构建命令
+
+```bash
+# 1. 安装 OHPM 依赖
+ohpm install
+
+# 2. 安装 npm 依赖并构建前端
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npm install --save-dev @sveltejs/kit @sveltejs/adapter-static vite
+npx vite build
+cd ../../../../../../../..
+
+# 3. 构建 HAP（或在 DevEco Studio 中 Build → Build Hap(s)）
+hvigorw --mode module -p module=electron@default assembleHap -p buildMode=debug
+
+# 4. 安装到设备
+hdc app install electron/build/default/outputs/default/electron-default-signed.hap
 ```
-ohos_electron_hap/
-├── AppScope/                    # 应用范围配置
-├── electron/                    # 入口 HAP 模块（Ability + 页面）
-│   ├── src/main/ets/            # ArkUI 页面（Index, SubWindow 等）
-│   └── libs/                    # 原生 so 库（libelectron.so 等）
-├── web_engine/                  # HAR 模块（核心 Electron 运行时）
-│   ├── src/main/ets/            # ArkTS 桥接层
-│   │   ├── ability/             # WebAbility, WebBaseAbility
-│   │   ├── components/          # WebWindow, WebSubWindow 等
-│   │   ├── adapter/             # 鸿蒙 API 适配器
-│   │   └── jsbindings/          # JS↔ArkTS 绑定
-│   ├── src/main/resources/
-│   │   └── resfile/resources/app/   # PsychoPy Electron 应用包
-│   │       ├── electron/src/    # 主进程（index.cjs, preload.js）
-│   │       │   ├── python/      # Python 集成模块
-│   │       │   ├── logging.js   # 日志（ESM）
-│   │       │   ├── usage.js     # 使用统计（ESM）
-│   │       │   ├── version.js   # 版本信息（ESM）
-│   │       │   ├── git.js       # Git 集成（ESM）
-│   │       │   └── index.cjs    # 主入口（CommonJS 包装）
-│   │       └── dist/            # Svelte 前端构建产物
-│   └── oh_modules/              # OHPM 依赖
-├── hvigor/                      # 构建工具配置
-├── build-profile.json5          # 项目构建配置
-└── oh-package.json5             # OHPM 项目依赖
-```
+
+### 首次构建签名
+1. 用 DevEco Studio 打开项目
+2. File → Project Structure → Signing Configs
+3. 勾选 "Automatically generate signature"
+4. 构建
 
 ## 架构
 
@@ -56,95 +72,27 @@ ohos_electron_hap/
 └─────────────────────────────────────────┘
 ```
 
-## 环境要求
+## 已知问题
 
-- **DevEco Studio** 5.0+（HarmonyOS SDK API 15+）
-- **Node.js** 18.x+
-- **ohpm**（鸿蒙包管理器）— 可通过 `npm install -g ohos-ohpm` 安装
-- 鸿蒙设备或模拟器（2in1 / 平板）
+- **Python 后端**：实验运行需要 Python/UV 运行时，鸿蒙上尚未移植
+- **多窗口焦点**：新 BrowserWindow 已创建但焦点管理待完善
+- **原生窗口控件**：HarmonyOS Electron 窗口边框实现因版本而异
 
-## 快速开始
+## 未来路线
 
-### 1. 安装 OHPM 依赖
+### 短期
+- [ ] Python 后端移植（CPython/UV for HarmonyOS）
+- [ ] 多窗口焦点修复
+- [ ] 文件系统集成（.psyexp 文件选择）
 
-```bash
-cd ohos_electron_hap
-# 如 ohpm 未安装：
-# npm install -g ohos-ohpm
-ohpm install
-```
+### 中期
+- [ ] Pavlovia 同步（Git 实验分享）
+- [ ] 插件系统
+- [ ] 外设支持（显示器校准、按钮盒）
 
-将安装：
-- `inversify@6.0.1` – ArkTS 桥接层 DI 容器
-- `reflect-metadata@0.2.1` – 反射 API
-- 本地 `web_engine` → `electron` 模块链接
-
-### 2. 放置 Electron 应用
-
-将编译好的 PsychoPy（或其他 Electron 应用）复制到：
-
-```
-web_engine/src/main/resources/resfile/resources/app/
-```
-
-### 3. 构建
-
-```bash
-# 构建 web_engine HAR + electron HAP
-hvigorw -p module=electron@default,web_engine@default \
-  -p product=default -p buildMode=debug \
-  assembleHar assembleHap --parallel
-```
-
-或在 **DevEco Studio** 中 → **Build** → **Build Hap(s)**。
-
-### 4. 安装运行
-
-```bash
-hdc app install electron/build/default/outputs/default/electron-default-unsigned.hap
-```
-
-或在 DevEco Studio 中点击运行。
-
-## 常见问题与修复
-
-### 运行时 `ERR_REQUIRE_ESM`
-
-Electron 主进程（`index.cjs`）需要加载多个 ES Module（`logging.js`、`usage.js`、`version.js` 等）。由于父级 `package.json` 中有 `"type": "module"`，这些 `.js` 文件被当作 ESM，不能从 CommonJS 的 `.cjs` 文件中用 `require()` 加载。
-
-**已修复：** `index.cjs` 采用 async IIFE + `await import()` 异步加载所有 ES Module。
-
-### `Cannot find module 'inversify'`
-
-`web_engine` HAR 模块依赖 OHPM 仓库的 `inversify` 和 `reflect-metadata`。
-
-**修复：** 在项目根目录运行 `ohpm install`。如 `ohpm` 未安装：`npm install -g ohos-ohpm`。
-
-### ArkTS 严格模式错误（`arkts-no-any-unknown`）
-
-`web_engine` 的 ArkTS 源码中使用 `Inject.get()` 时未指定泛型参数，导致类型推导失败。
-
-**已修复：** 所有 `Inject.get<T>()` 调用添加了显式泛型：
-```typescript
-// 之前
-private dragDropAdapter: DragDropAdapter = Inject.get(DragDropAdapter);
-// 之后
-private dragDropAdapter: DragDropAdapter = Inject.get<DragDropAdapter>(DragDropAdapter);
-```
-
-## 调试
-
-### 主进程（Electron）
-
-1. 在 `web_engine/src/main/ets/components/WebWindow.ets` 中添加 `--inspect=9229` 启动参数
-2. 端口转发：`hdc fport tcp:9229 tcp:9229`
-3. Chrome 打开 `chrome://inspect`
-
-### 渲染进程（Svelte）
-
-```javascript
-win.webContents.openDevTools();
-```
+### 长期
+- [ ] 纯 ArkUI 实现
+- [ ] 鸿蒙应用市场上架
 
 ## 应用数据
 
@@ -156,5 +104,5 @@ win.webContents.openDevTools();
 
 ## 许可
 
-- 项目模板：Apache 2.0（见 [LICENSE](./LICENSE)）
+- 项目模板：Apache 2.0
 - PsychoPy：[GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
