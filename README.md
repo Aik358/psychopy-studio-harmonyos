@@ -75,3 +75,29 @@ hdc app install electron/build/default/outputs/default/electron-default-signed.h
 
 - Project template: Apache 2.0
 - PsychoPy: [GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
+
+---
+
+## 🧪 2026-06-23 Important Debug Note
+
+> **Current status: SVG icons not displaying on HarmonyOS native build.**  
+> See the [full debug log](./ohos_electron_hap-main/README-CN.md#-2026-06-23-调试记录) (中文) or [English summary](./ohos_electron_hap-main/README.md#-2026-06-23-debug-log).
+
+### Quick Summary
+
+- **Problem**: All SVG icons (toolbar, components) show blank but buttons are clickable
+- **Root cause**: SVGs use CSS variables (`var(--outline)`, `var(--text)`) that don't propagate into `<img>`/`<use>` loaded SVGs
+- **Fix blocked**: `npx vite build` cannot run on HarmonyOS (Node.js 22.7.0 < Vite requirement 22.12+; native binding Permission denied)
+- **Workaround**: Build frontend on a standard PC, or use pre-built `dist/` from this repo
+
+### Recommended Build Method
+
+```bash
+# On a Linux/macOS/Windows machine with Node.js 22.12+:
+cd ohos_electron_hap-main/web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+
+# Copy the dist/ directory back to your HarmonyOS device, then:
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+```
