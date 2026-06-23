@@ -1,7 +1,6 @@
 # 父仓库级别忽略规则
 # Build artifacts
 ohos_electron_hap-main/build/
-ohos_electron_hap-main/dist/
 ohos_electron_hap-main/out/
 ohos_electron_hap-main/.output/
 ohos_electron_hap-main/node_modules/

@@ -13,12 +13,12 @@
   },
   "subProjects": [
     {
-      "name": "web_engine",
+      "name": "electron",
       "description": "",
       "projectType": "hvigor",
       "uri": {
         "$type": 1,
-        "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine"
+        "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron"
       },
       "buildTask": "",
       "extendConfigs": {
@@ -38,12 +38,12 @@
       "dependencyProjects": []
     },
     {
-      "name": "electron",
+      "name": "web_engine",
       "description": "",
       "projectType": "hvigor",
       "uri": {
         "$type": 1,
-        "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron"
+        "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine"
       },
       "buildTask": "",
       "extendConfigs": {
@@ -69,18 +69,6 @@
         {
           "url": {
             "$type": 1,
-            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/src/main/ets"
-          }
-        },
-        {
-          "url": {
-            "$type": 1,
-            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/src/ohosTest/ets"
-          }
-        },
-        {
-          "url": {
-            "$type": 1,
             "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron/src/main/ets"
           }
         },
@@ -88,6 +76,18 @@
           "url": {
             "$type": 1,
             "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron/src/ohosTest/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/src/main/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/src/ohosTest/ets"
           }
         }
       ],
@@ -116,24 +116,6 @@
         {
           "url": {
             "$type": 1,
-            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/.test"
-          }
-        },
-        {
-          "url": {
-            "$type": 1,
-            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/oh_modules"
-          }
-        },
-        {
-          "url": {
-            "$type": 1,
-            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/build"
-          }
-        },
-        {
-          "url": {
-            "$type": 1,
             "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron/.test"
           }
         },
@@ -147,6 +129,24 @@
           "url": {
             "$type": 1,
             "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/electron/build"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/.test"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/ohos_electron_hap-main_Psychopy_v0.1/ohos_electron_hap-main/web_engine/build"
           }
         }
       ]
