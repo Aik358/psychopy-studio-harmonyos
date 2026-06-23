@@ -102,7 +102,10 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const distPath = path.join(__dirname, '../../dist');
   expressApp.use(express.static(distPath, {
     setHeaders: (res, p) => {
-      if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+      if (p.endsWith('.svg')) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
       if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
       if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
       if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
@@ -112,7 +115,24 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   expressApp.use((req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
     const pageDir = path.join(distPath, req.path.split('/')[1] || '', 'index.html');
-    if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
+    if (fs.existsSync(pageDir)) {
+      const html = fs.readFileSync(pageDir, 'utf-8');
+      const patched = html.replace('</body>', `<script>document.addEventListener('DOMContentLoaded',()=>{
+document.querySelectorAll('use[href]').forEach(el=>{
+const src=el.getAttribute('href');
+if(src&&!src.includes('#animation')){
+const img=document.createElement('img');
+img.className=el.parentElement?.className||'icon';
+img.style.cssText=el.parentElement?.getAttribute('style')||'';
+img.src=src;
+img.alt='icon';
+el.parentElement?.parentElement?.insertBefore(img,el.parentElement);
+el.parentElement?.remove();
+}
+});
+});</script></body>`);
+      return res.type('text/html').send(patched);
+    }
     next();
   });
   
