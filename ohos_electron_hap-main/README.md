@@ -108,3 +108,40 @@ hdc app install electron/build/default/outputs/default/electron-default-signed.h
 
 - Project template: Apache 2.0
 - PsychoPy: [GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
+
+---
+
+> **Last updated: 2026-06-23 15:57 CST**  
+> This document records a full-day debugging session on HarmonyOS native development.
+
+## 🧪 2026-06-23 Debug Log
+
+### Symptom
+App starts (Builder UI visible, buttons clickable) but **all SVG icons are blank**.
+
+### Root Cause
+1. **CSS variables don't cascade into external SVGs** — SVGs use `fill:var(--outline)`, `stroke:var(--text)`. When loaded via `<img>` or `<use>`, these vars are undefined.
+2. **`npx vite build` unavailable** — HarmonyOS built-in Node.js 22.7.0 < Vite 6.x requirement (22.12+). Even after Homebrew upgrade to 26.3.1, `@rolldown/binding-openharmony-arm64` native module blocked by system (`Permission denied`).
+3. **npm unstable** on HarmonyOS — crashes with native stack trace on `npm install`.
+
+### Fixes Attempted (all failed due to CSS var issue or inability to rebuild)
+- Icon.svelte: `<use>` → `fetch()`+inline → `<img>` → all need `npx vite build`
+- Express: URL rewrite, CORS headers, explicit routes, `<use>`→`<img>` injection
+- Patched compiled dist chunk (`Bz6sfiOo.js`) 
+- Hardcoded SVG colors → reverted (Electron crash)
+- `targetSdkVersion` format fixes (00306042 error)
+
+### Recommendations
+
+**Build frontend on a standard PC (Linux/macOS/Windows):**
+```bash
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+# copy dist/ back to HarmonyOS device, then:
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+```
+
+Or use the pre-built `dist/` from this repo (committed to git).
+
+Or wait for DevEco Studio/Node.js update on HarmonyOS.
