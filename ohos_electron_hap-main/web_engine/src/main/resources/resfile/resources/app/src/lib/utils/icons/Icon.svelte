@@ -1,5 +1,6 @@
 <script>
     import { asset } from '$app/paths';
+    import { browser } from '$app/environment';
 
     let {
         src,
@@ -50,18 +51,30 @@
         />
     {/await}
 {:else}
-    <!-- responsive SVG vectors -->
-    <svg 
-        class=icon
-        style:width={size}
-        style:height={size}
-    >
-        {#await awaiting}
-            <use href={asset("/icons/sym-pending.svg#animation")} />
-        {:then}
-            <use href={url} />
-        {:catch}
-            <use href={asset("/icons/sym-error.svg")} />
-        {/await}
-    </svg>
+    <!-- all vectors (including SVG) loaded via img tag for reliability -->
+    {#await awaiting}
+        <img 
+            class=icon
+            style:width={size}
+            style:height={size}
+            src={asset("/icons/sym-pending.svg")} 
+            alt="Loading..."
+        />
+    {:then}
+        <img 
+            class=icon
+            style:width={size}
+            style:height={size}
+            src={url} 
+            alt={url}
+        />
+    {:catch}
+        <img 
+            class=icon
+            style:width={size}
+            style:height={size}
+            src={asset("/icons/sym-error.svg")} 
+            alt="Error"
+        />
+    {/await}
 {/if}
