@@ -4,7 +4,6 @@
     let {
         src,
         size="100%",
-        /** @prop @type {boolean} Are we awaiting execution of anything for this icon? */
         awaiting=$bindable()
     } = $props()
 
@@ -16,10 +15,9 @@
     let isFile = $derived(Boolean(String(src).match(/.*\.(svg|png|jpg|jpeg)/g)))
     let isRaster = $derived(Boolean(String(src).match(/.*\.(png|jpg|jpeg)/g)))
 
-    /** Direct server path — no asset() wrapper to avoid relative path issues */
     function resolvePath(path) {
         if (!path || path.startsWith('http') || path.startsWith('data:')) return path;
-        let cleaned = String(path).replace(/^(\.\.?\/)+/, '/');
+        let cleaned = String(path).replace(/^(\.\.?\/)+/, '');
         if (!cleaned.startsWith('/')) cleaned = '/' + cleaned;
         return cleaned;
     }
@@ -38,36 +36,46 @@
 
     $effect(() => {
         if (!isFile || !browser) {
-            if (!isFile) {
-                extractSvg(String(src))
-            }
-            loaded = true
-            return
+            if (!isFile) { extractSvg(String(src)) }
+            loaded = true; return
         }
         if (isRaster) { loaded = true; return }
-        loaded = false
-        loadError = false
+        loaded = false; loadError = false
+        console.log('[Icon] fetching:', resolvePath(src));
         fetch(resolvePath(src))
-            .then(r => { if (!r.ok) throw new Error(r.status); return r.text() })
-            .then(text => { extractSvg(text); loaded = true })
-            .catch(() => { loadError = true; loaded = true })
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(text => {
+                console.log('[Icon] got', text.length, 'bytes for', src);
+                extractSvg(text);
+                loaded = true;
+            })
+            .catch(err => {
+                console.log('[Icon] error:', err.message);
+                loadError = true;
+                loaded = true;
+            })
     })
 </script>
 
-{#if isRaster}
-    {#await awaiting}
-        <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-pending.svg")} alt="Loading..." />
-    {:then}
-        <img class=icon style:width={size} style:height={size} src={resolvePath(src)} alt={src} />
-    {:catch}
-        <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-error.svg")} alt="Error" />
-    {/await}
-{:else if !loaded}
-    <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-pending.svg")} alt="Loading..." />
-{:else if loadError}
-    <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-error.svg")} alt="Error" />
-{:else}
-    <svg class=icon style:width={size} style:height={size} viewBox={svgViewBox}>
-        {@html svgContent}
-    </svg>
-{/if}
+<div class=icon-wrap style="width:{size};height:{size};display:inline-flex;align-items:center;justify-content:center;overflow:hidden">
+    {#if isRaster}
+        {#await awaiting}
+            <div style="width:60%;height:60%;border-radius:50%;background:var(--overlay,#ccc)"></div>
+        {:then}
+            <img class=icon style="width:100%;height:100%" src={resolvePath(src)} alt={src} />
+        {:catch}
+            <div style="width:60%;height:60%;border-radius:50%;background:var(--red,#f00)"></div>
+        {/await}
+    {:else if !loaded}
+        <div style="width:60%;height:60%;border-radius:50%;background:var(--overlay,#ccc)"></div>
+    {:else if loadError}
+        <div title="Icon error: {src}" style="width:60%;height:60%;border-radius:50%;background:var(--red,#f00)"></div>
+    {:else}
+        <svg class=icon style="width:100%;height:100%" viewBox={svgViewBox}>
+            {@html svgContent}
+        </svg>
+    {/if}
+</div>
