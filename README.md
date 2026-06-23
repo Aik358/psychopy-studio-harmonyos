@@ -1,5 +1,9 @@
 # PsychoPy Studio - HarmonyOS Port v0.1.1
 
+<p align="center">
+  <a href="./Psychopyoh.html"><strong>🎯 项目宣传页 / Project Landing Page →</strong></a>
+</p>
+
 [简体中文](./ohos_electron_hap-main/README-CN.md)
 
 ## Overview
