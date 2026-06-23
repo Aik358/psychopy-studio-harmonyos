@@ -9,7 +9,7 @@
             </clipPath>
             <g clip-path="url(#_clip1)" id="animation">
                 <g transform="matrix(2.84753,0,0,2.84753,-415.74,-182.414)">
-                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:#66666E;">
+                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:var(--outline);">
                         <animate
                             attributeName="opacity"
                             values="1;0.5;0.5;1"
@@ -19,7 +19,7 @@
                     </circle>
                 </g>
                 <g transform="matrix(2.84753,0,0,2.84753,-364.8,-182.414)">
-                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:#66666E;">
+                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:var(--outline);">
                         <animate
                             attributeName="opacity"
                             values="0.5;1;0.5;0.5"
@@ -29,7 +29,7 @@
                     </circle>
                 </g>
                 <g transform="matrix(2.84753,0,0,2.84753,-390.27,-182.414)">
-                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:#66666E;">
+                    <circle cx="149.5" cy="76.504" r="3.5" style="fill:var(--outline);">
                         <animate
                             attributeName="opacity"
                             values="0.5;0.5;1;0.5"
