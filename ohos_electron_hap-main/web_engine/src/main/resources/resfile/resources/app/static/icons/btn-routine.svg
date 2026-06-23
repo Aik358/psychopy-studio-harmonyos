@@ -10,12 +10,12 @@
             <g clip-path="url(#_clip1)">
                 <g transform="matrix(1.06308,0,0,1.38495,-262.403,-555.125)">
                     <g transform="matrix(2.08333,-0,-0,1.59915,246.833,400.827)">
-                        <path d="M4.5,11L4.5,21" style="fill:none;stroke:var(--outline);stroke-width:5px;"/>
-                        <path d="M4.5,16L28,16" style="fill:none;stroke:var(--outline);stroke-width:5px;stroke-linejoin:round;stroke-miterlimit:1.5;"/>
+                        <path d="M4.5,11L4.5,21" style="fill:none;stroke:#66666E;stroke-width:5px;"/>
+                        <path d="M4.5,16L28,16" style="fill:none;stroke:#66666E;stroke-width:5px;stroke-linejoin:round;stroke-miterlimit:1.5;"/>
                     </g>
                 </g>
                 <g transform="matrix(1.95591,1.19247e-16,1.19765e-16,-1.94745,31.0074,35.4945)">
-                    <path d="M6.793,-6.794C10.543,-6.794 13.587,-3.749 13.587,0C13.587,3.749 10.543,6.794 6.793,6.794L2.264,6.793C-1.486,6.793 -4.53,3.749 -4.53,0C-4.53,-3.749 -1.486,-6.793 2.264,-6.793L6.793,-6.794Z" style="fill:var(--blue);"/>
+                    <path d="M6.793,-6.794C10.543,-6.794 13.587,-3.749 13.587,0C13.587,3.749 10.543,6.794 6.793,6.794L2.264,6.793C-1.486,6.793 -4.53,3.749 -4.53,0C-4.53,-3.749 -1.486,-6.793 2.264,-6.793L6.793,-6.794Z" style="fill:#02A9EA;"/>
                 </g>
             </g>
         </g>

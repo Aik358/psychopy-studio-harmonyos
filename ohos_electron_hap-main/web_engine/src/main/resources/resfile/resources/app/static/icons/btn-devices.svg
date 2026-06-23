@@ -9,28 +9,28 @@
             </clipPath>
             <g clip-path="url(#_clip1)">
                 <g transform="matrix(2.21475,0,0,2.21475,0,0)">
-                    <path d="M16,6L16,27" style="fill:none;stroke:var(--outline);stroke-width:3px;"/>
+                    <path d="M16,6L16,27" style="fill:none;stroke:#66666E;stroke-width:3px;"/>
                 </g>
                 <g transform="matrix(2.21475,0,0,2.21475,0,-2.21475)">
-                    <path d="M25,10L25,17L16,17" style="fill:none;stroke:var(--outline);stroke-width:3px;"/>
+                    <path d="M25,10L25,17L16,17" style="fill:none;stroke:#66666E;stroke-width:3px;"/>
                 </g>
                 <g transform="matrix(-2.21475,0,0,2.21475,70.8719,4.42949)">
-                    <path d="M25,10L25,17L16,17" style="fill:none;stroke:var(--outline);stroke-width:3px;"/>
+                    <path d="M25,10L25,17L16,17" style="fill:none;stroke:#66666E;stroke-width:3px;"/>
                 </g>
                 <g transform="matrix(2.953,0,0,2.953,-5.16774,-11.812)">
-                    <circle cx="7" cy="13" r="3" style="fill:var(--outline);"/>
+                    <circle cx="7" cy="13" r="3" style="fill:#66666E;"/>
                 </g>
                 <g transform="matrix(2.21475,0,0,2.21475,19.9327,31.0065)">
-                    <circle cx="7" cy="13" r="3" style="fill:var(--red);"/>
+                    <circle cx="7" cy="13" r="3" style="fill:#F2545B;"/>
                 </g>
                 <g transform="matrix(1.84562,0,0,1.84562,22.5166,35.8051)">
-                    <path d="M7,7C10.311,7 13,9.689 13,13C13,16.311 10.311,19 7,19C3.689,19 1,16.311 1,13C1,9.689 3.689,7 7,7ZM7,10C5.344,10 4,11.344 4,13C4,14.656 5.344,16 7,16C8.656,16 10,14.656 10,13C10,11.344 8.656,10 7,10Z" style="fill:var(--outline);"/>
+                    <path d="M7,7C10.311,7 13,9.689 13,13C13,16.311 10.311,19 7,19C3.689,19 1,16.311 1,13C1,9.689 3.689,7 7,7ZM7,10C5.344,10 4,11.344 4,13C4,14.656 5.344,16 7,16C8.656,16 10,14.656 10,13C10,11.344 8.656,10 7,10Z" style="fill:#66666E;"/>
                 </g>
                 <g transform="matrix(2.58387,0,0,2.58387,-9.22811,-5.90599)">
-                    <rect x="22" y="7" width="6" height="6" style="fill:var(--outline);"/>
+                    <rect x="22" y="7" width="6" height="6" style="fill:#66666E;"/>
                 </g>
                 <g transform="matrix(2.21475,0,0,1.66106,0,4.42949)">
-                    <path d="M16,0L20,8L12,8L16,0Z" style="fill:var(--outline);"/>
+                    <path d="M16,0L20,8L12,8L16,0Z" style="fill:#66666E;"/>
                 </g>
             </g>
         </g>
