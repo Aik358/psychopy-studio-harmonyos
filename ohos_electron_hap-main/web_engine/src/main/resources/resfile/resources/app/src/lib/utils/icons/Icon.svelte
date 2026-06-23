@@ -1,5 +1,4 @@
 <script>
-    import { asset } from '$app/paths';
     import { browser } from '$app/environment';
 
     let {
@@ -9,72 +8,66 @@
         awaiting=$bindable()
     } = $props()
 
-    // transform source to a URL
-    let url = $derived.by(() => {
-        if (String(src).match(/.*\.(svg|png|jpg|jpeg)/g)) {
-            // if already looks like a url, return as is
-            return asset(src)
-        } else {
-            // blobbify data to get around cross-origin security nonsense
-            let blob = new Blob([src], {type: 'image/svg+xml'})
-            
-            return URL.createObjectURL(blob);  
+    let svgContent = $state("")
+    let svgViewBox = $state("")
+    let loaded = $state(false)
+    let loadError = $state(false)
+
+    let isFile = $derived(Boolean(String(src).match(/.*\.(svg|png|jpg|jpeg)/g)))
+    let isRaster = $derived(Boolean(String(src).match(/.*\.(png|jpg|jpeg)/g)))
+
+    /** Direct server path — no asset() wrapper to avoid relative path issues */
+    function resolvePath(path) {
+        if (!path || path.startsWith('http') || path.startsWith('data:')) return path;
+        let cleaned = String(path).replace(/^(\.\.?\/)+/, '/');
+        if (!cleaned.startsWith('/')) cleaned = '/' + cleaned;
+        return cleaned;
+    }
+
+    function extractSvg(text) {
+        let clean = text
+            .replace(/<\?xml[^>]*\?>/, '')
+            .replace(/<!DOCTYPE[^>]*>/, '')
+            .replace(/ xmlns:serif="[^"]*"/g, '')
+            .replace(/ serif:id="[^"]*"/g, '')
+        let vbMatch = clean.match(/viewBox="([^"]*)"/)
+        svgViewBox = vbMatch ? vbMatch[1] : "0 0 32 32"
+        let contentMatch = clean.match(/<svg[^>]*>([\s\S]*)<\/svg>/)
+        svgContent = contentMatch ? contentMatch[1] : clean
+    }
+
+    $effect(() => {
+        if (!isFile || !browser) {
+            if (!isFile) {
+                extractSvg(String(src))
+            }
+            loaded = true
+            return
         }
+        if (isRaster) { loaded = true; return }
+        loaded = false
+        loadError = false
+        fetch(resolvePath(src))
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.text() })
+            .then(text => { extractSvg(text); loaded = true })
+            .catch(() => { loadError = true; loaded = true })
     })
 </script>
 
-{#if String(src).match(/.*\.(png|jpg|jpeg)/g)}
-    <!-- rasterised images -->
+{#if isRaster}
     {#await awaiting}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={asset("/icons/sym-pending.svg")} 
-            alt="Loading..."
-        />
+        <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-pending.svg")} alt="Loading..." />
     {:then}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={url} 
-            alt={url}
-        />
+        <img class=icon style:width={size} style:height={size} src={resolvePath(src)} alt={src} />
     {:catch}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={asset("/icons/sym-error.svg")} 
-            alt="Error"
-        />
+        <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-error.svg")} alt="Error" />
     {/await}
+{:else if !loaded}
+    <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-pending.svg")} alt="Loading..." />
+{:else if loadError}
+    <img class=icon style:width={size} style:height={size} src={resolvePath("/icons/sym-error.svg")} alt="Error" />
 {:else}
-    <!-- all vectors (including SVG) loaded via img tag for reliability -->
-    {#await awaiting}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={asset("/icons/sym-pending.svg")} 
-            alt="Loading..."
-        />
-    {:then}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={url} 
-            alt={url}
-        />
-    {:catch}
-        <img 
-            class=icon
-            style:width={size}
-            style:height={size}
-            src={asset("/icons/sym-error.svg")} 
-            alt="Error"
-        />
-    {/await}
+    <svg class=icon style:width={size} style:height={size} viewBox={svgViewBox}>
+        {@html svgContent}
+    </svg>
 {/if}
