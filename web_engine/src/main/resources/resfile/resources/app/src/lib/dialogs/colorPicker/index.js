@@ -1,0 +1,1 @@
+export { default as ColorPickerDialog } from "./Dialog.svelte"
