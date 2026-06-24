@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 33 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-251,-1)">
+        <g id="light-btn-find" serif:id="light/btn-find" transform="matrix(0.451519,0,0,0.451519,251.519,1)">
+            <rect x="0" y="0" width="70.872" height="70.866" style="fill:none;"/>
+            <g transform="matrix(1.57514,0,0,1.57514,-899.88,-395.664)">
+                <g id="magnifier">
+                    <path d="M586.619,275.532L578.417,283.734C576.856,285.295 576.856,287.83 578.417,289.391C579.978,290.952 582.513,290.952 584.074,289.391L592.489,280.976C594.08,281.698 595.849,282.101 597.711,282.101C604.693,282.101 610.354,276.442 610.354,269.459C610.354,262.477 604.693,256.816 597.711,256.816C590.728,256.816 585.067,262.477 585.067,269.459C585.067,271.66 585.63,273.73 586.619,275.532ZM597.711,262.806C601.379,262.806 604.364,265.789 604.364,269.459C604.364,273.127 601.379,276.11 597.711,276.11C594.041,276.11 591.058,273.127 591.058,269.459C591.058,265.789 594.041,262.806 597.711,262.806Z" style="fill:var(--outline);"/>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

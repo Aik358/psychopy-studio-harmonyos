@@ -117,6 +117,11 @@ export interface NativeContext {
   ClearWindowEventFilter: (origin_window_id: number) => void;
   OnCaptionButtonRectChange: (id: string, event: CaptionButtonRect) => void;
   UpdateWindowPcmodeSwitchStatusCB: (value: boolean) => void;
+  PowerMonitor: {
+    OnSuspend: () => void,
+    OnResume: () => void,
+    OnPowerStateChanged: () => void,
+  };
 }
 
 export interface IParams {
@@ -328,4 +333,28 @@ export interface WindowPreferences {
   minimizable: boolean,
   maximizable: boolean,
   closable: boolean,
+}
+
+export interface BatteryInfo {
+  batterySOC: number,
+  chargingStatus: number,
+  isBatteryPresent: boolean,
+  estimatedRemainingChargeTime: number,
+  nowCurrent: number,
+  remainingEnergy: number,
+}
+
+export interface OcrAdapterImage {
+  width: number,
+  height: number,
+  pixelMap: object,
+  buff: ArrayBuffer,
+}
+
+export interface TextWord {
+  value: string,
+  x?: number,
+  y?: number,
+  width?: number,
+  height?: number,
 }

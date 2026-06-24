@@ -1,0 +1,1087 @@
+{
+    "__class__": "psychopy.preferences:Preferences",
+    "__name__": "Preferences",
+    "plugin": null,
+    "params": {
+        "units": {
+            "val": "norm",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "deg",
+                "norm",
+                "cm",
+                "pix",
+                "height"
+            ],
+            "allowedLabels": [],
+            "label": "Spatial units",
+            "hint": "The default units for windows and visual stimuli",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "fullscr": {
+            "val": false,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Fullscreen",
+            "hint": "Full screen is best for accurate timing",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "allowGUI": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Show mouse",
+            "hint": "Enable subjects to use the mouse and GUIs during experiments",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "unclutteredNamespace": {
+            "val": false,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Uncluttered namespace",
+            "hint": "If ticked, won't expand headings from conditoons files into variables",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "paths": {
+            "val": [],
+            "valType": "str",
+            "inputType": "list",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Module paths",
+            "hint": "Add paths here to your custom Python modules",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "shutdownKey": {
+            "val": "",
+            "valType": "str",
+            "inputType": "single",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Shutdown key",
+            "hint": "Key which forcibly shuts down the experiment when pressed.",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "shutdownKeyModifiers": {
+            "val": [],
+            "valType": "str",
+            "inputType": "list",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Shutdown key modifiers",
+            "hint": "Modifier (CTRL, ALT, etc.) for the shutdown key.",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "gammaErrorPolicy": {
+            "val": "abort",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "abort",
+                "warn"
+            ],
+            "allowedLabels": [],
+            "label": "Gamma error policy",
+            "hint": "What to do if gamma-correction not possible",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "appKeyGoogleCloud": {
+            "val": "",
+            "valType": "str",
+            "inputType": "single",
+            "categ": "General",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Google Cloud app key",
+            "hint": "Google Cloud Platform key, required for the audio transcription using Google Speech Recognition. Specified as a path to a JSON file containing the key data.",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "defaultView": {
+            "val": [
+                "builder"
+            ],
+            "valType": "str",
+            "inputType": "multiChoice",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "builder",
+                "coder",
+                "runner"
+            ],
+            "allowedLabels": [
+                "Builder view",
+                "Coder view",
+                "Runner view"
+            ],
+            "label": "Default view",
+            "hint": "What windows to display when PsychoPy starts",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "locale": {
+            "val": "system locale",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": "python:///psychopy.localization:available",
+            "allowedLabels": [],
+            "label": "Language",
+            "hint": "Language to use in menus etc; not all translations are available. Select a value, then restart the app.",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "theme": {
+            "val": "psychopy",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "psychopy",
+                "psychopy-light",
+                "psychopy-dark",
+                "catppuccin-latte",
+                "catppuccin-frappe",
+                "catppuccin-macchiato",
+                "catppuccin-mocha",
+                "custom"
+            ],
+            "allowedLabels": [
+                "PsychoPy Responsive",
+                "PsychoPy Light",
+                "PsychoPy Dark",
+                "Catppuccin Latte",
+                "Catppuccin Frappe",
+                "Catppuccin Macchiato",
+                "Catppuccin Mocha",
+                "Custom..."
+            ],
+            "label": "Theme",
+            "hint": "Control the look and feel of PsychoPy",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "customTheme": {
+            "val": "",
+            "valType": "str",
+            "inputType": "file",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Custom theme file",
+            "hint": "Select a custom CSS file defining a theme",
+            "plugin": null,
+            "depends": {
+                "shown": [
+                    {
+                        "param": "theme",
+                        "condition": "=='custom'"
+                    }
+                ],
+                "enabled": []
+            }
+        },
+        "coderFont": {
+            "val": "JetBrains Mono",
+            "valType": "code",
+            "inputType": "font",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Coder font",
+            "hint": "Font face to use in Coder's code editor control",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "abbreviateLongCompNames": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Abbreviate long Component names",
+            "hint": "Abbreviate long component names to maximise timeline space?",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "showSplash": {
+            "val": "True",
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Show splash",
+            "hint": "Whether to show a splash screen while loading the app",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "showStartupTips": {
+            "val": "True",
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Show startup tips",
+            "hint": "Display tips when starting PsychoPy",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "alwaysShowReadme": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Show readme on open",
+            "hint": "When opening an experiment, show its readme file",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "readonly": {
+            "val": false,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Read-only in Coder",
+            "hint": "Open files as read-only in Coder (to avoid accidental changes)",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "debugMode": {
+            "val": "False",
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Application",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Developer mode",
+            "hint": "Enables developer tools on next restart",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "audioDriver": {
+            "val": [
+                "Primary Sound",
+                "ASIO",
+                "Audigy"
+            ],
+            "valType": "str",
+            "inputType": "list",
+            "categ": "Hardware",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "audio Driver",
+            "hint": "Audio driver to use",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "audioDevice": {
+            "val": "default",
+            "valType": "str",
+            "inputType": "device",
+            "categ": "Hardware",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": ["python:///psychopy.experiment.components.sound:SpeakerDeviceBackend"],
+            "allowedLabels": [],
+            "label": "Default audio device",
+            "hint": "Audio device to use by default",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "audioWASAPIOnly": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Hardware",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "WASAPI-only audio",
+            "hint": "Exclude non-WASAPI audio devices",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "parallelPorts": {
+            "val": [
+                "0x0378",
+                "0x03BC"
+            ],
+            "valType": "str",
+            "inputType": "single",
+            "categ": "Hardware",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Parallel ports",
+            "hint": "A list of parallel ports",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "forceWindowed": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Force windowed mode",
+            "hint": "Prevent the experiment from being fullscreen when piloting",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "forceMouseVisible": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Force mouse visible",
+            "hint": "Always show the mouse when piloting",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "forcedWindowSize": {
+            "val": [
+                800,
+                600
+            ],
+            "valType": "str",
+            "inputType": "list",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Window size",
+            "hint": "What window size to use when forced to windowed mode",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "pilotLoggingLevel": {
+            "val": "debug",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "error",
+                "warning",
+                "data",
+                "exp",
+                "info",
+                "debug"
+            ],
+            "allowedLabels": [],
+            "label": "Logging level",
+            "hint": "How much output to include in the log file when piloting ('error' is fewest messages, 'debug' is most)",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "pilotConsoleLoggingLevel": {
+            "val": "warning",
+            "valType": "str",
+            "inputType": "choice",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [
+                "error",
+                "warning",
+                "data",
+                "exp",
+                "info",
+                "debug"
+            ],
+            "allowedLabels": [],
+            "label": "Console logging level",
+            "hint": "How much output to display in the console / app when piloting ('error' is fewest messages, 'debug' is most).",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "showPilotingIndicator": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Piloting indicator",
+            "hint": "Show an orange border around the window when in piloting mode",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "forceNonRush": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Force non-rush",
+            "hint": "Prevent experiment from enabling rush mode when piloting",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "replaceParticipantID": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Piloting",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Replace participant ID",
+            "hint": "Replace default participant ID with \"pilot\" when piloting",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "proxy": {
+            "val": "\"\"",
+            "valType": "str",
+            "inputType": "single",
+            "categ": "Connections",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "proxy",
+            "hint": "the http proxy for usage stats and auto-updating; format is host: port",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "autoProxy": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Connections",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "auto Proxy",
+            "hint": "override the above proxy settings with values found in the environment (if possible)",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "allowUsageStats": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Connections",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "allow Usage Stats",
+            "hint": "allow PsychoPy to send anonymous usage stats; please allow if possible, it helps PsychoPy's development",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "checkForUpdates": {
+            "val": true,
+            "valType": "code",
+            "inputType": "bool",
+            "categ": "Connections",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "check For Updates",
+            "hint": "allow PsychoPy to check for new features and bug fixes",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "timeout": {
+            "val": 20,
+            "valType": "code",
+            "inputType": "single",
+            "categ": "Connections",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "timeout",
+            "hint": "max time to wait for a connection response",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "new": {
+            "val": [
+                "{CMD}",
+                "N"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "New",
+            "hint": "Create a new file",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "open": {
+            "val": [
+                "{CMD}",
+                "O"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Open",
+            "hint": "Open a file",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "revealFolder": {
+            "val": [
+                "ALT",
+                "SHIFT",
+                "R"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Reveal in file browser",
+            "hint": "Open the folder containing the current file in your system's file browser",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "save": {
+            "val": [
+                "{CMD}",
+                "S"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Save",
+            "hint": "Save the current file",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "saveAs": {
+            "val": [
+                "{CMD}",
+                "ALT",
+                "S"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Save as",
+            "hint": "Save the current file under a new name",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "undo": {
+            "val": [
+                "{CMD}",
+                "Z"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Undo",
+            "hint": "Undo the last action",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "redo": {
+            "val": [
+                "{CMD}",
+                "SHIFT",
+                "Z"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Redo",
+            "hint": "Redo the last undone action",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "close": {
+            "val": [
+                "{CMD}",
+                "W"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Close window",
+            "hint": "Close the current window",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "quit": {
+            "val": [
+                "{CMD}",
+                "Q"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Quit PsychoPy",
+            "hint": "Quit the PsychoPy app",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "find": {
+            "val": [
+                "{CMD}",
+                "F"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Find",
+            "hint": "Search the current experiment or script for a given phrase",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "togglePiloting": {
+            "val": [
+                "ALT",
+                "P"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Toggle piloting",
+            "hint": "Toggle between pilot and running modes",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "sendToRunner": {
+            "val": [
+                "SHIFT",
+                "F5"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Send to runner",
+            "hint": "Send experiment to runner",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "compilePython": {
+            "val": [
+                "{CMD}",
+                "E"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Compile to Python",
+            "hint": "Convert a Builder .psyexp script into a python script and open it in the Coder",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "runPython": {
+            "val": [
+                "F5"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Run in Python",
+            "hint": "Run (or pilot) the current experiment or script in Python",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "stopPython": {
+            "val": [
+                "{CMD}",
+                "."
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Stop Python run",
+            "hint": "Stop the currently running experiment in Python",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "compileJS": {
+            "val": [
+                "{CMD}",
+                "ALT",
+                "E"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Compile to Python",
+            "hint": "Convert a Builder .psyexp script into a python script and open it in the Coder",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "runJS": {
+            "val": [
+                "ALT",
+                "F5"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Run in JS",
+            "hint": "Run (or pilot) the current experiment or script in Python",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "syncPavlovia": {
+            "val": [
+                "{CMD}",
+                "ALT",
+                "Y"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Sync to Pavlovia",
+            "hint": "Sync the current project to Pavlovia",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        },
+        "showDevTools": {
+            "val": [
+                "{CMD}",
+                "SHIFT",
+                "I"
+            ],
+            "valType": "keypress",
+            "inputType": "keypress",
+            "categ": "Key Bindings",
+            "updates": null,
+            "allowedUpdates": null,
+            "allowedVals": [],
+            "allowedLabels": [],
+            "label": "Show developer tools",
+            "hint": "Show the developer tools panel on this window",
+            "plugin": null,
+            "depends": {
+                "shown": [],
+                "enabled": []
+            }
+        }
+    }
+}

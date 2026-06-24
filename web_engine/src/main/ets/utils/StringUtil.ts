@@ -43,4 +43,8 @@ export default class StringUtil {
     });
     return copy;
   }
+
+  static filterFileDocs(uri: string): string {
+    return uri;
+  }
 }

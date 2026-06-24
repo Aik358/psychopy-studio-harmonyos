@@ -1,12 +1,39 @@
 {
-  "name": "electron-example",
-  "version": "1.0.0",
-  "description": "Electron simple example",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron ."
+  "name": "psychopy-studio",
+  "author": "Open Science Tools Ltd.",
+  "version": "2026.1.2",
+  "description": "Open-source package for creating experiments in behavioral science.",
+  "main": "electron/src/index.cjs",
+  "type": "module",
+  "license": "./LICENSE",
+  "dependencies": {
+    "@monaco-editor/loader": "^1.5.0",
+    "express": "^5.1.0",
+    "extract-zip": "2.0.1",
+    "isomorphic-git": "^1.35.1",
+    "json-schema-default": "^1.0.2",
+    "jsonschema": "^1.5.0",
+    "marked": "^16.3.0",
+    "mime": "^4.1.0",
+    "monaco-editor": "^0.52.2",
+    "paneforge": "^1.0.2",
+    "path-browserify": "^1.0.1",
+    "tar": "^7.5.2",
+    "tcp-port-used": "^1.0.2",
+    "xml-formatter": "^3.6.5"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "*",
+    "dmg-builder": "^0.5.1"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
   "devDependencies": {
-    "electron": "^25.3.2"
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.66.0",
+    "vite": "^8.0.16"
   }
 }

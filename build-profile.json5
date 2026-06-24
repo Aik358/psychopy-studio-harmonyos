@@ -16,10 +16,25 @@
     ],
     "buildModeSet": [
       {
-        "name": "debug",
+        "name": "debug"
       },
       {
         "name": "release"
+      }
+    ],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "storePassword": "000000205BAEC5124878729D35EE2AD48E99717D7C97BDA9C5E77FC535544427019A40D76A5B18F5382C118AC0978015",
+          "certpath": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Testb2AEGzW6V8SVTbKCFwHHoQpEmLmEwbqQW-mHa3YgcDg.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "000000205BAEC5124878729D35EE2AD48E99717D7C97BDA9C5E77FC535544427019A40D76A5B18F5382C118AC0978015",
+          "profile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Testb2AEGzW6V8SVTbKCFwHHoQpEmLmEwbqQW-mHa3YgcDg.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/storage/Users/currentUser/appdata/el2/base/com.huawei.devecostudio/files/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Testb2AEGzW6V8SVTbKCFwHHoQpEmLmEwbqQW-mHa3YgcDg.p12"
+        },
+        "type": "HarmonyOS"
       }
     ]
   },
