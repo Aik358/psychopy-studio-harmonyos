@@ -194,3 +194,71 @@ Source files (src/ + static/)
 - `npx vite build` must be run from the correct working directory (`resources/app/`)
 - The `package.json` intentionally omits a `"scripts"` section — use `npx vite build` directly
 - Vite build output goes to both `.svelte-kit/output/` and `dist/` — only `dist/` is packaged into the HAP
+
+---
+
+## 🚀 v0.1.2-HarmonyOS-Device-Dev-Test (2026-06-24)
+
+### Branch
+[`v0.1.2-HarmonyOS-Device-Dev-Test`](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2-HarmonyOS-Device-Dev-Test)
+
+### Summary
+This branch represents the first on-device debugging session directly on a HarmonyOS device (HongMeng Kernel 1.12.0, aarch64). Built entirely on-device using the harmonybrew toolchain.
+
+### Changes from v0.1.1
+
+| Area | Description |
+|------|-------------|
+| **Landing page** | Complete rewrite of `index.html` — 4 interactive demo panels: Gabor Patch, Masked Priming, EEG Triggers, Eye Tracking. Bilingual (EN/ZH) i18n. |
+| **Project structure** | Flattened directory layout. Removed nested `ohos_electron_hap-main/`. All modules (`electron/`, `web_engine/`, `chromium/`, `AppScope/`) at project root. |
+| **Build config** | `compatibleSdkVersion`: `6.1.0(23)`, `compileSdkVersion`: `6.1.0(23)`, `targetSdkVersion`: `6.1.0(23)`. Signing config cleaned of machine-specific credentials. |
+| **SDK** | HarmonyOS SDK 26.0.0.18 Beta (API 26) installed via harmonybrew. |
+| **App name** | Changed from `Electron` to `PsychoPy Studio`. |
+
+### Build Status
+
+| Step | Status |
+|------|--------|
+| `hvigorw assembleHap` | ✅ **BUILD SUCCESSFUL** (18s, 82ms) |
+| HAP size | 214MB (`electron-default-signed.hap`) |
+| Resource conflicts | ⚠️ `button_cancel`, `button_ok`, `button_background`, `button_font`, `checkbox_selected`, `start_window_background` — duplicated between `electron/` and `web_engine/` modules. Need deduplication. |
+| ArkTS warnings | ⚠️ 50+ `arkts-no-classes-as-obj` warnings across `web_engine/` adapter bindings. Non-blocking but should be addressed for API 26 compliance. |
+| Deprecated API warnings | ⚠️ Multiple (`show`, `getContext`, `getFontByName`, `Locale`, `vp2px`, `back`, `getParams`, `showToast`, `pushUrl`, `getShared`, `decodeWithStream`, `setLocalName`, `getSystemLocale`). Need migration to v26 equivalents. |
+| DevEco Studio Run | ❌ Run button grayed out — project sync issues persist. Workaround: build via CLI `hvigorw` and install manually. |
+
+### Known Issues on This Branch
+
+1. **DevEco Studio Run button grayed out** — Project sync fails intermittently. Recommendation: clean re-clone from upstream and reapply config.
+2. **Resource conflicts** — `electron/` and `web_engine/` modules both declare identical string/color resources (`button_cancel`, `button_ok`, etc.). The first declaration takes effect but the conflict should be resolved by removing duplicates from `web_engine/`.
+3. **`dist/` directory empty** — The `web_engine/` prebuilt frontend `dist/` is not present in this checkout. Requires `npm install && npx vite build` on a standard PC to restore icon rendering.
+4. **No `oh_modules/`** — OHPM dependencies not restored after cache cleanup. Run `ohpm install` before building.
+5. **Python backend not included** — No Python/CPython runtime is bundled. Experiment execution requires external setup.
+
+### Quick Start (from scratch)
+
+```bash
+# 1. Clone the branch
+git clone -b v0.1.2-HarmonyOS-Device-Dev-Test https://gitcode.com/A9iska/psychopy-oh.git
+cd psychopy-oh
+
+# 2. Install OHPM dependencies
+ohpm install
+
+# 3. Build frontend on a standard PC (see instructions above)
+#    or copy a pre-built dist/ from a working build
+
+# 4. Build HAP
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+
+# 5. Install on device
+hdc install electron/build/default/outputs/default/electron-default-signed.hap
+```
+
+### Next Steps
+
+- [ ] Re-clone from upstream and reapply device-specific config
+- [ ] Deduplicate resources between `electron/` and `web_engine/` modules
+- [ ] Migrate deprecated ArkTS APIs to HarmonyOS SDK 26 equivalents
+- [ ] Build frontend `dist/` on a standard PC
+- [ ] Resolve DevEco Studio sync for Run button
+- [ ] Integrate Python backend (CPython/UV for HarmonyOS)

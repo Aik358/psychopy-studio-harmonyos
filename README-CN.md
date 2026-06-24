@@ -245,3 +245,71 @@ npx vite build     # 生成 ./dist/（输出到 .svelte-kit/output/client/ + ./d
 - `package.json` 故意没有 `"scripts"` 字段——直接使用 `npx vite build`
 - Vite 构建会同时生成 `.svelte-kit/output/` 和 `dist/`——只有 `dist/` 被打包进 HAP
 - 如果图标不显示，**先重新运行 `npx vite build`**，而不是手动修复 JS 或复制 dist/
+
+---
+
+## 🚀 v0.1.2-HarmonyOS-Device-Dev-Test（2026-06-24）
+
+### 分支
+[`v0.1.2-HarmonyOS-Device-Dev-Test`](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2-HarmonyOS-Device-Dev-Test)
+
+### 概述
+首次在 HarmonyOS 设备本机（HongMeng Kernel 1.12.0，aarch64）进行的设备端调试。使用 harmonybrew 工具链纯本机构建。
+
+### v0.1.1 → v0.1.2 变更
+
+| 领域 | 说明 |
+|------|------|
+| **新版 landing page** | 完整重写 `index.html`——4 个交互式演示面板：Gabor 刺激、掩蔽启动、EEG 触发模拟、眼动追踪。中英双语 i18n。 |
+| **项目结构** | 目录扁平化。移除嵌套的 `ohos_electron_hap-main/`。所有模块（`electron/`、`web_engine/`、`chromium/`、`AppScope/`）位于项目根目录。 |
+| **构建配置** | `compatibleSdkVersion`: `6.1.0(23)`，`compileSdkVersion`: `6.1.0(23)`，`targetSdkVersion`: `6.1.0(23)`。清理签名配置中的机器相关凭证。 |
+| **SDK** | HarmonyOS SDK 26.0.0.18 Beta（API 26），通过 harmonybrew 安装。 |
+| **应用名** | 从 `Electron` 改为 `PsychoPy Studio`。 |
+
+### 构建状态
+
+| 步骤 | 状态 |
+|------|------|
+| `hvigorw assembleHap` | ✅ **BUILD SUCCESSFUL**（18秒，82ms） |
+| HAP 大小 | 214MB（`electron-default-signed.hap`） |
+| 资源冲突 | ⚠️ `button_cancel`、`button_ok`、`button_background`、`button_font`、`checkbox_selected`、`start_window_background`——在 `electron/` 和 `web_engine/` 模块间重复声明。需要去重。 |
+| ArkTS 警告 | ⚠️ 50+ 条 `arkts-no-classes-as-obj` 警告（`web_engine/` 适配器绑定）。不阻塞构建，但应在 API 26 兼容性清理中处理。 |
+| 弃用 API 警告 | ⚠️ 多处（`show`、`getContext`、`getFontByName`、`Locale`、`vp2px`、`back`、`getParams`、`showToast`、`pushUrl`、`getShared`、`decodeWithStream`、`setLocalName`、`getSystemLocale`）。需迁移至 v26 对应 API。 |
+| DevEco Studio Run | ❌ Run 按钮灰色——项目同步仍有问题。变通方案：通过 CLI `hvigorw` 构建，手动安装。 |
+
+### 本分支已知问题
+
+1. **DevEco Studio Run 按钮灰色**——项目同步间歇性失败。建议：从上游重新克隆，重新应用配置。
+2. **资源冲突**——`electron/` 和 `web_engine/` 模块声明了相同的 string/color 资源（`button_cancel`、`button_ok` 等）。首个声明生效，但应通过从 `web_engine/` 移除重复项来解决。
+3. **`dist/` 目录为空**——`web_engine/` 预构建前端 `dist/` 在此签出中不存在。需要在标准 PC 上运行 `npm install && npx vite build` 以恢复图标渲染。
+4. **无 `oh_modules/`**——清理缓存后 OHPM 依赖未恢复。构建前运行 `ohpm install`。
+5. **未包含 Python 后端**——没有捆绑 CPython/CPython 运行时。实验执行需要外部环境支持。
+
+### 全新开始
+
+```bash
+# 1. 克隆分支
+git clone -b v0.1.2-HarmonyOS-Device-Dev-Test https://gitcode.com/A9iska/psychopy-oh.git
+cd psychopy-oh
+
+# 2. 安装 OHPM 依赖
+ohpm install
+
+# 3. 在标准 PC 上构建前端（见上方说明）
+#    或从已有的构建中复制预构建的 dist/
+
+# 4. 构建 HAP
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+
+# 5. 安装到设备
+hdc install electron/build/default/outputs/default/electron-default-signed.hap
+```
+
+### 后续步骤
+
+- [ ] 从上游重新克隆，重新应用设备特定配置
+- [ ] 去重 `electron/` 和 `web_engine/` 模块间的资源
+- [ ] 将弃用 ArkTS API 迁移至 HarmonyOS SDK 26 等效 API
+- [ ] 在标准 PC 上构建前端 `dist/`
+- [ ] 解决 DevEco Studio 同步问题以启用 Run 按钮
+- [ ] 集成 Python 后端（HarmonyOS 的 CPython/UV）
