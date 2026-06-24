@@ -12,7 +12,7 @@
             "collectAllLibs": true
           }
         },
-        "targetSdkVersion": "7.0.0(26)"
+        "targetSdkVersion": "26.0.0"
       }
     ],
     "buildModeSet": [
