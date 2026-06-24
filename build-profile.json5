@@ -4,15 +4,15 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "compatibleSdkVersion": "6.1.0(23)",
-        "compatibleSdkVersionStage": "beta6",
+        "compatibleSdkVersion": "7.0.0(26)",
+        "compatibleSdkVersionStage": "beta1",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "nativeLib": {
             "collectAllLibs": true
           }
         },
-        "targetSdkVersion": "26.0.0"
+        "targetSdkVersion": "7.0.0(26)"
       }
     ],
     "buildModeSet": [
