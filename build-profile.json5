@@ -4,9 +4,8 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "compileSdkVersion": "26.0.0",
-        "compatibleSdkVersion": "26.0.0(26)",
-        "compatibleSdkVersionStage": "beta",
+        "compileSdkVersion": "6.1.0",
+        "compatibleSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "nativeLib": {
