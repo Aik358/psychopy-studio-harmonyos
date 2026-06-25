@@ -1,0 +1,65 @@
+
+// this file is generated — do not edit it
+
+
+declare module "svelte/elements" {
+	export interface HTMLAttributes<T> {
+		'data-sveltekit-keepfocus'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-noscroll'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-preload-code'?:
+			| true
+			| ''
+			| 'eager'
+			| 'viewport'
+			| 'hover'
+			| 'tap'
+			| 'off'
+			| undefined
+			| null;
+		'data-sveltekit-preload-data'?: true | '' | 'hover' | 'tap' | 'off' | undefined | null;
+		'data-sveltekit-reload'?: true | '' | 'off' | undefined | null;
+		'data-sveltekit-replacestate'?: true | '' | 'off' | undefined | null;
+	}
+}
+
+export {};
+
+
+declare module "$app/types" {
+	type MatcherParam<M> = M extends (param : string) => param is (infer U extends string) ? U : string;
+
+	export interface AppTypes {
+		RouteId(): "/" | "/api" | "/api/plugins" | "/api/report" | "/api/surveys" | "/api/token" | "/api/token/authorize" | "/api/token/refresh" | "/builder" | "/builder/components" | "/builder/flow" | "/builder/flow/controls" | "/builder/ribbon" | "/builder/routines" | "/coder" | "/coder/files" | "/coder/notebook" | "/coder/ribbon" | "/coder/shell" | "/runner" | "/runner/files" | "/runner/outputs" | "/runner/ribbon";
+		RouteParams(): {
+			
+		};
+		LayoutParams(): {
+			"/": Record<string, never>;
+			"/api": Record<string, never>;
+			"/api/plugins": Record<string, never>;
+			"/api/report": Record<string, never>;
+			"/api/surveys": Record<string, never>;
+			"/api/token": Record<string, never>;
+			"/api/token/authorize": Record<string, never>;
+			"/api/token/refresh": Record<string, never>;
+			"/builder": Record<string, never>;
+			"/builder/components": Record<string, never>;
+			"/builder/flow": Record<string, never>;
+			"/builder/flow/controls": Record<string, never>;
+			"/builder/ribbon": Record<string, never>;
+			"/builder/routines": Record<string, never>;
+			"/coder": Record<string, never>;
+			"/coder/files": Record<string, never>;
+			"/coder/notebook": Record<string, never>;
+			"/coder/ribbon": Record<string, never>;
+			"/coder/shell": Record<string, never>;
+			"/runner": Record<string, never>;
+			"/runner/files": Record<string, never>;
+			"/runner/outputs": Record<string, never>;
+			"/runner/ribbon": Record<string, never>
+		};
+		Pathname(): "/" | "/api/plugins" | "/api/report" | "/api/surveys" | "/api/token/authorize" | "/api/token/refresh" | "/builder/" | "/coder/" | "/runner/";
+		ResolvedPathname(): `${"" | `/${string}`}${ReturnType<AppTypes['Pathname']>}`;
+		Asset(): "/branding/component-wave.svg" | "/branding/emblem.svg" | "/branding/favicon-psyrun.icns" | "/branding/favicon-psyrun.ico" | "/branding/favicon-psyrun.svg" | "/branding/favicon.icns" | "/branding/favicon.ico" | "/branding/favicon.svg" | "/branding/favicon@1024x1024.png" | "/branding/mac-install-backboard.png" | "/branding/mac-install-backboard@2x.png" | "/branding/pavlovia.svg" | "/dynamicize.py" | "/fonts/JetBrainsMono-Bold.ttf" | "/fonts/JetBrainsMono-BoldItalic.ttf" | "/fonts/JetBrainsMono-Italic.ttf" | "/fonts/JetBrainsMono-Regular.ttf" | "/fonts/JetBrainsMono.css" | "/fonts/Noto.css" | "/fonts/NotoColorEmoji-Regular.ttf" | "/fonts/NotoSans-Bold.ttf" | "/fonts/NotoSans-BoldItalic.ttf" | "/fonts/NotoSans-Italic.ttf" | "/fonts/NotoSans-Regular.ttf" | "/fonts/NotoSansSymbols-Bold.ttf" | "/fonts/NotoSansSymbols-Regular.ttf" | "/fonts/NotoSansSymbols2-Regular.ttf" | "/fonts/Nunito-Bold.ttf" | "/fonts/Nunito-BoldItalic.ttf" | "/fonts/Nunito-Italic.ttf" | "/fonts/Nunito-Regular.ttf" | "/fonts/Nunito.css" | "/icons/btn-add-many.svg" | "/icons/btn-add.svg" | "/icons/btn-builder.svg" | "/icons/btn-case.svg" | "/icons/btn-clear.svg" | "/icons/btn-coder.svg" | "/icons/btn-color.svg" | "/icons/btn-colors.svg" | "/icons/btn-compilejs.svg" | "/icons/btn-compilepy.svg" | "/icons/btn-copy.svg" | "/icons/btn-cut.svg" | "/icons/btn-delete.svg" | "/icons/btn-devices.svg" | "/icons/btn-download.svg" | "/icons/btn-edit.svg" | "/icons/btn-filter.svg" | "/icons/btn-find.svg" | "/icons/btn-hamburger.svg" | "/icons/btn-loop.svg" | "/icons/btn-monitors.svg" | "/icons/btn-new-table.svg" | "/icons/btn-new.svg" | "/icons/btn-open.svg" | "/icons/btn-paste.svg" | "/icons/btn-pilotjs.svg" | "/icons/btn-pilotpy.svg" | "/icons/btn-plugin.svg" | "/icons/btn-redo.svg" | "/icons/btn-refresh.svg" | "/icons/btn-regex.svg" | "/icons/btn-routine.svg" | "/icons/btn-runjs.svg" | "/icons/btn-runner.svg" | "/icons/btn-runpy.svg" | "/icons/btn-save.svg" | "/icons/btn-saveas.svg" | "/icons/btn-sendbuilder.svg" | "/icons/btn-sendcoder.svg" | "/icons/btn-sendpilot.svg" | "/icons/btn-sendrun.svg" | "/icons/btn-settings.svg" | "/icons/btn-sort.svg" | "/icons/btn-sync.svg" | "/icons/btn-table.svg" | "/icons/btn-target.svg" | "/icons/btn-tick.svg" | "/icons/btn-undo.svg" | "/icons/btn-upload.svg" | "/icons/components/ApertureComponent.svg" | "/icons/components/AudioValidatorRoutine.svg" | "/icons/components/BaseComponent.svg" | "/icons/components/BrushComponent.svg" | "/icons/components/ButtonBoxComponent.svg" | "/icons/components/ButtonComponent.svg" | "/icons/components/CameraComponent.svg" | "/icons/components/CodeComponent.svg" | "/icons/components/CounterbalanceRoutine.svg" | "/icons/components/DotsComponent.svg" | "/icons/components/EyetrackerCalibrationRoutine.svg" | "/icons/components/EyetrackerRecordComponent.svg" | "/icons/components/EyetrackerValidationRoutine.svg" | "/icons/components/FormComponent.svg" | "/icons/components/GratingComponent.svg" | "/icons/components/ImageComponent.svg" | "/icons/components/JoyButtonsComponent.svg" | "/icons/components/JoystickComponent.svg" | "/icons/components/KeyboardComponent.svg" | "/icons/components/MicrophoneComponent.svg" | "/icons/components/MouseComponent.svg" | "/icons/components/MovieComponent.svg" | "/icons/components/PanoramaComponent.svg" | "/icons/components/ParallelOutComponent.svg" | "/icons/components/PavloviaSurveyRoutine.svg" | "/icons/components/PolygonComponent.svg" | "/icons/components/ProgressComponent.svg" | "/icons/components/RegionOfInterestComponent.svg" | "/icons/components/ResourceManagerComponent.svg" | "/icons/components/SerialOutComponent.svg" | "/icons/components/SliderComponent.svg" | "/icons/components/SoundComponent.svg" | "/icons/components/SoundSensorComponent.svg" | "/icons/components/StaticComponent.svg" | "/icons/components/TextComponent.svg" | "/icons/components/TextboxComponent.svg" | "/icons/components/UnknownComponent.svg" | "/icons/components/UnknownPluginComponent.svg" | "/icons/components/VariableComponent.svg" | "/icons/components/VisualValidatorRoutine.svg" | "/icons/ctrl-switch-down.svg" | "/icons/ctrl-switch-left.svg" | "/icons/ctrl-switch-right.svg" | "/icons/ctrl-switch-up.svg" | "/icons/filetypes/audio.svg" | "/icons/filetypes/css.svg" | "/icons/filetypes/design.svg" | "/icons/filetypes/font.svg" | "/icons/filetypes/git.svg" | "/icons/filetypes/html.svg" | "/icons/filetypes/image.svg" | "/icons/filetypes/info.svg" | "/icons/filetypes/js.svg" | "/icons/filetypes/json.svg" | "/icons/filetypes/packaging.svg" | "/icons/filetypes/psyexp.svg" | "/icons/filetypes/psyrun.svg" | "/icons/filetypes/python.svg" | "/icons/filetypes/table.svg" | "/icons/filetypes/text.svg" | "/icons/filetypes/unknown.svg" | "/icons/filetypes/video.svg" | "/icons/param-update-constant.svg" | "/icons/param-update-eachframe.svg" | "/icons/param-update-eachrepeat.svg" | "/icons/param-update-static.svg" | "/icons/rbn-browser.svg" | "/icons/rbn-desktop.svg" | "/icons/rbn-edit.svg" | "/icons/rbn-experiment.svg" | "/icons/rbn-file.svg" | "/icons/rbn-pavlovia.svg" | "/icons/rbn-plugin.svg" | "/icons/rbn-windows.svg" | "/icons/sym-arrow-down-hl.svg" | "/icons/sym-arrow-down.svg" | "/icons/sym-arrow-left-hl.svg" | "/icons/sym-arrow-left.svg" | "/icons/sym-arrow-right-hl.svg" | "/icons/sym-arrow-right.svg" | "/icons/sym-arrow-up-hl.svg" | "/icons/sym-arrow-up.svg" | "/icons/sym-cancel.svg" | "/icons/sym-close.svg" | "/icons/sym-dot-blue.svg" | "/icons/sym-dot-dark.svg" | "/icons/sym-dot-green.svg" | "/icons/sym-dot-light.svg" | "/icons/sym-dot-orange.svg" | "/icons/sym-dot-red.svg" | "/icons/sym-dot-responsive.svg" | "/icons/sym-error.svg" | "/icons/sym-info.svg" | "/icons/sym-js.svg" | "/icons/sym-pending.svg" | "/icons/sym-python.svg" | "/icons/transparent.svg" | "/style.css" | "/themes/catppuccin-frappe.css" | "/themes/catppuccin-latte.css" | "/themes/catppuccin-macchiato.css" | "/themes/catppuccin-mocha.css" | "/themes/psychopy-dark.css" | "/themes/psychopy-light.css" | "/themes/psychopy.css" | string & {};
+	}
+}

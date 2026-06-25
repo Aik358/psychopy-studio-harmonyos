@@ -12,6 +12,9 @@ const electron = {
     focus: (id) => ipcRenderer.invoke("electron.windows.focus", id).then(resp => resp),
     devtools: (id) => ipcRenderer.invoke("electron.windows.devtools", id).then(resp => resp),
     close: (id) => ipcRenderer.invoke("electron.windows.close", id).then(resp => resp),
+    minimize: (id) => ipcRenderer.invoke("electron.windows.minimize", id).then(resp => resp),
+    maximize: (id) => ipcRenderer.invoke("electron.windows.maximize", id).then(resp => resp),
+    navigate: (target) => ipcRenderer.invoke("electron.windows.navigate", target).then(resp => resp),
   },
   paths: {
     getPathForFile: (file) => webUtils.getPathForFile(file), 

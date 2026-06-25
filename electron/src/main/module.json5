@@ -27,8 +27,8 @@
         "label": "$string:EntryAbility_label",
         "startWindowIcon": "$media:startIcon",
         "startWindowBackground": "$color:start_window_background",
-        "launchType": "specified",
-        "removeMissionAfterTerminate": true,
+        "launchType": "multiton",
+        "removeMissionAfterTerminate": false,
         "exported": true,
         "skills": [
           {
@@ -69,8 +69,8 @@
         "label": "$string:StatelessAbility_label",
         "startWindowIcon": "$media:app_icon",
         "startWindowBackground": "$color:start_window_background",
-        "launchType": "specified",
-        "removeMissionAfterTerminate": true,
+        "launchType": "multiton",
+        "removeMissionAfterTerminate": false,
         "exported": true,
         "process": ':browser'
       }

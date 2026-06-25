@@ -1,8 +1,6 @@
 
 
 export const index = 4;
-let component_cache;
-export const component = async () => component_cache ??= (await import('../entries/pages/coder/_page.svelte.js')).default;
-export const imports = ["_app/immutable/nodes/4.CznRHL_z.js","_app/immutable/chunks/C_3iLvAe.js","_app/immutable/chunks/BjC7Y9vB.js","_app/immutable/chunks/DLgG2k62.js","_app/immutable/chunks/x6TFst1D.js","_app/immutable/chunks/0X6EtyvN.js","_app/immutable/chunks/DlQRppoZ.js","_app/immutable/chunks/BKwgpZfa.js","_app/immutable/chunks/Bz6sfiOo.js","_app/immutable/chunks/CFu9OGiz.js","_app/immutable/chunks/F3Urv05k.js","_app/immutable/chunks/C7rJf10A.js","_app/immutable/chunks/BQ6yCAVU.js","_app/immutable/chunks/BB569J2z.js"];
-export const stylesheets = ["_app/immutable/assets/Theme.CEsutkzI.css","_app/immutable/assets/TipsDialog.B7vSag0S.css","_app/immutable/assets/Dialog.DPWwx-32.css","_app/immutable/assets/4.BRuCqq_N.css"];
+export const imports = ["_app/immutable/nodes/4.DEso7fGC.js","_app/immutable/chunks/VBTKkVOz.js","_app/immutable/chunks/0HOfOMnk.js","_app/immutable/chunks/DJXYZMDQ.js","_app/immutable/chunks/xihTtKlq.js","_app/immutable/chunks/BSdMcYOQ.js","_app/immutable/chunks/GHnHFVBA.js"];
+export const stylesheets = ["_app/immutable/assets/Theme.BU8xX_jR.css","_app/immutable/assets/TipsDialog.B_ljWoRx.css","_app/immutable/assets/pluginManager.Dspt9Gdj.css","_app/immutable/assets/4.CNmMRaah.css"];
 export const fonts = [];

@@ -1,12 +1,11 @@
 <script>
     import { electron } from "$lib/globals.svelte";
+    import { goto } from "$app/navigation";
 
     let {
-        /** @param @type {function} Callback to execute when a file is dropped on this frame */
+        currentView = $bindable("builder"),
         onFileDrop = (evt, file) => {},
-        /** @interface */
         ribbon=undefined,
-        /** @interface */
         children
     } = $props();
 
@@ -14,6 +13,17 @@
         show: false,
         indicator: undefined
     })
+
+    const views = ["builder", "coder", "runner"];
+
+    function switchView(view) {
+        currentView = view;
+        if (electron) {
+            electron.windows.navigate(view);
+        } else {
+            goto(`/${view}`);
+        }
+    }
 </script>
 
 <div 
@@ -25,7 +35,6 @@
         hover.show = false;
         if (electron) {
             evt.preventDefault();
-            // trigger callback with full filepath (from electron)
             for (let f of evt.dataTransfer.files) {
                 onFileDrop(evt, await electron.paths.getPathForFile(f))
             }
@@ -36,6 +45,20 @@
     {#if hover.show}
         <div class=hover-indicator bind:this={hover.indicator}></div>
     {/if}
+    
+    <!-- View navigation tabs -->
+    <nav id=view-nav>
+        {#each views as view}
+            <button
+                class="nav-btn"
+                class:active={currentView === view}
+                onclick={() => switchView(view)}
+            >
+                {view.charAt(0).toUpperCase() + view.slice(1)}
+            </button>
+        {/each}
+    </nav>
+
     {#if ribbon}
         {@render ribbon()}
     {/if}
@@ -47,13 +70,83 @@
 <style>
 #frame {
     display: grid;
-    grid-template: min-content 1fr / 1fr;
+    grid-template: min-content min-content 1fr / 1fr;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
 }
+#titlebar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--crust);
+    border-bottom: 1px solid var(--overlay);
+    height: 32px;
+    -webkit-app-region: drag;
+    user-select: none;
+}
+#app-title {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 12px;
+    color: var(--text);
+    white-space: nowrap;
+    -webkit-app-region: drag;
+}
+#view-nav {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    margin-left: 16px;
+    -webkit-app-region: no-drag;
+}
+.nav-btn {
+    background: none;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--outline);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+.nav-btn:hover {
+    background-color: var(--mantle);
+    color: var(--text);
+}
+.nav-btn.active {
+    color: var(--text);
+    background-color: var(--base);
+}
+#window-controls {
+    display: flex;
+    flex-direction: row;
+    margin-left: auto;
+    -webkit-app-region: no-drag;
+}
+.win-btn {
+    background: none;
+    border: none;
+    width: 46px;
+    height: 32px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+.win-btn:hover {
+    background-color: var(--mantle);
+}
+.win-btn.close:hover {
+    background-color: #e81123;
+    color: white;
+}
 #content {
     position: relative;
-    background-color: var(--crust)
+    background-color: var(--crust);
+    overflow: hidden;
 }
 .hover-indicator {
     position: absolute;

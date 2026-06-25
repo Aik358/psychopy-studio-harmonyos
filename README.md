@@ -1,227 +1,127 @@
-# HarmonyOS Electron HAP
+# PsychoPy Studio - HarmonyOS ARM64 Port v0.1.2
 
-English | [简体中文](./README-CN.md)
+[简体中文](./README-CN.md)
 
-A HarmonyOS Application Package (HAP) project based on the HarmonyOS platform that enables running Electron applications on HarmonyOS devices.
+## Overview
+
+**PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
+
+**Key achievement**: First successful build and run of PsychoPy Studio on **HarmonyOS ARM64 (aarch64)** native device, including frontend `dist/` compilation entirely on-device using harmonybrew toolchain.
+
+## v0.1.2 Features
+
+- **Full ARM64 native build** — Frontend `vite build` runs on HarmonyOS device itself
+- **PsychoPy Builder** — Graphical experiment editor with drag & drop components
+- **PsychoPy Coder** — Python/JS code editor
+- **PsychoPy Runner** — Experiment execution interface (requires Python backend)
+- **View switching** — In-app navigation between Builder/Coder/Runner tabs
+- **Native window title bar** — Min/max/close buttons via HarmonyOS native frame
+- **SVG Icons** — Fixed CSS variable inheritance via inline SVG rendering
+- **Components panel** — Local fallback profiles, no Python dependency
+- **Electron Express server** — Serves SvelteKit frontend on localhost:8003
+
+## Build Instructions
+
+### Prerequisites
+
+- DevEco Studio 5.0+ (HarmonyOS SDK API 15+)
+- HarmonyOS device or emulator (ARM64 aarch64)
+- harmonybrew (Node.js v26.3.1, binary-sign-tool)
+
+### Quick Build
+
+```bash
+# 1. Install OHPM dependencies
+ohpm install
+
+# 2. Build frontend on standard PC (or see BUILD_ON_ARM64.md for on-device build)
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+cd ../../../../../../../..
+
+# 3. Build HAP
+hvigorw --mode module -p module=web_engine@default,electron@default -p product=default -p buildMode=debug assembleHar assembleHap --no-daemon
+```
+
+### On-Device Frontend Build (HarmonyOS ARM64)
+
+See [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md) for the full guide on building the frontend natively on HarmonyOS, including native binding signing and WASM fallbacks.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│            HarmonyOS Device              │
+│  ┌───────────────────────────────────┐  │
+│  │         ArkUI (Ability)           │  │
+│  │  ┌─────────────────────────────┐  │  │
+│  │  │   XComponent (Native)       │  │  │
+│  │  │   ┌──────────────────────┐  │  │  │
+│  │  │   │ libelectron.so       │  │  │  │
+│  │  │   │  ┌────────────────┐  │  │  │  │
+│  │  │   │  │ Electron Main  │  │  │  │  │
+│  │  │   │  │  - index.cjs   │  │  │  │  │
+│  │  │   │  │  - Express srv │  │  │  │  │
+│  │  │   │  │  - Python stub │  │  │  │  │
+│  │  │   │  └────────────────┘  │  │  │  │
+│  │  │   └──────────────────────┘  │  │  │
+│  │  └─────────────────────────────┘  │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+## Known Issues
+
+- **Python backend**: Experiment execution requires Python/UV runtime not yet ported. Currently stubbed with IPC fallbacks.
+- **ArkTS warnings**: `arkts-no-classes-as-obj` warnings across adapter bindings — non-blocking.
+- **Deprecated API warnings**: Multiple (`show`, `getContext`, `getFontByName`, etc.) — need migration for SDK 26 compliance.
+
+## Development Workflow
+
+1. Edit Svelte source files (`web_engine/.../resources/app/src/`)
+2. Run `npx vite build` (on standard PC or see BUILD_ON_ARM64.md for on-device)
+3. Run `hvigorw --mode module -p module=web_engine@default assembleHar`
+4. Run `hvigorw --mode module -p module=electron@default assembleHap`
 
 ## Project Structure
 
 ```
-ohos_electron_hap/
-├── AppScope/                    # Application scope configuration
-├── chromium/                    # Chromium module
-├── electron/                    # Electron main module
-├── web_engine/                  # Web engine component
-├── hvigor/                      # Build tool configuration
-├── build-profile.json5          # Project build configuration
-├── hvigorfile.ts                # Build script
-└── oh-package.json5             # Project dependencies configuration
+AppScope/                         # HarmonyOS app configuration
+├── app.json5                     # App name, icon, bundle info
+├── resources/base/media/         # App icon assets
+electron/                         # Electron module (entry HAP)
+├── src/main/ets/                 # ArkTS entry abilities
+├── src/main/resources/           # String resources
+├── libs/arm64-v8a/               # Native .so libraries (160MB libelectron.so)
+web_engine/                       # Web engine module (HAR)
+├── src/main/ets/                 # Web ability, adapters, bindings
+├── src/main/resources/           # Frontend resources
+│   └── resfile/resources/app/    # SvelteKit frontend source
+│       ├── src/                  # Svelte source code
+│       ├── dist/                 # Compiled frontend (vite build output)
+│       └── electron/src/         # Main process (index.cjs)
+│           ├── python/           # Python backend stubs
+│           └── preload.js        # Electron preload bridge
+chromium/                         # Chromium module
+build-profile.json5               # Hvigor build config
 ```
 
-## Quick Start
+## Branches
 
-### Environment Requirements
+| Branch | Description |
+|--------|-------------|
+| `v0.1.2` | Latest features with frontend fixes |
+| `v0.1.2-HarmonyOS-Device-Dev-Test` | ARM64 native build experiments |
+| `v0.1.1` | Previous stable version |
 
-- **DevEco Studio**: 4.0 or higher
-- **HarmonyOS SDK**: API Level 10 or higher  
-- **Node.js**: 16.x or higher
-- **HDC Tool**: For device debugging and installation
+## License
 
-### 1. Prepare Resource Files
+- Project template: Apache 2.0
+- PsychoPy: [GPL v3](https://github.com/psychopy/psychopy/blob/master/LICENSE)
 
-Before starting the build, you need to prepare the following resources:
+---
 
-#### Electron Application Code
-Place your Electron application code (compiled artifacts) into:
-```
-web_engine/src/main/resources/resfile/resources/app/
-```
-
-### 2. Build HAP Package
-
-#### Using DevEco Studio
-1. Open the project with DevEco Studio
-2. Select **Build** → **Build Hap(s)/APP(s)** → **Build Hap(s)**
-3. Or click the run button in the top right corner to launch the application
-
-After building, the unsigned HAP package will be saved at:
-```
-electron/build/default/outputs/default/electron-default-unsigned.hap
-```
-
-### 3. Application Signing
-
-To run normally on devices, the HAP package needs to be signed:
-
-> Recommend using automatic signature verification
-1. Apply for Huawei Developer Certificate
-2. Configure signing information in DevEco Studio
-3. Rebuild to generate signed HAP package
-
-For detailed signing process, please refer to: [Application/Service Signing-DevEco Studio](https://developer.huawei.com/)
-
-### 4. Installation and Running
-
-#### Via DevEco Studio
-Click the run button directly to install on device
-
-#### Via Command Line
-```bash
-hdc app install <signed-hap-package-path>
-# Example: hdc app install electron-default-signed.hap
-```
-
-## Application Customization
-
-### Modify Application Name
-Edit file: `electron/src/main/resources/zh_CN/element/string.json`
-```json
-{
-  "string": [
-    {
-      "name": "EntryAbility_label",
-      "value": "Your Application Name"
-    }
-  ]
-}
-```
-
-### Replace Application Icon
-Place new icon file into: `AppScope/resources/base/media/`
-
-### Configure Startup Window Size
-Edit `electron/src/main/module.json5`, add metadata in abilities:
-```json
-"metadata": [
-  {
-    "name": "ohos.ability.window.height",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.width",
-    "value": "800"
-  },
-  {
-    "name": "ohos.ability.window.left",
-    "value": "center"
-  },
-  {
-    "name": "ohos.ability.window.top",
-    "value": "center"
-  }
-]
-```
-
-## Permission Configuration
-
-Application permissions are configured in the `requestPermissions` field of the `web_engine/src/main/module.json5` file.
-
-### Basic Permissions (No Special Application Required)
-- `ohos.permission.INTERNET` - Network access
-- `ohos.permission.GET_NETWORK_INFO` - Get network information
-- `ohos.permission.RUNNING_LOCK` - Background running lock
-- `ohos.permission.PREPARE_APP_TERMINATE` - Application termination preparation
-
-### Permissions Requiring Application
-- `ohos.permission.CAMERA` - Camera permission
-- `ohos.permission.MICROPHONE` - Microphone permission
-- `ohos.permission.LOCATION` - Location permission
-- `ohos.permission.READ_WRITE_DOWNLOAD_DIRECTORY` - Download directory access
-
-## HarmonyOS Specific Features
-
-### Floating Window
-```javascript
-const { BrowserWindow } = require('electron');
-
-let floatWindow = new BrowserWindow({
-  windowInfo: {
-    type: 'floatWindow'  // mainWindow, subWindow, floatWindow
-  },
-  parent: mainWindow,
-  x: 100,
-  y: 100,
-  width: 800,
-  height: 600,
-  transparent: true,  // Transparent window
-  opacity: 0.5       // Opacity
-});
-```
-
-### System Permission Request
-```javascript
-const { systemPreferences } = require('electron');
-
-// Request camera permission
-systemPreferences.requestSystemPermission('camera').then(granted => {
-  console.log('Camera permission:', granted);
-});
-
-// Request directory permission
-systemPreferences.requestDirectoryPermission(null).then(granted => {
-  console.log('Directory permission:', granted);
-});
-```
-
-## Debugging
-
-### Renderer Process Debugging
-```javascript
-const { BrowserWindow } = require('electron');
-const win = new BrowserWindow();
-win.webContents.openDevTools();
-```
-
-### Main Process Debugging
-1. Add debugging parameters in `web_engine/src/main/ets/components/WebWindow.ets`:
-```typescript
-let inspect = '--inspect=9229';
-let vec_args = [..., inspect];
-```
-
-2. Configure port forwarding:
-```bash
-hdc fport tcp:9229 tcp:9229
-```
-
-3. Access in Chrome browser: `chrome://inspect`
-
-## Application Data Directory
-
-- User data stored by default at: `/data/storage/el2/base/files`
-- Application installation directory: `/data/storage/el1/bundle`
-- Database directory: `/data/storage/el2/database`
-
-## Common Issues
-
-### Build Failure
-1. Check if SO library files are complete
-2. Confirm Electron application code is correctly placed
-3. Verify permission configuration is correct
-
-### Third-party Library Compatibility
-- **C++ addon**: Need to recompile for HarmonyOS platform adaptation
-- **Platform detection**: Need to adapt `process.platform === 'ohos'`
-- **Binary files**: May need to replace with HarmonyOS versions
-
-### Permission Issues
-If certain ACL permissions cannot be obtained, you can temporarily comment out related permissions:
-```json
-// "requestPermissions": [
-//   {
-//     "name": "ohos.permission.SYSTEM_FLOAT_WINDOW"
-//   }
-// ]
-```
-
-## Contributing
-
-1. Fork this repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Submit a Pull Request
-
-## Contact Us
-
-If you encounter issues or need support, please submit an Issue or contact the maintenance team.
+> **Last updated: 2026-06-25**
+> For the complete HarmonyOS ARM64 build guide including troubleshooting, native binding signing, and WASM fallbacks, see [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md).
+> For the v0.1.1 debug log, see [README-v011.md](./README-v011.md).

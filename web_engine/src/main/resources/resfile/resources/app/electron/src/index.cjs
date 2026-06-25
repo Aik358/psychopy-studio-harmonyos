@@ -39,9 +39,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   ipcMain.handle("python.venv.getPackageDetails", () => Promise.resolve({}));
   ipcMain.handle("python.liaison.start", () => Promise.resolve(true));
   ipcMain.handle("python.liaison.stop", () => Promise.resolve(true));
-  ipcMain.handle("python.liaison.send", () => Promise.resolve("{}"));
+  ipcMain.handle("python.liaison.send", () => { throw new Error("Python backend not available - using fallback components"); });
+  // TODO: When Python backend is ready, remove the stub above and uncomment the real python/index.js import
+  // 1. Uncomment the import line: const { handlers: pythonHandlers } = (await import("./python/index.js"));
+  // 2. Remove the 27 ipcMain.handle() stubs above (lines 36-62)
+  // 3. Uncomment line 101: python: pythonHandlers,
   ipcMain.handle("python.liaison.started", () => true);
-  ipcMain.handle("python.liaison.ready", () => Promise.resolve());
+  ipcMain.handle("python.liaison.ready", () => new Promise(() => {})); // TODO: revert to Promise.resolve() when Python backend is ready
   ipcMain.handle("python.shell.list", () => Promise.resolve([]));
   ipcMain.handle("python.shell.send", () => Promise.resolve(""));
   ipcMain.handle("python.shell.open", () => Promise.resolve("stub-shell"));
@@ -374,6 +378,18 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         close: ipcMain.handle("electron.windows.close", (evt, id) => {
           let win = windows[id || evt.sender.id]
           if (win && win.close) win.close()
+        }),
+        minimize: ipcMain.handle("electron.windows.minimize", (evt, id) => {
+          let win = windows[id || evt.sender.id]
+          if (win && win.minimize) win.minimize()
+        }),
+        maximize: ipcMain.handle("electron.windows.maximize", (evt, id) => {
+          let win = windows[id || evt.sender.id]
+          if (win && win.maximize) win.maximize()
+        }),
+        navigate: ipcMain.handle("electron.windows.navigate", (evt, target) => {
+          let win = windows[evt.sender.id]
+          if (win && win.loadURL) win.loadURL(`http://localhost:8003/${target}`)
         }),
       },
       paths: {

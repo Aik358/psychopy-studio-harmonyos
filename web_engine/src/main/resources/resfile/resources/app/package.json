@@ -8,6 +8,7 @@
   "license": "./LICENSE",
   "dependencies": {
     "@monaco-editor/loader": "^1.5.0",
+    "@rolldown/binding-wasm32-wasi": "^1.1.3",
     "express": "^5.1.0",
     "extract-zip": "2.0.1",
     "isomorphic-git": "^1.35.1",
@@ -22,15 +23,6 @@
     "tcp-port-used": "^1.0.2",
     "xml-formatter": "^3.6.5"
   },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "*",
-    "dmg-builder": "^0.5.1"
-  },
-  "os": [
-    "darwin",
-    "linux",
-    "win32"
-  ],
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.66.0",

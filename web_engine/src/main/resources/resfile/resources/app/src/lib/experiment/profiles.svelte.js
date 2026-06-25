@@ -13,10 +13,10 @@ export var profiles = $state({
 })
 
 export var pending = $state({
-    components: Promise.withResolvers().promise,
-    loops: Promise.withResolvers().promise,
-    devices: Promise.withResolvers().promise,
-    preferences: Promise.withResolvers().promise
+    components: Promise.resolve(),  // TODO: revert to Promise.withResolvers().promise when Python backend is ready
+    loops: Promise.resolve(),
+    devices: Promise.resolve(),
+    preferences: Promise.resolve()
 })
 
 // populate on Liaison starting (if it ever does)

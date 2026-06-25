@@ -3,8 +3,12 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	css: {
+		transformer: 'postcss'
+	},
 	build: {
-		assetsInlineLimit: Infinity
+		assetsInlineLimit: Infinity,
+		cssMinify: false
 	}
 });
 

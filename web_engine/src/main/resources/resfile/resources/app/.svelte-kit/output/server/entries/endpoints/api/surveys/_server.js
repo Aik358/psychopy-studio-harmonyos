@@ -1,15 +1,7 @@
+//#region src/routes/api/surveys/+server.js
 async function GET({ request }) {
-  const data = await fetch(
-    `https://pavlovia.org/api/v2/surveys?oauthToken=${request.headers.get("access")}`
-  ).then(
-    (resp) => resp.json()
-  );
-  return new Response(JSON.stringify(data), {
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
+	const data = await fetch(`https://pavlovia.org/api/v2/surveys?oauthToken=${request.headers.get("access")}`).then((resp) => resp.json());
+	return new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
 }
-export {
-  GET
-};
+//#endregion
+export { GET };

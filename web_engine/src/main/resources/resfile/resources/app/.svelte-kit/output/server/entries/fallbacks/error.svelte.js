@@ -1,55 +1,83 @@
-import { n as noop, j as getContext, k as escape_html } from "../../chunks/context.js";
-import "clsx";
-import "@sveltejs/kit/internal/server";
-import "@sveltejs/kit/internal";
-import { w as writable } from "../../chunks/exports.js";
-import "../../chunks/utils.js";
-function create_updated_store() {
-  const { set, subscribe } = writable(false);
-  {
-    return {
-      subscribe,
-      // eslint-disable-next-line @typescript-eslint/require-await
-      check: async () => false
-    };
-  }
-}
-const is_legacy = noop.toString().includes("$$") || /function \w+\(\) \{\}/.test(noop.toString());
-if (is_legacy) {
-  ({
-    data: {},
-    form: null,
-    error: null,
-    params: {},
-    route: { id: null },
-    state: {},
-    status: -1,
-    url: new URL("https://example.com")
-  });
-}
-const stores = {
-  updated: /* @__PURE__ */ create_updated_store()
-};
-({
-  check: stores.updated.check
-});
+import "../../chunks/internal.js";
+import { D as escape_html, v as getContext } from "../../chunks/server.js";
+import { t as stores } from "../../chunks/client.js";
+stores.updated.check;
+//#endregion
+//#region node_modules/@sveltejs/kit/src/runtime/app/state/server.js
 function context() {
-  return getContext("__request__");
+	return getContext("__request__");
 }
-const page$1 = {
-  get error() {
-    return context().page.error;
-  },
-  get status() {
-    return context().page.status;
-  }
+//#endregion
+//#region node_modules/@sveltejs/kit/src/runtime/app/state/index.js
+/**
+* A read-only reactive object with information about the current page, serving several use cases:
+* - retrieving the combined `data` of all pages/layouts anywhere in your component tree (also see [loading data](https://svelte.dev/docs/kit/load))
+* - retrieving the current value of the `form` prop anywhere in your component tree (also see [form actions](https://svelte.dev/docs/kit/form-actions))
+* - retrieving the page state that was set through `goto`, `pushState` or `replaceState` (also see [goto](https://svelte.dev/docs/kit/$app-navigation#goto) and [shallow routing](https://svelte.dev/docs/kit/shallow-routing))
+* - retrieving metadata such as the URL you're on, the current route and its parameters, and whether or not there was an error
+*
+* ```svelte
+* <!--- file: +layout.svelte --->
+* <script>
+* 	import { page } from '$app/state';
+* <\/script>
+*
+* <p>Currently at {page.url.pathname}</p>
+*
+* {#if page.error}
+* 	<span class="red">Problem detected</span>
+* {:else}
+* 	<span class="small">All systems operational</span>
+* {/if}
+* ```
+*
+* Changes to `page` are available exclusively with runes. (The legacy reactivity syntax will not reflect any changes)
+*
+* ```svelte
+* <!--- file: +page.svelte --->
+* <script>
+* 	import { page } from '$app/state';
+* 	const id = $derived(page.params.id); // This will correctly update id for usage on this page
+* 	$: badId = page.params.id; // Do not use; will never update after initial load
+* <\/script>
+* ```
+*
+* On the server, values can only be read during rendering (in other words _not_ in e.g. `load` functions). In the browser, the values can be read at any time.
+*
+* @type {import('@sveltejs/kit').Page}
+*/
+var page = {
+	get data() {
+		return context().page.data;
+	},
+	get error() {
+		return context().page.error;
+	},
+	get form() {
+		return context().page.form;
+	},
+	get params() {
+		return context().page.params;
+	},
+	get route() {
+		return context().page.route;
+	},
+	get state() {
+		return context().page.state;
+	},
+	get status() {
+		return context().page.status;
+	},
+	get url() {
+		return context().page.url;
+	}
 };
-const page = page$1;
+//#endregion
+//#region node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte
 function Error$1($$renderer, $$props) {
-  $$renderer.component(($$renderer2) => {
-    $$renderer2.push(`<h1>${escape_html(page.status)}</h1> <p>${escape_html(page.error?.message)}</p>`);
-  });
+	$$renderer.component(($$renderer) => {
+		$$renderer.push(`<h1>${escape_html(page.status)}</h1> <p>${escape_html(page.error?.message)}</p>`);
+	});
 }
-export {
-  Error$1 as default
-};
+//#endregion
+export { Error$1 as default };

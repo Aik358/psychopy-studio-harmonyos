@@ -6,96 +6,102 @@
     "isEntry": true,
     "imports": [
       "_internal.js",
-      "_environment.js",
-      "_server.js"
+      "_internal2.js"
     ]
-  },
-  "_Dialog.DPWwx-32.css": {
-    "file": "_app/immutable/assets/Dialog.DPWwx-32.css",
-    "src": "_Dialog.DPWwx-32.css"
-  },
-  "_Dialog.js": {
-    "file": "chunks/Dialog.js",
-    "name": "Dialog",
-    "imports": [
-      "_index.js",
-      "_TipsDialog.js",
-      "_Theme.js",
-      "_context.js"
-    ],
-    "css": [
-      "_app/immutable/assets/Dialog.DPWwx-32.css"
-    ]
-  },
-  "_Theme.CAyDlitf.css": {
-    "file": "_app/immutable/assets/Theme.CAyDlitf.css",
-    "src": "_Theme.CAyDlitf.css"
   },
   "_Theme.js": {
     "file": "chunks/Theme.js",
     "name": "Theme",
     "imports": [
-      "_index.js",
-      "_server.js",
-      "_routing.js",
-      "_context.js"
+      "_internal.js",
+      "_paths.js",
+      "_server.js"
     ],
     "css": [
-      "_app/immutable/assets/Theme.CAyDlitf.css"
+      "_app/immutable/assets/Theme.xy-dZZZ3.css"
     ]
   },
-  "_TipsDialog.O7oGSCkx.css": {
-    "file": "_app/immutable/assets/TipsDialog.O7oGSCkx.css",
-    "src": "_TipsDialog.O7oGSCkx.css"
+  "_Theme.xy-dZZZ3.css": {
+    "file": "_app/immutable/assets/Theme.xy-dZZZ3.css",
+    "src": "_Theme.xy-dZZZ3.css"
+  },
+  "_TipsDialog.CMGGo0Wm.css": {
+    "file": "_app/immutable/assets/TipsDialog.CMGGo0Wm.css",
+    "src": "_TipsDialog.CMGGo0Wm.css"
   },
   "_TipsDialog.js": {
     "file": "chunks/TipsDialog.js",
     "name": "TipsDialog",
     "imports": [
-      "_Theme.js",
-      "_index.js",
-      "_context.js"
+      "_internal.js",
+      "_client.js",
+      "_server.js",
+      "_Theme.js"
     ],
     "css": [
-      "_app/immutable/assets/TipsDialog.O7oGSCkx.css"
+      "_app/immutable/assets/TipsDialog.CMGGo0Wm.css"
     ]
   },
-  "_context.js": {
-    "file": "chunks/context.js",
-    "name": "context"
+  "_client.js": {
+    "file": "chunks/client.js",
+    "name": "client",
+    "imports": [
+      "_internal.js",
+      "_internal2.js",
+      "_paths.js",
+      "_routing.js",
+      "_shared.js",
+      "_exports.js",
+      "_server.js"
+    ]
   },
-  "_environment.js": {
-    "file": "chunks/environment.js",
-    "name": "environment"
-  },
-  "_equality.js": {
-    "file": "chunks/equality.js",
-    "name": "equality"
+  "_env.js": {
+    "file": "chunks/env.js",
+    "name": "env"
   },
   "_exports.js": {
     "file": "chunks/exports.js",
     "name": "exports",
     "imports": [
-      "_context.js",
-      "_equality.js"
-    ]
-  },
-  "_index.js": {
-    "file": "chunks/index.js",
-    "name": "index",
-    "imports": [
-      "_context.js"
+      "_server.js"
     ]
   },
   "_internal.js": {
     "file": "chunks/internal.js",
     "name": "internal",
     "imports": [
-      "_index.js",
-      "_environment.js",
-      "_context.js",
-      "_equality.js",
+      "_internal2.js",
       "_server.js"
+    ]
+  },
+  "_internal2.js": {
+    "file": "chunks/internal2.js",
+    "name": "internal"
+  },
+  "_paths.js": {
+    "file": "chunks/paths.js",
+    "name": "paths",
+    "imports": [
+      "_internal.js",
+      "_internal2.js",
+      "_routing.js"
+    ]
+  },
+  "_pluginManager.Dspt9Gdj.css": {
+    "file": "_app/immutable/assets/pluginManager.Dspt9Gdj.css",
+    "src": "_pluginManager.Dspt9Gdj.css"
+  },
+  "_pluginManager.js": {
+    "file": "chunks/pluginManager.js",
+    "name": "pluginManager",
+    "imports": [
+      "_internal.js",
+      "_TipsDialog.js",
+      "_server.js",
+      "_Theme.js"
+    ],
+    "css": [
+      "_app/immutable/assets/pluginManager.Dspt9Gdj.css"
     ]
   },
   "_routing.js": {
@@ -108,14 +114,14 @@
   },
   "_shared.js": {
     "file": "chunks/shared.js",
-    "name": "shared",
-    "imports": [
-      "_utils.js"
-    ]
+    "name": "shared"
   },
   "_utils.js": {
     "file": "chunks/utils.js",
-    "name": "utils"
+    "name": "utils",
+    "imports": [
+      "_shared.js"
+    ]
   },
   "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js": {
     "file": "remote-entry.js",
@@ -123,9 +129,9 @@
     "src": "node_modules/@sveltejs/kit/src/runtime/app/server/remote/index.js",
     "isEntry": true,
     "imports": [
-      "_shared.js",
-      "_environment.js",
-      "_server.js"
+      "_utils.js",
+      "_internal2.js",
+      "_shared.js"
     ]
   },
   "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte": {
@@ -134,16 +140,19 @@
     "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/error.svelte",
     "isEntry": true,
     "imports": [
-      "_context.js",
-      "_exports.js",
-      "_utils.js"
+      "_internal.js",
+      "_client.js",
+      "_server.js"
     ]
   },
   "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/layout.svelte": {
     "file": "entries/fallbacks/layout.svelte.js",
     "name": "entries/fallbacks/layout.svelte",
     "src": "node_modules/@sveltejs/kit/src/runtime/components/svelte-5/layout.svelte",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_server.js"
+    ]
   },
   "node_modules/@sveltejs/kit/src/runtime/server/index.js": {
     "file": "index.js",
@@ -151,13 +160,14 @@
     "src": "node_modules/@sveltejs/kit/src/runtime/server/index.js",
     "isEntry": true,
     "imports": [
-      "_environment.js",
-      "_server.js",
+      "_internal.js",
+      "_env.js",
+      "_utils.js",
+      "_internal2.js",
+      "_routing.js",
       "_shared.js",
       "_exports.js",
-      "_utils.js",
-      "_internal.js",
-      "_routing.js"
+      "_server.js"
     ]
   },
   "src/routes/+layout.js": {
@@ -172,12 +182,12 @@
     "src": "src/routes/+page.svelte",
     "isEntry": true,
     "imports": [
-      "_index.js",
-      "_Theme.js",
-      "_context.js"
+      "_paths.js",
+      "_server.js",
+      "_Theme.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.DxWoXdE4.css"
+      "_app/immutable/assets/_page.Bcgu6EFI.css"
     ]
   },
   "src/routes/api/plugins/+server.js": {
@@ -216,14 +226,14 @@
     "src": "src/routes/builder/+page.svelte",
     "isEntry": true,
     "imports": [
-      "_context.js",
+      "_internal.js",
       "_TipsDialog.js",
-      "_Theme.js",
-      "_index.js",
-      "_Dialog.js"
+      "_server.js",
+      "_pluginManager.js",
+      "_Theme.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.CSp1c8x2.css"
+      "_app/immutable/assets/_page.a94s6OwD.css"
     ]
   },
   "src/routes/coder/+page.svelte": {
@@ -232,14 +242,14 @@
     "src": "src/routes/coder/+page.svelte",
     "isEntry": true,
     "imports": [
-      "_context.js",
+      "_internal.js",
       "_TipsDialog.js",
-      "_Theme.js",
-      "_index.js",
-      "_Dialog.js"
+      "_server.js",
+      "_pluginManager.js",
+      "_Theme.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.BRuCqq_N.css"
+      "_app/immutable/assets/_page.CNmMRaah.css"
     ]
   },
   "src/routes/runner/+page.svelte": {
@@ -248,13 +258,22 @@
     "src": "src/routes/runner/+page.svelte",
     "isEntry": true,
     "imports": [
-      "_context.js",
+      "_internal.js",
       "_TipsDialog.js",
-      "_Theme.js",
-      "_index.js"
+      "_server.js",
+      "_Theme.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.d-3qXTw2.css"
+      "_app/immutable/assets/_page.CJbXT0Gr.css"
+    ]
+  },
+  "virtual:__sveltekit/env": {
+    "file": "env.js",
+    "name": "env",
+    "src": "virtual:__sveltekit/env",
+    "isEntry": true,
+    "imports": [
+      "_env.js"
     ]
   }
 }
