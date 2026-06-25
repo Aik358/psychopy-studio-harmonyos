@@ -15,6 +15,10 @@ const electron = {
     minimize: (id) => ipcRenderer.invoke("electron.windows.minimize", id).then(resp => resp),
     maximize: (id) => ipcRenderer.invoke("electron.windows.maximize", id).then(resp => resp),
     navigate: (target) => ipcRenderer.invoke("electron.windows.navigate", target).then(resp => resp),
+    state: {
+      save: (key, data) => ipcRenderer.invoke("electron.windows.state.save", key, data).then(resp => resp),
+      load: (key) => ipcRenderer.invoke("electron.windows.state.load", key).then(resp => resp),
+    },
   },
   paths: {
     getPathForFile: (file) => webUtils.getPathForFile(file), 

@@ -22,12 +22,9 @@
         currentView = view;
         store.activeView = view;
         if (electron && view !== "builder") {
-            // save current state to main process before opening new window
-            if (typeof electron.windows.state?.save === "function") {
-                electron.windows.state.save("builderState", JSON.parse(JSON.stringify(store.builderState)))
-                electron.windows.state.save("generatedCode", JSON.parse(JSON.stringify(store.generatedCode)))
-            }
-            newWindow(view);
+            electron.windows.state.save("builderState", JSON.parse(JSON.stringify(store.builderState)))
+            electron.windows.state.save("generatedCode", JSON.parse(JSON.stringify(store.generatedCode)))
+            electron.windows.new(view)
         } else {
             goto(`/${view}`);
         }
