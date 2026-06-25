@@ -1,23 +1,20 @@
 # PsychoPy Studio - 鸿蒙移植版
 
-[English](./README.md)
+[English](./README.md) | [项目首页](https://A9iska.gitee.io/psychopy-oh)
 
 ## 项目简介
 
 **PsychoPy Studio** 是一款开源的心理学/神经科学实验设计工具。本项目将其移植到 **HarmonyOS（鸿蒙）** 平台，通过 Electron-on-HarmonyOS 运行时，将 PsychoPy 的 Builder、Coder、Runner 打包为原生鸿蒙 HAP。
 
-**v0.1.3** — 首次在 HarmonyOS ARM64（aarch64）设备上成功自构建。前端在鸿蒙本机使用 harmonybrew 工具链编译，原生 binding 完成代码签名。
-
-**最新稳定版**: [v0.1.2 (x86)](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2) — 完整 Python 后端，多窗口支持。  
-**开发分支**: [v0.1.3_OHOS_arm64_dev_1](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.3_OHOS_arm64_dev_1) — HarmonyOS ARM64 本机构建（Python 后端待接入）。
+> **最新版: v0.1.4** — 请切换到 `v0.1.4` 分支。下载后需在 DevEco Studio 中配置自动签名。
 
 ## 版本时间线
 
 | 版本 | 日期 | 平台 | 状态 |
 |------|------|------|------|
-| **v0.1.3** ⭐ | 2026-06-25 | HarmonyOS ARM64 | **进展最领先** — 本机自构建，SVG 图标修复，Components 面板正常，原生标题栏。IPC 同步待修复。 |
-| **v0.1.2** | 2026-06-24 | x86（交叉编译）| 在 x86 上编译 HAP，功能与 v0.1.3 同级。Python 后端均未接入。 |
-| **v0.1.1** | 2026-06-23 | x86 | 初始移植，SVG 图标调试。 |
+| **v0.1.4** ⭐ | 2026-06-25 | x86 / ARM64 | **最新** — 视图切换重构、共享 Store 状态持久化、Builder→Coder 同步。 |
+| **v0.1.3** | 2026-06-25 | HarmonyOS ARM64 | 本机自构建，SVG 图标修复，Components 面板正常。 |
+| **v0.1.2** | 2026-06-24 | x86（交叉编译）| 功能与 v0.1.3 同级。Python 后端未接入。 |
 
 ## v0.1.0 功能
 
