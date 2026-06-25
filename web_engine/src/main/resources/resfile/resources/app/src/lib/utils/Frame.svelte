@@ -21,22 +21,7 @@
     function switchView(view) {
         currentView = view;
         store.activeView = view;
-        console.log('[Frame] switchView:', view, 'electron:', !!electron)
-        if (electron && view !== "builder") {
-            try {
-                electron.windows.state.save("builderState", JSON.parse(JSON.stringify(store.builderState)))
-                electron.windows.state.save("generatedCode", JSON.parse(JSON.stringify(store.generatedCode)))
-            } catch (e) {
-                console.error('[Frame] state.save error:', e)
-            }
-            electron.windows.new(view).then(id => {
-                console.log('[Frame] new window opened, id:', id)
-            }).catch(err => {
-                console.error('[Frame] open window error:', err)
-            })
-        } else {
-            goto(`/${view}`);
-        }
+        goto(`/${view}`);
     }
 </script>
 
