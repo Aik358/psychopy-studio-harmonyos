@@ -814,7 +814,7 @@ fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_dur
           <span style="color:var(--cyan); font-size:0.8rem; padding:0.25rem 0.5rem; border:1px solid var(--cyan); border-radius:0.25rem;">Dev</span>
         </div>
         <p style="color:var(--fg-dim); font-size:0.9rem; margin-top:0.5rem;">
-          First self-hosted build on HarmonyOS ARM64 (aarch64). Frontend compiled entirely on-device.
+          Most advanced build. Frontend compiled on-device with native binding signing, SVG fix, Components panel working.
         </p>
         <div style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem;">
           <div>✅ Frontend vite build on HarmonyOS ARM64 (10.5s, 668 modules)</div>
@@ -836,7 +836,7 @@ fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_dur
           <span style="color:var(--green); font-size:0.8rem; padding:0.25rem 0.5rem; border:1px solid var(--green); border-radius:0.25rem;">Stable</span>
         </div>
         <p style="color:var(--fg-dim); font-size:0.9rem; margin-top:0.5rem;">
-          Standard x86 build with full Python backend. Latest stable release.
+          HAP cross-compiled on x86. Same feature level as v0.1.3.
         </p>
         <div style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem;">
           <div>✅ Full Python backend (CPython/UV)</div>
@@ -865,10 +865,11 @@ fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_dur
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <div style="flex:1; min-width:300px; border:1px solid var(--border); border-radius:0.5rem; padding:1rem; background:var(--card);">
           <h3 style="color:var(--fg); margin:0 0 0.5rem;">x86 Build</h3>
-          <p style="color:var(--fg-dim); font-size:0.85rem;">For Windows/macOS/Linux standard build environment</p>
+          <p style="color:var(--fg-dim); font-size:0.85rem;">Cross-compiled HAP from x86 environment</p>
           <div style="font-size:0.8rem; color:var(--muted); margin:0.5rem 0;">
             <div>Branch: <code style="background:var(--bg-soft); padding:0.1rem 0.3rem; border-radius:0.2rem;">v0.1.2</code></div>
-            <div>Build: Standard PC + DevEco Studio</div>
+            <div style="color:var(--accent); font-size:0.8rem;">Note: No Python backend (same as v0.1.3)</div>
+            <div>Build: x86 + DevEco Studio (cross-compile)</div>
           </div>
           <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2" 
              style="display:inline-block; margin-top:0.5rem; padding:0.5rem 1rem; background:var(--accent); color:white; border-radius:0.5rem; text-decoration:none; font-size:0.9rem;">
