@@ -1,0 +1,52 @@
+@font-face {
+  font-family: 'Noto Sans';
+  font-weight: 400;
+  font-stretch: 100%;
+  src: url("./NotoSans-Regular.ttf");
+}
+@font-face {
+  font-family: 'Noto Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-stretch: 100%;
+  src: url("./NotoSans-Italic.ttf");
+}
+@font-face {
+  font-family: 'Noto Sans';
+  font-weight: 700;
+  font-stretch: 100%;
+  src: url("./NotoSans-Bold.ttf");
+}
+@font-face {
+  font-family: 'Noto Sans';
+  font-style: italic;
+  font-weight: 700;
+  font-stretch: 100%;
+  src: url("./NotoSans-BoldItalic.ttf");
+}
+/* emoji */
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-weight: 400;
+  font-stretch: 100%;
+  src: url("./NotoColorEmoji-Regular.ttf");
+}
+/* symbols */
+@font-face {
+  font-family: 'Noto Sans Symbols';
+  font-weight: 400;
+  font-stretch: 100%;
+  src: url("./NotoSansSymbols-Regular.ttf");
+}
+@font-face {
+  font-family: 'Noto Sans Symbols 2';
+  font-weight: 400;
+  font-stretch: 100%;
+  src: url("./NotoSansSymbols2-Regular.ttf");
+}
+@font-face {
+  font-family: 'Noto Sans Symbols';
+  font-weight: 700;
+  font-stretch: 100%;
+  src: url("./NotoSansSymbols-Bold.ttf");
+}

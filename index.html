@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PsychoPy Studio for HarmonyOS — v0.1.2</title>
+<title>PsychoPy Studio for HarmonyOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -778,7 +778,33 @@ fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_dur
 </div>
 </div>
 
-<footer class="border-t py-14 relative z-10" style="border-color:var(--border)">
+    <!-- Version Selector -->
+    <div style="text-align:center; margin: 2rem auto; padding: 1rem; max-width:800px;">
+      <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+        <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2"
+           style="flex:1; min-width:280px; padding:1.5rem; border:1px solid var(--border); border-radius:1rem; 
+                  background:var(--card); text-decoration:none; transition:all 0.3s; display:block;"
+           onmouseover="this.style.borderColor='var(--accent)'; this.style.background='var(--card-hover)'"
+           onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--card)'">
+          <div style="font-size:1.5rem; font-weight:700; color:var(--fg);">v0.1.2</div>
+          <div style="font-size:0.9rem; color:var(--muted); margin-top:0.5rem;">x86 Build (Stable)</div>
+          <div style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem;">
+            Windows/macOS/Linux build with full Python backend
+          </div>
+        </a>
+        <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.3_OHOS_arm64_dev_1"
+           style="flex:1; min-width:280px; padding:1.5rem; border:1px solid var(--border); border-radius:1rem;
+                  background:var(--card); text-decoration:none; transition:all 0.3s; display:block;"
+           onmouseover="this.style.borderColor='var(--cyan)'; this.style.background='var(--card-hover)'"
+           onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--card)'">
+          <div style="font-size:1.5rem; font-weight:700; color:var(--fg);">v0.1.3_OHOS_arm64_dev_1</div>
+          <div style="font-size:0.9rem; color:var(--muted); margin-top:0.5rem;">HarmonyOS ARM64 Dev Build</div>
+          <div style="font-size:0.75rem; color:var(--muted); margin-top:0.5rem;">
+            Self-built on HarmonyOS device. Python backend WIP.
+          </div>
+        </a>
+      </div>
+    </div><footer class="border-t py-14 relative z-10" style="border-color:var(--border)">
   <div class="max-w-7xl mx-auto px-6">
     <div class="grid md:grid-cols-12 gap-10">
       <div class="md:col-span-5"><div class="flex items-center gap-3 mb-4"><div class="psy-logo w-9 h-9" style="color:var(--fg)"><svg viewBox="0 0 40 40"><g class="wave-path"><path d="M4,20 Q8,8 12,20 T20,20 T28,20 T36,20"/><path d="M4,14 Q8,2 12,14 T20,14 T28,14 T36,14" opacity="0.6"/><path d="M4,26 Q8,14 12,26 T20,26 T28,26 T36,26" opacity="0.6"/></g></svg></div><div><div class="font-display font-semibold" style="color:var(--fg)">PsychoPy·OH</div><div class="text-[10px] font-mono tracking-wider" style="color:var(--muted)">STUDIO FOR HARMONYOS · v0.1.2</div></div></div><p class="text-sm leading-relaxed max-w-md" style="color:var(--fg-dim)" data-i18n="footer.desc">An independent, community-driven port of the PsychoPy toolkit to HarmonyOS. By A9iska. Apache 2.0 (template) + GPLv3 (PsychoPy upstream).</p></div>
