@@ -13,18 +13,35 @@ foreach ($d in $candidates) {
     if (Test-Path "$d\tools\node\node.exe") { $devecoHome = $d; break }
 }
 if (-not $devecoHome) {
-    # fallback: search PATH for hvigorw
     $hvigorPath = Get-Command "hvigorw" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
     if ($hvigorPath) { $devecoHome = (Get-Item $hvigorPath).Directory.Parent.Parent.FullName }
 }
 if (-not $devecoHome) {
     Write-Host "ERROR: Cannot find DevEco Studio (checked: $($candidates -join ', '))" -ForegroundColor Red
-    Write-Host "Set `$devecoHome at the top of this script or pass -devecoHome <path>" -ForegroundColor Yellow
     exit 1
 }
 
 $nodeBin = "$devecoHome\tools\node"
 Write-Host "DevEco Studio found at: $devecoHome" -ForegroundColor Green
+
+# ---- Auto-detect SDK path ----
+$sdkCandidates = @(
+    "$devecoHome\sdk\default\openharmony",
+    "$env:USERPROFILE\AppData\Local\Huawei\Sdk"
+)
+$sdkHome = $null
+foreach ($s in $sdkCandidates) {
+    if (Test-Path "$s\ets\oh-uni-package.json") { $sdkHome = $s; break }
+}
+if (-not $sdkHome -and $env:DEVECO_SDK_HOME) {
+    $sdkHome = $env:DEVECO_SDK_HOME
+}
+if ($sdkHome) {
+    $env:DEVECO_SDK_HOME = $sdkHome
+    Write-Host "DEVECO_SDK_HOME set to: $sdkHome" -ForegroundColor Green
+} else {
+    Write-Host "WARN: DEVECO_SDK_HOME not found, hvigor may fail" -ForegroundColor Yellow
+}
 
 # ---- [1/2] Build frontend ----
 Write-Host "`n=== [1/2] Building frontend (vite) ===" -ForegroundColor Cyan
