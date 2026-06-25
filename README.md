@@ -1,23 +1,12 @@
-# PsychoPy Studio - HarmonyOS Port
+# PsychoPy Studio - HarmonyOS Port v0.1.1
 
 [简体中文](./README-CN.md)
 
 ## Overview
 
-**PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
+**PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP) that runs on tablets and 2-in-1 devices.
 
-**v0.1.3** — First successful self-hosted build entirely on HarmonyOS ARM64 (aarch64). Frontend compiled on-device using harmonybrew toolchain with native binding signing.
-
-**Latest stable**: [v0.1.2 (x86)](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2) — Full Python backend, multi-window support.  
-**Dev branch**: [v0.1.3_OHOS_arm64_dev_1](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.3_OHOS_arm64_dev_1) — HarmonyOS ARM64 native build (Python backend WIP).
-
-## Version Timeline
-
-| Version | Date | Platform | Status |
-|---------|------|----------|--------|
-| **v0.1.3** ⭐ | 2026-06-25 | HarmonyOS ARM64 | **Most advanced** — self-built on-device, SVG icons fixed, Components panel working, native title bar. IPC sync WIP. |
-| **v0.1.2** | 2026-06-24 | x86 (cross-compile) | HAP built on x86, same feature level as v0.1.3. Python backend not integrated. |
-| **v0.1.1** | 2026-06-23 | x86 | Legacy — initial port, SVG icon debug session. |
+Future releases will integrate the **Python backend (CPython/UV)** directly into the HAP, enabling users to edit, compile, and **run experiments entirely on their HarmonyOS devices** without external dependencies.
 
 ## v0.1.0 Features
 
