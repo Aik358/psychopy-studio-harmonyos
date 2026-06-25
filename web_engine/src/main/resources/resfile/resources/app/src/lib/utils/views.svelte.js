@@ -1,5 +1,6 @@
 import { electron } from "$lib/globals.svelte";
 import { resolve } from "$app/paths"
+import { goto } from "$app/navigation"
 
 
 /**
@@ -41,22 +42,19 @@ export async function openIn(file, target) {
 }
 
 /**
- * Show the first of a particular window, or open one if none are open
+ * Show the first of a particular window, or navigate to it
  */
 export async function showWindow(target) {
     if (electron) {
-        // get windows matching target
+        // try to find and focus existing window
         let windows = await electron.windows.get(target);
-        // either get first ID, or make a new window and use its ID
-        let id;
         if (windows.length) {
-            id = windows[0]
-        } else {
-            id = await electron.windows.new(target)
+            await electron.windows.focus(windows[0])
+            return
         }
-        // focus window
-        await electron.windows.focus(id)
     }
+    // fallback: navigate current window via goto
+    goto(`/${target}`)
 }
 
 /**
