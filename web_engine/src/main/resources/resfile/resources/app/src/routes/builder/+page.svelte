@@ -19,6 +19,39 @@
     } from "./callbacks.svelte";
     import { python } from "$lib/globals.svelte";
     import TipsDialog from '../../lib/dialogs/tips/TipsDialog.svelte';
+    import { store } from '$lib/sharedViewStore.svelte.js';
+
+    // restore saved state on mount
+    if (store.builderState.saved && !current.experiment.file?.file) {
+        if (store.builderState.experimentJSON) {
+            current.experiment.fromJSON(store.builderState.experimentJSON)
+        }
+        if (store.builderState.routineName && current.experiment.routines[store.builderState.routineName]) {
+            current.routine = current.experiment.routines[store.builderState.routineName]
+        }
+        if (store.builderState.file) {
+            current.experiment.file = store.builderState.file
+        }
+        if (store.builderState.project) {
+            current.project = store.builderState.project
+        }
+    }
+
+    // save state on destroy & generate code for Coder
+    $effect(() => {
+        return () => {
+            if (current.experiment) {
+                store.builderState.experimentJSON = current.experiment.toJSON()
+                store.builderState.file = current.experiment.file
+                store.builderState.routineName = current.routine?.name
+                store.builderState.project = current.project
+                store.builderState.saved = true
+
+                store.generatedCode.experimentJSON = current.experiment.toJSON()
+                store.generatedCode.sourceFile = current.experiment.file?.file || null
+            }
+        }
+    })
 
     // parse url params
     let params = new URLSearchParams(location.search)

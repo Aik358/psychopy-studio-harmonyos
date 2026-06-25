@@ -14,7 +14,54 @@
     import { electron, python } from "$lib/globals.svelte";
     import SetupPython from "$lib/python/SetupPython.svelte";
     import TipsDialog from '$lib/dialogs/tips/TipsDialog.svelte';
-    
+    import { store } from '$lib/sharedViewStore.svelte.js';
+    import { Script } from "$lib/experiment/script.svelte";
+
+    // restore saved state on mount
+    if (store.coderState.saved && store.coderState.pages) {
+        current.pages = store.coderState.pages
+        current.tab = store.coderState.tab
+    }
+
+    // if this is a new window, load state from main process
+    ;(async () => {
+        if (current.pages.length === 0 && electron && typeof electron.windows.state?.load === "function") {
+            let savedCode = await electron.windows.state.load("generatedCode")
+            if (savedCode?.experimentJSON) {
+                let label = savedCode.sourceFile
+                    ? savedCode.sourceFile.replace(/\.psyexp$/, '') + ' (from Builder)'
+                    : 'Experiment (from Builder)'
+                let content = JSON.stringify(savedCode.experimentJSON, null, 2)
+                let script = new Script(label)
+                script.content = content
+                current.pages.push(script)
+                current.tab = current.pages.length - 1
+            }
+        }
+    })()
+
+    // if builder generated code (same window), open it
+    if (current.pages.length === 0 && store.generatedCode.experimentJSON) {
+        let label = store.generatedCode.sourceFile
+            ? store.generatedCode.sourceFile.replace(/\.psyexp$/, '') + ' (from Builder)'
+            : 'Experiment (from Builder)'
+        let content = JSON.stringify(store.generatedCode.experimentJSON, null, 2)
+        let script = new Script(label)
+        script.content = content
+        current.pages.push(script)
+        current.tab = current.pages.length - 1
+    }
+
+    // save coder state on destroy
+    $effect(() => {
+        return () => {
+            if (current.pages.length > 0) {
+                store.coderState.pages = current.pages
+                store.coderState.tab = current.tab
+                store.coderState.saved = true
+            }
+        }
+    })
 
     // reference current in context for ease of access
     setContext("current", current)

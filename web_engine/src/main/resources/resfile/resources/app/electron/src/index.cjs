@@ -355,6 +355,9 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
 
   /* handlers which can be invoked by electron */
 
+  // cross-window state cache (persists at the main process level)
+  let crossWindowState = {};
+
   const handlers = {
     electron: {
       windows: {
@@ -371,6 +374,14 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           let win = windows[id || evt.sender.id]
           if (win && win.focus) win.focus()
         }),
+        state: {
+          save: ipcMain.handle("electron.windows.state.save", (evt, key, data) => {
+            crossWindowState[key] = data;
+          }),
+          load: ipcMain.handle("electron.windows.state.load", (evt, key) => {
+            return crossWindowState[key] || null;
+          })
+        },
         devtools: ipcMain.handle("electron.windows.devtools", (evt, id) => {
           let win = windows[id || evt.sender.id]
           if (win && win.openDevTools) win.openDevTools()

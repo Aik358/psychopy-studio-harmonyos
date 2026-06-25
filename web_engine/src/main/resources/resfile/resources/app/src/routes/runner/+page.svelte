@@ -18,6 +18,28 @@
     import Shortcuts from '$lib/utils/Shortcuts.svelte';
     import { shortcuts } from "./callbacks.svelte";
     import TipsDialog from '$lib/dialogs/tips/TipsDialog.svelte';
+    import { store } from '$lib/sharedViewStore.svelte.js';
+
+    // restore saved state on mount
+    if (store.runnerState.saved && store.runnerState.runlist) {
+        current.runlist = store.runnerState.runlist
+        current.selection = store.runnerState.selection
+        current.tab = store.runnerState.tab
+        if (store.runnerState.output) {
+            current.output = store.runnerState.output
+        }
+    }
+
+    // save runner state on destroy
+    $effect(() => {
+        return () => {
+            store.runnerState.runlist = current.runlist
+            store.runnerState.selection = current.selection
+            store.runnerState.tab = current.tab
+            store.runnerState.output = current.output
+            store.runnerState.saved = true
+        }
+    })
 
     setContext("current", current)
 

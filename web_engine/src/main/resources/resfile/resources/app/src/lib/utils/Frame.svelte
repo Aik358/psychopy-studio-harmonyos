@@ -1,6 +1,8 @@
 <script>
+    import { store } from "$lib/sharedViewStore.svelte.js";
     import { electron } from "$lib/globals.svelte";
     import { goto } from "$app/navigation";
+    import { newWindow } from "$lib/utils/views.svelte";
 
     let {
         currentView = $bindable("builder"),
@@ -18,8 +20,14 @@
 
     function switchView(view) {
         currentView = view;
-        if (electron) {
-            electron.windows.navigate(view);
+        store.activeView = view;
+        if (electron && view !== "builder") {
+            // save current state to main process before opening new window
+            if (typeof electron.windows.state?.save === "function") {
+                electron.windows.state.save("builderState", JSON.parse(JSON.stringify(store.builderState)))
+                electron.windows.state.save("generatedCode", JSON.parse(JSON.stringify(store.generatedCode)))
+            }
+            newWindow(view);
         } else {
             goto(`/${view}`);
         }
