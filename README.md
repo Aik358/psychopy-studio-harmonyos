@@ -1,23 +1,20 @@
 # PsychoPy Studio - HarmonyOS Port
 
-[简体中文](./README-CN.md)
+[简体中文](./README-CN.md) | [Project Homepage](https://A9iska.gitee.io/psychopy-oh)
 
 ## Overview
 
 **PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
 
-**v0.1.3** — First successful self-hosted build entirely on HarmonyOS ARM64 (aarch64). Frontend compiled on-device using harmonybrew toolchain with native binding signing.
-
-**Latest stable**: [v0.1.2 (x86)](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2) — Full Python backend, multi-window support.  
-**Dev branch**: [v0.1.3_OHOS_arm64_dev_1](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.3_OHOS_arm64_dev_1) — HarmonyOS ARM64 native build (Python backend WIP).
+> **Latest version: v0.1.4** — switch to the `v0.1.4` branch. Download and configure automatic signing in DevEco Studio.
 
 ## Version Timeline
 
 | Version | Date | Platform | Status |
 |---------|------|----------|--------|
-| **v0.1.3** ⭐ | 2026-06-25 | HarmonyOS ARM64 | **Most advanced** — self-built on-device, SVG icons fixed, Components panel working, native title bar. IPC sync WIP. |
+| **v0.1.4** ⭐ | 2026-06-25 | x86 / ARM64 | **Latest** — View switching rewrite, shared store state persistence, Builder→Coder code sync. [Details](https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.4) |
+| **v0.1.3** | 2026-06-25 | HarmonyOS ARM64 | Self-built on-device, SVG icons fixed, Components panel working, native title bar. |
 | **v0.1.2** | 2026-06-24 | x86 (cross-compile) | HAP built on x86, same feature level as v0.1.3. Python backend not integrated. |
-| **v0.1.1** | 2026-06-23 | x86 | Legacy — initial port, SVG icon debug session. |
 
 ## v0.1.0 Features
 
