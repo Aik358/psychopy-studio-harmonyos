@@ -804,6 +804,167 @@ fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_dur
           </div>
         </a>
       </div>
+    </div>    <!-- Version History & Debug Log -->
+    <div style="max-width:800px; margin: 2rem auto; padding: 1rem; text-align:left;">
+      <h2 style="color:var(--fg); font-size:1.5rem; margin-bottom:1rem;">Version History</h2>
+      
+      <div style="border:1px solid var(--border); border-radius:0.5rem; padding:1rem; margin-bottom:1rem; background:var(--card);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div><strong style="color:var(--accent);">v0.1.3_OHOS_arm64_dev_1</strong> <span style="color:var(--muted); font-size:0.85rem;">2026-06-25</span></div>
+          <span style="color:var(--cyan); font-size:0.8rem; padding:0.25rem 0.5rem; border:1px solid var(--cyan); border-radius:0.25rem;">Dev</span>
+        </div>
+        <p style="color:var(--fg-dim); font-size:0.9rem; margin-top:0.5rem;">
+          First self-hosted build on HarmonyOS ARM64 (aarch64). Frontend compiled entirely on-device.
+        </p>
+        <div style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem;">
+          <div>✅ Frontend vite build on HarmonyOS ARM64 (10.5s, 668 modules)</div>
+          <div>✅ Native addon code signing (binary-sign-tool -selfSign 1)</div>
+          <div>✅ WASM fallback for lightningcss (libgcc_s.so.1 missing)</div>
+          <div>✅ SVG icons via fetch+inline rendering</div>
+          <div>✅ Components panel with local fallback profiles</div>
+          <div>✅ Native window title bar (min/max/close)</div>
+          <div>✅ App icon & name: PsychoPy Studio</div>
+          <div>⚠️ Builder-Coder/Runner IPC sync BROKEN</div>
+          <div>⚠️ Coder onMount with ?fileOpen not triggering</div>
+          <div>❌ Python backend stubbed</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border); border-radius:0.5rem; padding:1rem; margin-bottom:1rem; background:var(--card);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div><strong style="color:var(--green);">v0.1.2</strong> <span style="color:var(--muted); font-size:0.85rem;">2026-06-24</span></div>
+          <span style="color:var(--green); font-size:0.8rem; padding:0.25rem 0.5rem; border:1px solid var(--green); border-radius:0.25rem;">Stable</span>
+        </div>
+        <p style="color:var(--fg-dim); font-size:0.9rem; margin-top:0.5rem;">
+          Standard x86 build with full Python backend. Latest stable release.
+        </p>
+        <div style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem;">
+          <div>✅ Full Python backend (CPython/UV)</div>
+          <div>✅ Builder/Coder/Runner IPC sync</div>
+          <div>✅ Multi-window support</div>
+          <div>✅ Experiment compilation to Python/JS</div>
+        </div>
+      </div>
+
+      <div style="border:1px solid var(--border); border-radius:0.5rem; padding:1rem; margin-bottom:1rem; background:var(--card);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div><strong style="color:var(--teal);">v0.1.1</strong> <span style="color:var(--muted); font-size:0.85rem;">2026-06-23</span></div>
+          <span style="color:var(--teal); font-size:0.8rem; padding:0.25rem 0.5rem; border:1px solid var(--teal); border-radius:0.25rem;">Legacy</span>
+        </div>
+        <p style="color:var(--fg-dim); font-size:0.9rem; margin-top:0.5rem;">
+          Initial HarmonyOS port. SVG icon debug session recorded.
+        </p>
+        <div style="font-size:0.8rem; color:var(--muted); margin-top:0.5rem;">
+          <div>⚠️ SVG icons not showing (CSS variable issue)</div>
+          <div>⚠️ Electron runtime incompatibility</div>
+        </div>
+      </div>
+
+      <h2 style="color:var(--fg); font-size:1.5rem; margin:2rem 0 1rem;">Download</h2>
+      
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <div style="flex:1; min-width:300px; border:1px solid var(--border); border-radius:0.5rem; padding:1rem; background:var(--card);">
+          <h3 style="color:var(--fg); margin:0 0 0.5rem;">x86 Build</h3>
+          <p style="color:var(--fg-dim); font-size:0.85rem;">For Windows/macOS/Linux standard build environment</p>
+          <div style="font-size:0.8rem; color:var(--muted); margin:0.5rem 0;">
+            <div>Branch: <code style="background:var(--bg-soft); padding:0.1rem 0.3rem; border-radius:0.2rem;">v0.1.2</code></div>
+            <div>Build: Standard PC + DevEco Studio</div>
+          </div>
+          <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.2" 
+             style="display:inline-block; margin-top:0.5rem; padding:0.5rem 1rem; background:var(--accent); color:white; border-radius:0.5rem; text-decoration:none; font-size:0.9rem;">
+            Go to v0.1.2
+          </a>
+        </div>
+        <div style="flex:1; min-width:300px; border:1px solid var(--border); border-radius:0.5rem; padding:1rem; background:var(--card);">
+          <h3 style="color:var(--fg); margin:0 0 0.5rem;">HarmonyOS ARM64 Build</h3>
+          <p style="color:var(--fg-dim); font-size:0.85rem;">Self-built on HarmonyOS device (aarch64)</p>
+          <div style="font-size:0.8rem; color:var(--muted); margin:0.5rem 0;">
+            <div>Branch: <code style="background:var(--bg-soft); padding:0.1rem 0.3rem; border-radius:0.2rem;">v0.1.3_OHOS_arm64_dev_1</code></div>
+            <div>Build: HarmonyOS + harmonybrew + binary-sign-tool</div>
+          </div>
+          <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.3_OHOS_arm64_dev_1"
+             style="display:inline-block; margin-top:0.5rem; padding:0.5rem 1rem; background:var(--cyan); color:white; border-radius:0.5rem; text-decoration:none; font-size:0.9rem;">
+            Go to v0.1.3 (ARM64)
+          </a>
+        </div>
+      </div>
+
+      <h2 style="color:var(--fg); font-size:1.5rem; margin:2rem 0 1rem;">Build Notes</h2>
+      
+      <div style="border:1px solid var(--border); border-radius:0.5rem; padding:1rem; background:var(--card);">
+        <h3 style="color:var(--accent); margin:0 0 0.5rem;">Vite Build on HarmonyOS (ARM64)</h3>
+        <p style="color:var(--fg-dim); font-size:0.9rem;">
+          Building the frontend (<code>vite build</code>) directly on HarmonyOS ARM64 requires special setup:
+        </p>
+        <ul style="color:var(--muted); font-size:0.85rem; line-height:1.6;">
+          <li><strong>Node.js:</strong> Use harmonybrew Node.js v26.3.1 (system Node.js v24.13.0 has <code>__errno_location</code> crash)</li>
+          <li><strong>npm:</strong> Run via <code>node npm-cli.js</code> (npm binary crashes on HarmonyOS)</li>
+          <li><strong>Native bindings:</strong> Must be code-signed with <code>binary-sign-tool sign -selfSign 1</code></li>
+          <li><strong>lightningcss:</strong> Use WASM fallback (<code>lightningcss-wasm</code>) - native binding needs <code>libgcc_s.so.1</code> which is missing on HarmonyOS</li>
+          <li><strong>Node.js permission model:</strong> Must add <code>--permission --allow-addons --allow-fs-read=* --allow-fs-write=* --allow-child-process --allow-worker</code></li>
+          <li><strong>package.json:</strong> Remove <code>"os"</code> field to allow installation on OpenHarmony platform</li>
+        </ul>
+        <p style="color:var(--fg-dim); font-size:0.85rem; margin-top:0.5rem;">
+          See <a href="https://gitcode.com/A9iska/psychopy-oh/blob/v0.1.3_OHOS_arm64_dev_1/BUILD_ON_ARM64.md" style="color:var(--cyan);">BUILD_ON_ARM64.md</a> for full guide.
+        </p>
+      </div>
+
+      <div style="border:1px solid var(--border); border-radius:0.5rem; padding:1rem; margin-top:1rem; background:var(--card);">
+        <h3 style="color:var(--cyan); margin:0 0 0.5rem;">x86 Build (Standard)</h3>
+        <p style="color:var(--fg-dim); font-size:0.9rem;">
+          Standard build on Windows/macOS/Linux PC:
+        </p>
+        <ol style="color:var(--muted); font-size:0.85rem; line-height:1.6;">
+          <li><code>ohpm install</code></li>
+          <li><code>npm install && npx vite build</code> (in <code>web_engine/.../resources/app</code>)</li>
+          <li><code>hvigorw --mode module -p module=web_engine@default,electron@default assembleHar assembleHap</code></li>
+        </ol>
+      </div>
+
+      <h2 style="color:var(--fg); font-size:1.5rem; margin:2rem 0 1rem;">2026-06-25 Debug Log</h2>
+      
+      <div style="font-size:0.85rem; color:var(--muted); line-height:1.8; border:1px solid var(--border); border-radius:0.5rem; padding:1rem; background:var(--card);">
+        <div><strong style="color:var(--accent);">09:00</strong> Node.js __errno_location crash on HongMeng Kernel 1.12.0</div>
+        <div style="padding-left:1rem;">Solution: Use harmonybrew Node.js v26.3.1 (compiled with --dest-os=openharmony)</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">09:30</strong> npm EBADPLATFORM on OpenHarmony</div>
+        <div style="padding-left:1rem;">Solution: Remove "os" field from package.json; use node npm-cli.js directly</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">10:00</strong> dlopen Permission denied for .node addons</div>
+        <div style="padding-left:1rem;">Root cause: HarmonyOS security policy blocks unsigned ELF libraries</div>
+        <div style="padding-left:1rem;">Solution: binary-sign-tool sign -selfSign 1</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">10:30</strong> lightningcss fails: libgcc_s.so.1 not found</div>
+        <div style="padding-left:1rem;">Root cause: HarmonyOS uses clang/LLVM, no GCC runtime</div>
+        <div style="padding-left:1rem;">Solution: Replace with lightningcss-wasm (WASM fallback, no native deps)</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">11:00</strong> Node.js permission model blocks build</div>
+        <div style="padding-left:1rem;">Solution: --permission --allow-addons --allow-fs-read=* --allow-fs-write=* --allow-child-process --allow-worker</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">11:30</strong> SVG icons not showing (CSS variable issue)</div>
+        <div style="padding-left:1rem;">Root cause: <use href> loads SVG as external document, CSS vars don't inherit</div>
+        <div style="padding-left:1rem;">Solution: fetch() SVG content + inline via {@html svgContent}</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">12:00</strong> Components panel stuck "Loading..."</div>
+        <div style="padding-left:1rem;">Root cause: pending.components = never-resolving Promise; python.liaison.send throws</div>
+        <div style="padding-left:1rem;">Solution: Promise.resolve() + liaison.send returns placeholder string</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">13:00</strong> ERR_REQUIRE_ESM in CJS file</div>
+        <div style="padding-left:1rem;">Root cause: index.cjs uses require() on ES modules (project has "type":"module")</div>
+        <div style="padding-left:1rem;">Solution: async IIFE with await import()</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">14:00</strong> App icon and name not updated</div>
+        <div style="padding-left:1rem;">Solution: AppScope string.json "Electron" -> "PsychoPy Studio"</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">14:30</strong> No native window title bar</div>
+        <div style="padding-left:1rem;">Root cause: WebBaseAbility.ets hideTitleBar=true</div>
+        <div style="padding-left:1rem;">Solution: hideTitleBar=false</div>
+        
+        <div style="margin-top:0.5rem;"><strong style="color:var(--accent);">15:00-16:00</strong> Builder-Coder/Runner IPC sync</div>
+        <div style="padding-left:1rem;">Issue: showWindow() window.location.href redirect destroyed state</div>
+        <div style="padding-left:1rem;">Partial fix: removed redirect; openIn() now passes filePath via URL parameter</div>
+        <div style="padding-left:1rem;">Remaining: onMount() with ?fileOpen= not triggering; Electron IPC timing</div>
+      </div>
     </div><footer class="border-t py-14 relative z-10" style="border-color:var(--border)">
   <div class="max-w-7xl mx-auto px-6">
     <div class="grid md:grid-cols-12 gap-10">
