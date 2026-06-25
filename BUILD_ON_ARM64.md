@@ -1,124 +1,141 @@
-# HarmonyOS ARM64 本机构建指南
+# HarmonyOS ARM64 本机构建 & 问题解决攻略
 
 ## 概述
 
-本指南记录了在 HarmonyOS ARM64（aarch64）设备上成功自构建 PsychoPy Studio 前端（`dist/`）的全流程。通过本指南，你可以在鸿蒙设备上独立完成前端编译，无需依赖 x86 构建机。
+本指南记录了在 **HarmonyOS ARM64（aarch64）** 设备上成功自构建 PsychoPy Studio 的全流程经验。涵盖从环境搭建、前端编译、代码签名到常见问题解决的完整攻略。
 
-**适用设备**：HarmonyOS 5.0+ / HongMeng Kernel 1.12+，arm64 架构
-
----
-
-## 前提条件
-
-- HarmonyOS 设备（已安装 harmonybrew）
-- Node.js v26.3.1（通过 harmonybrew 安装）
-- DevEco Studio / hvigor 工具链
-- 网络连接（用于 npm 下载依赖）
+**适用设备**：HarmonyOS 5.0+ / HongMeng Kernel 1.12+，arm64 架构  
+**最后更新**：2026-06-25
 
 ---
 
-## 步骤 1：准备环境
+## 目录
 
-### 1.1 确认 Node.js
+1. [环境搭建](#1-环境搭建)
+2. [前端构建（Vite on HarmonyOS）](#2-前端构建vite-on-harmonyos)
+3. [签名 Native Binding](#3-签名-native-binding)
+4. [开发工作流：每改必重编](#4-开发工作流每改必重编)
+5. [Python 后端暂替方案](#5-python-后端暂替方案)
+6. [常见问题](#6-常见问题)
+7. [TODO：连接后端时需恢复的改动](#7-todo连接后端时需恢复的改动)
 
+---
+
+## 1. 环境搭建
+
+### 1.1 工具链
+
+| 工具 | 路径 | 说明 |
+|------|------|------|
+| Node.js | `/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node` | 通过 harmonybrew 安装 |
+| npm CLI | `/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/lib/node_modules/npm/bin/npm-cli.js` | 绕过 `npm` 二进制崩溃 |
+| binary-sign-tool | `/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool` | 用于签名 `.node` 原生模块 |
+| hvigor | `/data/app/hvigor.org/hvigor_1.0.0/bin/hvigorw.js` | 鸿蒙 HAP 构建工具 |
+| SDK | harmonybrew ohos-sdk 26.0.0.18 | HarmonyOS SDK |
+
+### 1.2 Node.js 说明
+
+**不要使用** `/data/service/hnp/bin/node`（v24.13.0）—— 它有 `__errno_location` 断言崩溃 bug。
+
+**必须使用** harmonybrew 编译的 Node.js v26.3.1：
 ```bash
-# 使用 harmonybrew 的 Node.js（系统 Node.js 有 __errno_location bug）
 export NODE="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node"
 export NPM_CLI="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/lib/node_modules/npm/bin/npm-cli.js"
-
-$NODE --version
-# 应输出: v26.3.1
 ```
 
-> **注意**：不要使用 `/data/service/hnp/bin/node`（v24.13.0），它有 `__errno_location` 断言崩溃 bug。
+这个版本通过 `--dest-os=openharmony --partly-static` 编译参数适配了 HarmonyOS。
 
-### 1.2 确认 binary-sign-tool
-
-```bash
-/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool
-# 应显示 USAGE 信息
-```
-
-`binary-sign-tool` 用于给 Node.js 原生 `.node` addon 文件添加 HarmonyOS 代码签名，绕过系统安全策略对 `dlopen` 的限制。
+> **`npm` 二进制文件在 HarmonyOS 上会崩溃**（同样是 `__errno_location` 问题），必须用 `node npm-cli.js` 替代。
 
 ---
 
-## 步骤 2：配置前端项目
+## 2. 前端构建（Vite on HarmonyOS）
+
+### 2.1 完整构建命令
 
 ```bash
 cd web_engine/src/main/resources/resfile/resources/app
-```
 
-### 2.1 修复 package.json
-
-HarmonyOS 被 npm 检测为 `openharmony` 系统，而 `package.json` 的 `"os"` 字段限制为 `darwin,linux,win32`。需要移除该限制：
-
-```bash
+# 1. 移除 package.json 的 os 限制
 $NODE -e "
 const pkg = require('./package.json');
 delete pkg.os;
 delete pkg.optionalDependencies;
 require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-console.log('✅ os 限制已移除');
 "
-```
 
-### 2.2 确保 static/ 目录存在
-
-```bash
-ls static/ 2>/dev/null || echo "static/ 缺失，需要从源仓库复制"
-```
-
-如果缺失，从 psychopy-oh 仓库的 `web_engine/.../resources/app/static/` 复制。
-
----
-
-## 步骤 3：安装依赖
-
-```bash
-cd web_engine/src/main/resources/resfile/resources/app
-
-# 用 node 直跑 npm-cli.js（绕过 npm 二进制文件的崩溃 bug）
+# 2. 安装依赖
 $NODE "$NPM_CLI" install
+
+# 3. 签名 rolldown binding（见第3节）
+
+# 4. 替换 lightningcss 为 WASM（见第3节）
+
+# 5. 构建前端
+$NODE \
+  --permission \
+  --allow-addons \
+  --allow-fs-read=* \
+  --allow-fs-write=* \
+  --allow-child-process \
+  --allow-worker \
+  ./node_modules/.bin/vite build
 ```
 
-预期输出：
+### 2.2 `node --permission` 参数说明
+
+HarmonyOS 的 Node.js 启用了实验性权限模型，需要显式授权：
+
+| 参数 | 用途 |
+|------|------|
+| `--permission` | 启用权限模型 |
+| `--allow-addons` | 允许加载原生 `.node` addon（已签名的 rolldown binding） |
+| `--allow-fs-read=*` | 允许读取所有文件 |
+| `--allow-fs-write=*` | 允许写入文件 |
+| `--allow-child-process` | 允许子进程（CSS 等处理需要） |
+| `--allow-worker` | 允许 Worker 线程（SvelteKit 编译需要） |
+
+### 2.3 构建产出
+
 ```
-added 198 packages in 4s
+✓ 668 modules transformed.
+✓ built in 10.50s
+Wrote site to "./dist"
+✔ done
 ```
+
+产出目录：`dist/`（约 9.7MB）
 
 ---
 
-## 步骤 4：签名 Native Binding
+## 3. 签名 Native Binding
 
-npm 安装的某些原生 binding 缺少 HarmonyOS 代码签名，导致 `dlopen` 被系统拦截（`Permission denied`）。
+### 3.1 为什么需要签名
 
-### 4.1 签名 rolldown binding
+HarmonyOS 的安全框架要求动态加载的共享库（`dlopen`）必须有代码签名。未经签名的 `.node` 文件会报 `ERR_DLOPEN_FAILED` / `Permission denied`。
+
+### 3.2 签名 rolldown
 
 ```bash
-# 检查 binding 是否存在
-ls node_modules/@rolldown/binding-openharmony-arm64/
+SIGN_TOOL="/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool"
+BINDING="node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node"
 
-# 签名
-/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool sign \
+$SIGN_TOOL sign \
   -selfSign 1 \
-  -inFile node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node \
-  -outFile node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed \
+  -inFile "$BINDING" \
+  -outFile "$BINDING.signed" \
   -signAlg SHA256withECDSA
 
-# 替换为签名版本
-mv node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node \
-   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.unsigned
-cp node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed \
-   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
-chmod +x node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
+mv "$BINDING" "$BINDING.unsigned"
+cp "$BINDING.signed" "$BINDING"
+chmod +x "$BINDING"
 ```
 
-> **原理**：`binary-sign-tool sign -selfSign 1` 会向 ELF 文件的代码段添加 HarmonyOS 兼容的签名信息，使系统安全策略允许该文件被动态加载。
+> `-selfSign 1` 使用自签名模式，不需要正式的开发者证书。
 
-### 4.2 处理 lightningcss（替换为 WASM 版本）
+### 3.3 lightningcss WASM 回退
 
-`lightningcss` 原生 binding 依赖 `libgcc_s.so.1`，而 HarmonyOS 使用 clang/LLVM 不包含此库。解决方案是使用 WASM 版本：
+`lightningcss` 原生 binding 依赖 `libgcc_s.so.1`，而 HarmonyOS 使用 clang/LLVM 不包含此库。解决方案是替换为 WASM 版本：
 
 ```bash
 # 安装 lightningcss-wasm
@@ -133,122 +150,207 @@ https.get('https://registry.npmjs.org/lightningcss-wasm/-/lightningcss-wasm-1.32
 mkdir -p node_modules/lightningcss-wasm
 tar xzf lightningcss-wasm.tgz -C node_modules/lightningcss-wasm --strip-components=1
 
-# 替换 lightningcss 入口为 WASM 版本
+# 替换 lightningcss 入口为 WASM
 cp node_modules/lightningcss/node/index.js node_modules/lightningcss/node/index.js.bak
 cat > node_modules/lightningcss/node/index.js << 'EOF'
 const wasm = require('lightningcss-wasm');
 module.exports = wasm;
 EOF
-
-# 验证
-$NODE --permission --allow-addons --allow-fs-read=* -e "
-try {
-  require('lightningcss');
-  console.log('✅ lightningcss WASM 加载成功');
-} catch(e) { console.log('❌', e.message); }
-"
 ```
 
 ---
 
-## 步骤 5：构建前端
+## 4. 开发工作流：每改必重编
 
-### 5.1 构建命令
+每次修改前端源代码后，**必须重新构建并同步到 HAP**，否则改动不会生效。
 
-```bash
-$NODE \
-  --permission \
-  --allow-addons \
-  --allow-fs-read=* \
-  --allow-fs-write=* \
-  --allow-child-process \
-  --allow-worker \
-  ./node_modules/.bin/vite build
-```
-
-> **权限标志说明**：
-> - `--permission`：启用 Node.js 权限模型
-> - `--allow-addons`：允许加载原生 addon（已签名的 rolldown binding）
-> - `--allow-fs-read=*` / `--allow-fs-write=*`：放开文件读写
-> - `--allow-child-process`：允许子进程（CSS 等处理）
-> - `--allow-worker`：允许 Worker 线程（SvelteKit 编译需要）
-
-### 5.2 预期输出
-
-```
-✓ 668 modules transformed.
-✓ built in 10.50s
-Wrote site to "./dist"
-✔ done
-```
-
-构建产物位于 `dist/` 目录，约 9.7MB。
-
----
-
-## 步骤 6：构建 HAP
+### 4.1 完整流程
 
 ```bash
-# 返回项目根目录
+# 修改源代码（如 Icon.svelte、profiles.svelte.js 等）
+vim src/lib/utils/icons/Icon.svelte
+
+# 1. 重新构建前端
+cd web_engine/src/main/resources/resfile/resources/app
+$NODE --permission --allow-addons --allow-fs-read=* --allow-fs-write=* --allow-child-process --allow-worker ./node_modules/.bin/vite build
+
+# 2. 回到项目根目录
 cd ../../../../../../../..
 
-# 清理并构建 HAP
+# 3. 清理并重新构建 web_engine HAR（打包新的 dist/）
 hvigorw clean --no-daemon
-hvigorw --mode module -p module=electron@default,web_engine@default -p product=default -p buildMode=debug assembleHap --no-daemon
+hvigorw --mode module -p module=web_engine@default -p product=default -p buildMode=debug assembleHar --no-daemon
+
+# 4. 构建 electron HAP
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+
+# 5. 安装到设备（通过 DevEco Studio 的 Run 或 hdc）
 ```
+
+### 4.2 需要重建的场景
+
+| 修改内容 | 需要重建前端？ | 需要重建 HAP？ |
+|----------|:------------:|:------------:|
+| `Icon.svelte` / `*.svelte` | ✅ | ✅ |
+| `profiles.svelte.js` / `*.js` | ✅ | ✅ |
+| `electron/src/index.cjs` | ❌ | ✅ |
+| `build-profile.json5` | ❌ | ✅ |
+| `module.json5` | ❌ | ✅ |
+| 静态资源（`static/`） | ✅ | ✅ |
+| `package.json` 依赖 | 需 `npm install` | ✅ |
+
+### 4.3 增量构建
+
+如果只改了 `electron/src/index.cjs`（主进程代码），可以跳过前端构建：
+
+```bash
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+```
+
+如果改了前端代码，必须走完整流程。
 
 ---
 
-## 故障排除
+## 5. Python 后端暂替方案
 
-### Node.js 崩溃：`Check failed: 12 == (*__errno_location())`
+当前 Python 后端尚未适配 HarmonyOS，用 IPC stub 跳过：
 
-**原因**：HarmonyOS HongMeng 内核的 `__errno_location` 实现与 glibc 不兼容。
+### 5.1 涉及的文件
 
-**解决**：使用 harmonybrew 编译的 Node.js v26.3.1（`--dest-os=openharmony --partly-static` 编译参数）。
+- `web_engine/src/main/resources/resfile/resources/app/electron/src/index.cjs`（27 个 `ipcMain.handle()` 注册）
+- `web_engine/src/main/resources/resfile/resources/app/src/lib/experiment/profiles.svelte.js`（`pending.components` 初始化）
 
-### npm install 失败：`EBADPLATFORM`
+### 5.2 当前 stub 行为
 
-**原因**：npm 检测到 `openharmony` 系统，但包限制为 `darwin/linux/win32`。
+| IPC 通道 | 行为 |
+|----------|------|
+| `python.uv.exists` | 返回 `true`（假装已安装） |
+| `python.uv.install` | 返回 `Promise.resolve(true)` |
+| `python.venv.setup` | 返回 `Promise.resolve(true)` |
+| `python.liaison.send` | 抛出错误（使前端使用本地 fallback） |
+| `python.liaison.ready` | 返回永不解析的 Promise（阻止 Python 加载） |
 
-**解决**：删除 `package.json` 中的 `"os"` 字段，或用 `node npm-cli.js` 直跑。
+### 5.3 Components 加载机制
 
-### dlopen 失败：`Permission denied`
+Components 数据加载流程：
+1. 初始加载 `fallbacks/components.json`（本地静态数据）→ 面板立即显示
+2. 如果 Python 连接成功 → 用 Python 获取的数据覆盖本地数据
+3. Python 不可用时 → `pending.components` 初始化为 `Promise.resolve()`，保持本地数据
+
+---
+
+## 6. 常见问题
+
+### 6.1 Node.js 崩溃：`Check failed: 12 == (*__errno_location())`
+
+**原因**：HarmonyOS HongMeng 内核的 thread-local errno 实现与 glibc 不兼容。
+
+**解决**：使用 harmonybrew 编译的 Node.js v26.3.1（`--dest-os=openharmony --partly-static` 编译）。
+
+### 6.2 npm install 失败：`EBADPLATFORM`
+
+**原因**：npm 检测到 `openharmony` 系统，但包的 `"os"` 字段只允许 `darwin/linux/win32`。
+
+**解决**：删除 `package.json` 中的 `"os"` 字段和 `"optionalDependencies"`。
+
+### 6.3 dlopen 失败：`Permission denied`
 
 **原因**：HarmonyOS 安全策略阻止加载未签名的 ELF 共享库。
 
 **解决**：用 `binary-sign-tool sign -selfSign 1` 签名 `.node` 文件。
 
-### dlopen 失败：`Error loading shared library libgcc_s.so.1`
+### 6.4 dlopen 失败：`Error loading shared library libgcc_s.so.1`
 
 **原因**：HarmonyOS 使用 clang/LLVM，不包含 GCC 运行时库。
 
 **解决**：将对应 native binding 替换为 WASM 版本（如 `lightningcss-wasm`）。
 
-### Access to this API has been restricted
+### 6.5 SVG 图标不显示
 
-**原因**：Node.js 权限模型未开放对应能力。
+**原因**：HarmonyOS Electron 中 SVG 通过 `<use href={url}>` 加载时，CSS 变量（`var(--outline)` 等）不从 HTML 页面继承。
 
-**解决**：添加对应的 `--allow-*` 参数。
+**解决**：修改 `Icon.svelte`，用 `fetch()` 获取 SVG 内容后内联渲染（`{@html svgContent}`），CSS 变量可正常继承。
+
+```svelte
+<!-- 修改前 -->
+<use href={url} />
+
+<!-- 修改后 -->
+<span class=icon style:width={size} style:height={size}>
+    {@html svgContent}
+</span>
+```
+
+### 6.6 Components 面板一直 "Loading..."
+
+**原因**：`pending.components` 初始化为 `Promise.withResolvers().promise`（永不解析），Python 连接失败后没有替换为已解析的 Promise。
+
+**解决**：改为 `Promise.resolve()`。
+
+```js
+// 修改前
+components: Promise.withResolvers().promise,
+
+// 修改后
+components: Promise.resolve(),  // TODO: revert when Python backend is ready
+```
 
 ---
 
-## 技术原理
+## 7. TODO：连接后端时需恢复的改动
 
-### 为什么需要签名 Native Addon
+当 Python/CPython 后端准备就绪时，需要恢复以下改动：
 
-HarmonyOS 的安全框架要求在系统加载动态共享库（`dlopen`）时，库文件必须包含有效的代码签名。未经签名的 `.node` 文件会被 `ERR_DLOPEN_FAILED` 拦截。
+### 7.1 `electron/src/index.cjs`
 
-`binary-sign-tool sign -selfSign 1` 会在 ELF 文件的 `NOTE` 段添加 HarmonyOS 兼容的签名元数据，满足系统的安全检查。
+```js
+// 1. 移除 27 个 ipcMain.handle() stubs（约第36-62行）
+// 2. 取消注释导入：
+//    const { handlers: pythonHandlers } = (await import("./python/index.js"));
+// 3. 取消注释：
+//    python: pythonHandlers,
+// 4. 恢复：
+//    ipcMain.handle("python.liaison.ready", () => Promise.resolve());
+//    ipcMain.handle("python.liaison.send", () => Promise.resolve("{}"));
+```
 
-### WASM 回退方案
+### 7.2 `src/lib/experiment/profiles.svelte.js`
 
-对于 `libgcc_s.so.1` 依赖问题（如 `lightningcss`），WASM（WebAssembly）版本是理想的替代方案。WASM 二进制完全自包含，不依赖任何系统共享库，可以在任何支持 WASM 的运行时中加载。
+```js
+// 恢复为：
+components: Promise.withResolvers().promise,
+loops: Promise.withResolvers().promise,
+devices: Promise.withResolvers().promise,
+preferences: Promise.withResolvers().promise
+```
+
+### 7.3 `src/lib/utils/icons/Icon.svelte`
+
+```svelte
+// 如果上游修复了 CSS 变量问题，可以恢复为 <use href={url}>
+```
+
+### 7.4 `web_engine/.../resources/app/package.json`
+
+```json
+// 恢复 os 字段和 optionalDependencies
+"os": ["darwin", "linux", "win32"],
+"optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "*"
+}
+```
 
 ---
 
-## 参考
+## 附录：文件位置速查
 
-- [Harmonybrew 文档：编译 Node.js addon](https://atomgit.com/Harmonybrew/docs/blob/main/zh-CN/user/featured-packages.md)
-- [binary-sign-tool 使用方法](https://atomgit.com/Harmonybrew/docs)
-- [lightningcss-wasm](https://www.npmjs.com/package/lightningcss-wasm)
+| 文件 | 路径 |
+|------|------|
+| 图标组件 | `web_engine/.../resources/app/src/lib/utils/icons/Icon.svelte` |
+| 组件加载 | `web_engine/.../resources/app/src/lib/experiment/profiles.svelte.js` |
+| 主进程 | `web_engine/.../resources/app/electron/src/index.cjs` |
+| Python IPC | `web_engine/.../resources/app/electron/src/python/index.js` |
+| 构建配置 | `build-profile.json5` |
+| HAP 产出 | `electron/build/default/outputs/default/electron-default-signed.hap` |
+| 前端构建产出 | `web_engine/.../resources/app/dist/` |
+| 前端源码 | `web_engine/.../resources/app/src/` |
