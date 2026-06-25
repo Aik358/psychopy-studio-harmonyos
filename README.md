@@ -1,12 +1,45 @@
-# PsychoPy Studio - HarmonyOS ARM64 Port v0.1.2
+# PsychoPy Studio - HarmonyOS ARM64 Port v0.1.4
 
-[简体中文](./README-CN.md)
+[简体中文](./README-CN.md) | [Project Homepage](https://A9iska.gitee.io/psychopy-oh)
 
 ## Overview
 
 **PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
 
 **Key achievement**: First successful build and run of PsychoPy Studio on **HarmonyOS ARM64 (aarch64)** native device, including frontend `dist/` compilation entirely on-device using harmonybrew toolchain.
+
+> **Latest version: v0.1.4** — switch to the `v0.1.4` branch. After downloading, configure automatic signing in DevEco Studio.
+
+## v0.1.4 Changelog (2026-06-25)
+
+### View Switching Rewrite
+
+- **NEW**: `sharedViewStore.svelte.js` — module-level reactive store for cross-view state
+- **FIX**: Switching views no longer destroys Builder/Coder/Runner state
+- **FIX**: `goto()` client-side navigation replaces full page reload
+- **FIX**: Builder experiment auto-saves on view switch, restores on return
+- **FIX**: Coder displays generated experiment code (structured JSON view)
+- **FIX**: Runner runlist preserved across view switches
+- **NEW**: Electron IPC `electron.windows.state.save/load` for cross-window sync
+- **NEW**: `preload.js` exposes `windows.state` bridge
+- **CHANGED**: `showWindow()` falls back to `goto()` navigation (when no existing window)
+- **KNOWN**: HarmonyOS native multi-window not yet implemented (postponed)
+
+### Usage
+
+```bash
+# Switch to v0.1.4 branch
+git checkout v0.1.4
+
+# Build frontend
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+cd ../../../../../../../..
+
+# Build HAP (configure automatic signing in DevEco Studio first)
+hvigorw --mode module -p module=electron@default assembleHap --no-daemon
+```
 
 ## v0.1.2 Features
 
@@ -111,9 +144,11 @@ build-profile.json5               # Hvigor build config
 
 | Branch | Description |
 |--------|-------------|
-| `v0.1.2` | Latest features with frontend fixes |
+| `v0.1.4` | **Latest** — View switching rewrite + state persistence |
+| `v0.1.3_OHOS_arm64_dev_1` | ARM64 native build (verified on device) |
+| `v0.1.3_OHOS_x86_dev_1` | x86/Windows dev branch (signing left empty) |
+| `v0.1.2` | Previous features with frontend fixes |
 | `v0.1.2-HarmonyOS-Device-Dev-Test` | ARM64 native build experiments |
-| `v0.1.1` | Previous stable version |
 
 ## License
 
@@ -122,8 +157,9 @@ build-profile.json5               # Hvigor build config
 
 ---
 
-> **Last updated: 2026-06-25**
+> **Last updated: 2026-06-25 | v0.1.4**
 > For the complete HarmonyOS ARM64 build guide including troubleshooting, native binding signing, and WASM fallbacks, see [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md).
+> Project homepage: [https://A9iska.gitee.io/psychopy-oh](https://A9iska.gitee.io/psychopy-oh)
 > For the v0.1.1 debug log, see [README-v011.md](./README-v011.md).
 
 ---

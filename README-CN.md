@@ -1,12 +1,45 @@
-# PsychoPy Studio - 鸿蒙 ARM64 移植版 v0.1.2
+# PsychoPy Studio - 鸿蒙 ARM64 移植版 v0.1.4
 
-[English](./README.md)
+[English](./README.md) | [项目首页](https://A9iska.gitee.io/psychopy-oh)
 
 ## 概述
 
 **PsychoPy Studio** 是一款开源的心理学/神经科学实验设计工具。本项目将其移植到 **HarmonyOS（鸿蒙）** 平台，通过 Electron-on-HarmonyOS 运行时，将 PsychoPy 的 Builder、Coder、Runner 打包为原生鸿蒙 HAP。
 
 **关键成果**：首次在 **HarmonyOS ARM64（aarch64）** 设备上成功构建并运行，包括在前端 `dist/` 在鸿蒙本机使用 harmonybrew 工具链完成编译。
+
+> **最新版为 v0.1.4**，请切换到 `v0.1.4` 分支获取。下载后需在 DevEco Studio 中配置自动签名。
+
+## v0.1.4 更新日志 (2026-06-25)
+
+### 视图切换全面重构
+
+- **NEW**: `sharedViewStore.svelte.js` — 模块级响应式 Store，跨视图状态持久化
+- **FIX**: 视图切换不再丢失 Builder/Coder/Runner 状态
+- **FIX**: `goto()` 客户端导航替代全页刷新
+- **FIX**: Builder 实验状态在切换视图时自动保存，返回时自动恢复
+- **FIX**: Coder 现在显示 Builder 生成的实验代码（JSON 结构化视图）
+- **FIX**: Runner 运行列表在视图切换间保持
+- **NEW**: Electron IPC `electron.windows.state.save/load` 跨窗口状态同步
+- **NEW**: `preload.js` 暴露 `windows.state` 桥接
+- **CHANGED**: `showWindow()` 回退到 `goto()` 导航（无现有窗口时）
+- **KNOWN**: 鸿蒙原生多窗口功能尚未实现（已推迟）
+
+### 使用方式
+
+```bash
+# 切换到 v0.1.4 分支
+git checkout v0.1.4
+
+# 构建前端
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+cd ../../../../../../../..
+
+# 构建 HAP（需先在 DevEco Studio 中配置自动签名）
+hvigorw --mode module -p module=electron@default assembleHap --no-daemon
+```
 
 ## v0.1.2 功能
 
@@ -65,9 +98,11 @@ hvigorw --mode module -p module=web_engine@default,electron@default -p product=d
 
 | 分支 | 说明 |
 |------|------|
-| `v0.1.2` | 最新功能 + 前端修复 |
+| `v0.1.4` | **最新** — 视图切换重构 + 状态持久化 |
+| `v0.1.3_OHOS_arm64_dev_1` | ARM64 本机构建（已在真机跑通） |
+| `v0.1.3_OHOS_x86_dev_1` | x86/Windows 开发版（签名留空） |
+| `v0.1.2` | 前端修复版本 |
 | `v0.1.2-HarmonyOS-Device-Dev-Test` | ARM64 本机构建实验 |
-| `v0.1.1` | 上一个稳定版本 |
 
 ## 许可
 
@@ -76,6 +111,7 @@ hvigorw --mode module -p module=web_engine@default,electron@default -p product=d
 
 ---
 
-> **最后更新：2026-06-25**
+> **最后更新：2026-06-25 | v0.1.4**
 > 完整鸿蒙 ARM64 构建攻略（含故障排除、原生签名、WASM 回退）见 [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md)。
+> 项目首页：[https://A9iska.gitee.io/psychopy-oh](https://A9iska.gitee.io/psychopy-oh)
 > v0.1.1 调试日志见 [README-CN-v011.md](./README-CN-v011.md)。
