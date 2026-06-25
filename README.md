@@ -15,9 +15,9 @@
 
 | Version | Date | Platform | Status |
 |---------|------|----------|--------|
-| **v0.1.3** | 2026-06-25 | HarmonyOS ARM64 | Dev — frontend builds on-device, IPC sync WIP |
-| **v0.1.2** | 2026-06-24 | x86 | Stable — full Python backend |
-| **v0.1.1** | 2026-06-23 | x86 | Legacy — initial port, SVG icon debug |
+| **v0.1.3** ⭐ | 2026-06-25 | HarmonyOS ARM64 | **Most advanced** — self-built on-device, SVG icons fixed, Components panel working, native title bar. IPC sync WIP. |
+| **v0.1.2** | 2026-06-24 | x86 (cross-compile) | HAP built on x86, same feature level as v0.1.3. Python backend not integrated. |
+| **v0.1.1** | 2026-06-23 | x86 | Legacy — initial port, SVG icon debug session. |
 
 ## v0.1.0 Features
 
