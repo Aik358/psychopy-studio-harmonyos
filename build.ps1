@@ -26,12 +26,13 @@ Write-Host "DevEco Studio found at: $devecoHome" -ForegroundColor Green
 
 # ---- Auto-detect SDK path ----
 $sdkCandidates = @(
+    "$devecoHome\sdk\default",
     "$devecoHome\sdk\default\openharmony",
     "$env:USERPROFILE\AppData\Local\Huawei\Sdk"
 )
 $sdkHome = $null
 foreach ($s in $sdkCandidates) {
-    if (Test-Path "$s\ets\oh-uni-package.json") { $sdkHome = $s; break }
+    if (Test-Path "$s\openharmony\ets\oh-uni-package.json") { $sdkHome = $s; break }
 }
 if (-not $sdkHome -and $env:DEVECO_SDK_HOME) {
     $sdkHome = $env:DEVECO_SDK_HOME
