@@ -265,7 +265,39 @@ Components 数据加载流程：
 
 **解决**：将对应 native binding 替换为 WASM 版本（如 `lightningcss-wasm`）。
 
-### 6.5 SVG 图标不显示
+### 6.5 SVG 图标不显示或按钮空白
+
+**症状**：
+- 工具栏和组件面板的 SVG 图标不显示
+- 组件列表只显示空白的按钮占位
+- 刷新按钮等 UI 元素缺失
+
+**原因**：有两种 SVG 图标加载方式：
+
+1. **外部 SVG 文件**（工具栏图标）：通过 `<use href="/icons/btn-add.svg">` 加载，CSS 变量（`var(--outline)`）不从 HTML 页面继承。
+2. **内联 SVG XML**（组件图标）：存储在 `components.json` 中的 `<svg>...</svg>` 字符串，之前被漏处理，渲染为空白。
+
+**解决**：修改 `Icon.svelte`，用 `fetch()` + 内联渲染处理两种情况的 SVG：
+
+```svelte
+let isInlineSvg = $derived(String(src).trim().startsWith('<'));
+
+$effect(() => {
+    if (!String(src).match(/.*\.(png|jpg|jpeg)/g)) {
+        if (isInlineSvg) {
+            // 内联 SVG XML - 直接使用
+            svgContent = src;
+        } else if (String(src).match(/.*\.svg/g) && url) {
+            // 外部 SVG 文件 - fetch 后内联
+            fetch(url).then(r => r.text()).then(text => {
+                svgContent = text;
+            }).catch(() => { svgError = true; });
+        }
+    }
+});
+```
+
+关键：内联 SVG 以 `<` 开头时直接赋值，`fetch()` 只用于外部 `.svg` 文件。
 
 **原因**：HarmonyOS Electron 中 SVG 通过 `<use href={url}>` 加载时，CSS 变量（`var(--outline)` 等）不从 HTML 页面继承。
 
@@ -281,18 +313,24 @@ Components 数据加载流程：
 </span>
 ```
 
-### 6.6 Components 面板一直 "Loading..."
+### 6.6 Components 面板一直 "Loading..." 或 "Failed to load"
 
-**原因**：`pending.components` 初始化为 `Promise.withResolvers().promise`（永不解析），Python 连接失败后没有替换为已解析的 Promise。
+**原因**：`pending.components` 初始化为 `Promise.withResolvers().promise`（永不解析的 Promise）。Python 连接失败后，没有替换为已解析的 Promise，面板永远在等待。
 
-**解决**：改为 `Promise.resolve()`。
+同时 `python.liaison.send` 返回字符串 `"{}"` 导致 `Object.assign` 出错。
+
+**解决**：
+1. `profiles.svelte.js`：`pending.components` 改为 `Promise.resolve()`
+2. `index.cjs`：`python.liaison.send` 改为抛出错误，使前端使用本地 fallback
+3. `index.cjs`：`python.liaison.ready` 改为 `new Promise(() => {})`（永不解析），阻止 Python 加载流程
 
 ```js
-// 修改前
-components: Promise.withResolvers().promise,
-
-// 修改后
+// profiles.svelte.js
 components: Promise.resolve(),  // TODO: revert when Python backend is ready
+
+// index.cjs
+ipcMain.handle("python.liaison.send", () => { throw new Error(...); });
+ipcMain.handle("python.liaison.ready", () => new Promise(() => {})); // TODO: revert
 ```
 
 ---
