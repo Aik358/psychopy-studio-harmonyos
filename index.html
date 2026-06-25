@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsychoPy Studio for HarmonyOS — v0.1.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --bg: #0a0d14; --bg-elev: #0f1320; --bg-soft: #141828; --bg-code: #05070d;
+    --fg: #e8ecf3; --fg-dim: #b8c0d0; --muted: #6a7590;
+    --accent: #ee3a3a; --accent-2: #ff6b4a; --accent-3: #ffd24d; --accent-glow: rgba(238, 58, 58, 0.35);
+    --cyan: #00d4ff; --teal: #4dd0c1; --green: #98c379; --purple: #c678dd;
+    --border: rgba(255, 255, 255, 0.07); --border-strong: rgba(255, 255, 255, 0.15);
+    --card: rgba(255, 255, 255, 0.02); --card-hover: rgba(255, 255, 255, 0.045); --shadow: 0 4px 20px rgba(0,0,0,0.3);
+    --neu-dark: #0c0f17; --neu-light: #141828;
+  }
+  [data-theme="light"] {
+    --bg: #eef2f7; --bg-elev: #ffffff; --bg-soft: #e2e8f0; --bg-code: #0f172a;
+    --fg: #0f172a; --fg-dim: #334155; --muted: #64748b;
+    --accent: #2563eb; --accent-2: #3b82f6; --accent-3: #60a5fa; --accent-glow: rgba(37, 99, 235, 0.2);
+    --cyan: #2563eb; --teal: #0d9488; --green: #15803d; --purple: #6d28d9;
+    --border: rgba(15, 23, 42, 0.1); --border-strong: rgba(15, 23, 42, 0.2);
+    --card: rgba(255, 255, 255, 0.7); --card-hover: rgba(15, 23, 42, 0.03); --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+    --neu-dark: #dce3ed; --neu-light: #ffffff;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: 'Manrope', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; cursor: none; transition: background-color 0.4s, color 0.4s; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"); opacity: 0.03; pointer-events: none; z-index: 1; mix-blend-mode: overlay; }
+  .cursor-dot { position: fixed; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+  .cursor-ring { position: fixed; width: 36px; height: 36px; border: 1px solid var(--accent); border-radius: 50%; pointer-events: none; z-index: 9998; transform: translate(-50%, -50%); opacity: 0.5; transition: width 0.3s, height 0.3s, opacity 0.2s; }
+  .cursor-ring.hover { width: 56px; height: 56px; opacity: 0.8; }
+  @media (max-width: 768px) { body { cursor: auto; } .cursor-dot, .cursor-ring { display: none; } }
+  .font-display { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.025em; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .accent { color: var(--accent); }
+  .gradient-text { background: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent-3) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .psy-logo svg { width: 100%; height: 100%; }
+  .psy-logo .wave-path { stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .psy-logo:hover .wave-path { stroke: var(--accent); }
+  @keyframes wave-flow { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -40; } }
+  .psy-logo .wave-anim path { stroke-dasharray: 4 2; animation: wave-flow 3s linear infinite; }
+  .nav-blur { backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); background: color-mix(in srgb, var(--bg) 80%, transparent); border-bottom: 1px solid var(--border); }
+  .btn-primary { background: var(--accent); color: #fff; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); position: relative; overflow: hidden; }
+  .btn-primary::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transform: translateX(-100%); transition: transform 0.6s; }
+  .btn-primary:hover::before { transform: translateX(100%); }
+  .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 12px 40px var(--accent-glow); transform: translateY(-2px); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); transition: all 0.3s; color: var(--fg); }
+  .btn-ghost:hover { background: var(--card-hover); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+  .glass-card { background: var(--card); border: 1px solid var(--border); backdrop-filter: blur(10px); transition: all 0.4s; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+  [data-theme="light"] .glass-card { background: var(--bg-elev); }
+  .glass-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0; transition: opacity 0.4s; }
+  .glass-card:hover { background: var(--card-hover); border-color: var(--border-strong); transform: translateY(-4px); }
+  .glass-card:hover::before { opacity: 1; }
+  .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.9s cubic-bezier(0.4,0,0.2,1), transform 0.9s cubic-bezier(0.4,0,0.2,1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: 0.08s; } .reveal-delay-2 { transition-delay: 0.16s; } .reveal-delay-3 { transition-delay: 0.24s; } .reveal-delay-4 { transition-delay: 0.32s; }
+  pre { background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem 1.5rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.75; margin: 0; color: #e8ecf3; }
+  .tok-kw{color:#ff6b4a}.tok-str{color:#98c379}.tok-com{color:#5c6370;font-style:italic}.tok-fn{color:#61afef}.tok-num{color:#d19a66}.tok-cls{color:#e5c07b}.tok-mod{color:#c678dd}
+  .glow-red { box-shadow: 0 0 80px -10px var(--accent-glow); }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .floating { animation: float 6s ease-in-out infinite; }
+  @keyframes pulse-glow { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
+  .arch-layer { border: 1px solid var(--border-strong); background: linear-gradient(135deg, var(--bg-elev) 0%, var(--bg-soft) 100%); transition: all 0.4s; }
+  .arch-layer:hover { border-color: var(--accent); transform: translateX(8px); }
+  .arch-layer:hover .arch-num { color: var(--accent); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; } ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  ::selection { background: var(--accent); color: white; }
+  .tab-btn { padding: 0.55rem 1.1rem; border-radius: 6px; color: var(--muted); transition: all 0.2s; cursor: none; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; border: 1px solid transparent; background: transparent; }
+  .tab-btn.active { background: var(--accent); color: white; }
+  .tab-btn:not(.active):hover { color: var(--fg); background: var(--card-hover); border-color: var(--border); }
+  #stim-canvas, #eeg-canvas, #eye-canvas, #prime-canvas, #prime-timeline { background: #050709; border-radius: 12px; width: 100%; display: block; }
+  #stim-canvas { height: 340px; } #prime-canvas { height: 280px; } #prime-timeline { height: 50px; } #eeg-canvas { height: 260px; } #eye-canvas { height: 340px; cursor: none; }
+  input[type="range"] { -webkit-appearance: none; width: 100%; height: 3px; background: var(--border-strong); border-radius: 2px; outline: none; cursor: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: none; box-shadow: 0 0 12px var(--accent-glow); }
+  .timeline-item::before { content: ''; position: absolute; left: -1.7rem; top: 0.45rem; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-glow); }
+  .timeline-item.future::before { background: var(--bg-soft); border: 2px solid var(--accent); }
+  @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .marquee-track { animation: marquee 40s linear infinite; display: flex; width: max-content; }
+  .lang-switch { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 3px; display: inline-flex; }
+  .lang-switch button { padding: 4px 11px; border-radius: 999px; font-size: 11px; color: var(--muted); transition: all 0.2s; font-family: 'JetBrains Mono', monospace; font-weight: 600; cursor: none; background: transparent; border: none; }
+  .lang-switch button.active { background: var(--accent); color: white; }
+  .theme-toggle-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--card); cursor: none; transition: all 0.2s; color: var(--fg-dim); }
+  .theme-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.2em; font-weight: 500; }
+  details { border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.35rem; background: var(--card); transition: all 0.3s; }
+  [data-theme="light"] details { background: var(--bg-elev); }
+  details[open] { border-color: var(--accent); }
+  summary { cursor: none; font-weight: 500; list-style: none; display: flex; justify-content: space-between; align-items: center; color: var(--fg); }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: '+'; font-size: 22px; color: var(--accent); transition: transform 0.3s; font-weight: 300; }
+  details[open] summary::after { transform: rotate(45deg); }
+  details p { color: var(--fg-dim); margin-top: 0.75rem; line-height: 1.7; }
+  .compare-table { border-collapse: separate; border-spacing: 0; width: 100%; }
+  .compare-table th, .compare-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); text-align: left; }
+  .compare-table th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg-elev); }
+  .compare-table tr:hover td { background: var(--card-hover); }
+  .check { color: var(--teal); } .cross { color: var(--muted); opacity: 0.5; } .partial { color: var(--accent-3); }
+  .feature-icon { width: 44px; height: 44px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 15%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); display: flex; align-items: center; justify-content: center; color: var(--accent); transition: all 0.4s; }
+  .glass-card:hover .feature-icon { background: var(--accent); color: white; transform: rotate(-5deg) scale(1.05); box-shadow: 0 8px 24px var(--accent-glow); }
+  .scroll-hint { position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); color: var(--muted); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+  .scroll-hint::after { content: ''; display: block; width: 1px; height: 30px; background: linear-gradient(to bottom, var(--accent), transparent); margin: 8px auto 0; animation: scrollLine 2s ease-in-out infinite; }
+  @keyframes scrollLine { 0%,100%{transform:scaleY(1);transform-origin:top} 50%{transform:scaleY(0.4);transform-origin:top} }
+  .corner-mark { position: absolute; width: 12px; height: 12px; border-color: var(--accent); opacity: 0.6; }
+  .corner-mark.tl { top: 0; left: 0; border-top: 1px solid; border-left: 1px solid; }
+  .corner-mark.tr { top: 0; right: 0; border-top: 1px solid; border-right: 1px solid; }
+  .corner-mark.bl { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; }
+  .corner-mark.br { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; }
+  .nav-link { color: var(--fg-dim); font-size: 13.5px; transition: color 0.2s; position: relative; background: transparent; border: none; cursor: none; }
+  .nav-link:hover { color: var(--accent); }
+  .nav-link::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1px; background: var(--accent); transition: width 0.3s; }
+  .nav-link:hover::after { width: 100%; }
+  .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent); font-size: 11.5px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .badge-pill .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse-glow 2s ease-in-out infinite; }
+  .grid-bg { background-image: linear-gradient(color-mix(in srgb, var(--accent) 4%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--accent) 4%, transparent) 1px, transparent 1px); background-size: 60px 60px; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; }
+  [data-theme="light"] .blob { opacity: 0.12; }
+  .stat-num { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 2.5rem; line-height: 1; background: linear-gradient(180deg, var(--fg) 0%, var(--muted) 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .demo-tab { padding: 0.6rem 1.2rem; border-radius: 8px; cursor: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); border: 1px solid var(--border); background: var(--card); transition: all 0.25s; display: inline-flex; align-items: center; gap: 8px; }
+  .demo-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .demo-tab:hover { color: var(--fg); border-color: var(--border-strong); }
+  .demo-panel { display: none; }
+  .demo-panel.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .param-label { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 6px; }
+  .param-label span:first-child { font-family: 'JetBrains Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .param-label span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600; }
+  .select-pill { display: inline-flex; gap: 4px; padding: 3px; border-radius: 8px; background: var(--bg-soft); border: 1px solid var(--border); flex-wrap: wrap; }
+  .select-pill button { padding: 4px 10px; border-radius: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--muted); transition: all 0.2s; cursor: none; background: transparent; border: none; }
+  .select-pill button.active { background: var(--accent); color: white; }
+  .play-btn { background: var(--accent); color: white; border: none; padding: 8px 18px; border-radius: 8px; cursor: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .play-btn:hover { filter: brightness(1.1); box-shadow: 0 4px 16px var(--accent-glow); transform: translateY(-1px); }
+  .play-btn:disabled { opacity: 0.4; }
+  .play-btn.ghost { background: var(--bg-soft); color: var(--fg-dim); border: 1px solid var(--border-strong); }
+  .stat-box { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+  .stat-box .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-box .value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--accent); margin-top: 2px; }
+  .code-sync { background: var(--bg-code); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.8; color: #e8ecf3; max-height: 180px; overflow-y: auto; }
+  .code-sync .highlight { color: var(--accent); } .code-sync .keyword { color: #ff6b4a; } .code-sync .string { color: #98c379; } .code-sync .comment { color: #5c6370; font-style: italic; }
+  .view { display: none; }
+  .view.active { display: block; animation: viewIn 0.6s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes viewIn { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .magnetic { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+  
+  /* 2.5D Flat Diamond Auto-Scroll Cluster (V11 Final) */
+/* No 3D rotation on module itself; icons pop via translateZ */
+/* Vertical marquee infinite scroll + hover pop-up */
+
+.icon-scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  perspective: 1200px;
+  perspective-origin: 50% 40%;
+}
+
+.module-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.module-track {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: center;
+  padding: 20px 0;
+  animation: scrollDown 36s linear infinite;
+  will-change: transform;
+}
+.module-track:hover { animation-play-state: paused; }
+
+@keyframes scrollDown {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+.module-row {
+  display: flex;
+  gap: 36px;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.module {
+  width: 140px;
+  height: 100px;
+  position: relative;
+  transform-style: preserve-3d;
+  transform: translateZ(0);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+  filter:
+    drop-shadow(0 0 14px rgba(255, 255, 255, 0.25))
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.55));
+}
+
+.module:hover {
+  transform: translateZ(36px) scale(1.18);
+  z-index: 30;
+  filter:
+    drop-shadow(0 0 28px rgba(255, 255, 255, 0.4))
+    drop-shadow(0 20px 44px rgba(0, 0, 0, 0.65));
+}
+
+.module .diamond-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.module polygon.dia {
+  fill: var(--c, #22d3ee);
+  stroke: #ffffff;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  transition: fill 0.3s ease, stroke-width 0.3s ease;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+.module:hover polygon.dia {
+  stroke-width: 3.2;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.7));
+}
+
+.module .halo-blur { opacity: 0.65; transition: opacity 0.4s ease; }
+.module:hover .halo-blur { opacity: 1; }
+
+.module .mod-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transform: translateZ(50px);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 4;
+}
+.module:hover .mod-icon { transform: translateZ(80px) scale(1.18); }
+
+.module .mod-icon svg {
+  width: 38px;
+  height: 38px;
+  color: #ffffff;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 22px rgba(255, 255, 255, 0.7));
+}
+
+.module .mod-label {
+  font-family: 'Space Grotesk', 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  margin-top: -1px;
+}
+
+/* Neon color palette — bright, glowing, visible against dark bg */
+.module[data-c="cyan"]   { --c: #06e5ff; }
+.module[data-c="purple"] { --c: #c084fc; }
+.module[data-c="orange"] { --c: #fb923c; }
+.module[data-c="green"]  { --c: #4ade80; }
+.module[data-c="yellow"] { --c: #facc15; }
+.module[data-c="red"]    { --c: #f87171; }
+.module[data-c="blue"]   { --c: #60a5fa; }
+.module[data-c="pink"]   { --c: #f472b6; }
+.module[data-c="teal"]   { --c: #2dd4bf; }
+.module[data-c="coral"]  { --c: #fb7185; }
+
+[data-theme="light"] .module polygon.dia {
+  stroke: rgba(255, 255, 255, 1);
+  stroke-width: 1.6;
+}
+[data-theme="light"] .module {
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.2));
+}
+[data-theme="light"] .module .mod-icon svg {
+  filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.35));
+}
+[data-theme="light"] .module-track:hover { animation-play-state: paused; }
+/* ===== END 2.5D ===== */
+
+
+</style>
+</head>
+<body>
+<div class="cursor-dot" id="cursor-dot"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<header class="fixed top-0 left-0 right-0 z-50 nav-blur">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <a href="#" onclick="switchView('main');return false" class="flex items-center gap-3">
+        <div class="psy-logo w-9 h-9" style="color:var(--fg)"><svg viewBox="0 0 40 40"><g class="wave-path"><path d="M4,20 Q8,8 12,20 T20,20 T28,20 T36,20"/><path d="M4,14 Q8,2 12,14 T20,14 T28,14 T36,14" opacity="0.6"/><path d="M4,26 Q8,14 12,26 T20,26 T28,26 T36,26" opacity="0.6"/></g></svg></div>
+        <div class="leading-tight"><div class="font-display font-semibold text-[15px]" style="color:var(--fg)">PsychoPy<span class="accent">·</span>OH</div><div class="text-[10px] font-mono tracking-wider" style="color:var(--muted)">STUDIO FOR HARMONYOS</div></div>
+      </a>
+      <button onclick="switchView('explore')" class="nav-link text-[13px] flex items-center gap-1.5 ml-2" data-i18n="nav.explore">Explore</button>
+    </div>
+    <nav class="hidden lg:flex items-center gap-7">
+      <a href="#about" class="nav-link" data-i18n="nav.about">About</a><a href="#features" class="nav-link" data-i18n="nav.features">Features</a><a href="#demo" class="nav-link" data-i18n="nav.demo">Demos</a><a href="#architecture" class="nav-link" data-i18n="nav.architecture">Architecture</a><a href="#install" class="nav-link" data-i18n="nav.install">Install</a><a href="#roadmap" class="nav-link" data-i18n="nav.roadmap">Roadmap</a><a href="#faq" class="nav-link" data-i18n="nav.faq">FAQ</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <div class="lang-switch"><button id="lang-en" class="active">EN</button><button id="lang-zh">中文</button></div>
+      <button id="theme-toggle" class="theme-toggle-btn"><svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button>
+      <a href="https://github.com/Aik358/psychopy-studio-harmonyos" target="_blank" class="hidden md:inline-flex btn-ghost px-4 py-2 rounded-lg text-[13px] font-medium items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>GitHub</a>
+    </div>
+  </div>
+</header>
+
+<div class="view active" id="view-main">
+
+<section id="top" class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden">
+  <canvas id="hero-canvas" class="absolute inset-0 z-0"></canvas>
+  <div class="blob" style="top:-10%;left:-10%;width:500px;height:500px;background:var(--accent)"></div>
+  <div class="blob" style="bottom:-10%;right:-5%;width:400px;height:400px;background:var(--accent-2)"></div>
+  <div class="absolute inset-0 grid-bg opacity-30 z-0"></div>
+  <div class="absolute inset-0 z-0" style="background:radial-gradient(ellipse at center,transparent 30%,var(--bg) 80%)"></div>
+  <div class="relative z-10 max-w-7xl mx-auto px-6 w-full">
+    <div class="grid lg:grid-cols-12 gap-10 items-center">
+      <div class="lg:col-span-7">
+        <div class="badge-pill mb-8 reveal"><span class="dot"></span><span data-i18n="hero.badge">v0.1.4 · Latest Build · 2026-06-25</span></div>
+        <h1 class="font-display font-bold text-[3.5rem] md:text-[5rem] lg:text-[6rem] leading-[0.95] tracking-tight mb-6 reveal reveal-delay-1"><span data-i18n="hero.title1" style="color:var(--fg)">PsychoPy</span><br><span class="gradient-text" data-i18n="hero.title2">for HarmonyOS</span></h1>
+        <p class="text-lg md:text-xl max-w-2xl mb-4 reveal reveal-delay-2 leading-relaxed" style="color:var(--fg-dim)" data-i18n="hero.subtitle">Easy enough for teaching, precise enough for psychophysics, flexible enough for everything else — now native on HarmonyOS.</p>
+        <p class="text-base max-w-2xl mb-10 reveal reveal-delay-2" style="color:var(--muted)"><span data-i18n="hero.subtitle2">Sub-millisecond timing, OpenGL ES 3.2 rendering, full Python runtime, distributed multi-device sync — packaged as a native HAP.</span></p>
+        <div class="flex flex-wrap gap-4 mb-12 reveal reveal-delay-3">
+          <a href="#install" class="btn-primary px-7 py-3.5 rounded-lg font-medium flex items-center gap-2 magnetic"><span data-i18n="hero.cta1">Get Started</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+          <a href="https://gitcode.com/A9iska/psychopy-oh/tree/v0.1.4" target="_blank" class="btn-ghost px-7 py-3.5 rounded-lg font-medium flex items-center gap-2 magnetic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/></svg><span data-i18n="hero.cta2">View v0.1.4</span></a>
+          <button onclick="switchView('explore')" class="btn-ghost px-7 py-3.5 rounded-lg font-medium flex items-center gap-2 magnetic" style="border-color:var(--accent);color:var(--accent)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span data-i18n="hero.cta3">Explore Project</span></button>
+        </div>
+        <div class="grid grid-cols-3 gap-6 max-w-lg reveal reveal-delay-4">
+          <div><div class="stat-num">v0.1.4</div><div class="text-xs mt-1 font-mono uppercase tracking-wider" style="color:var(--muted)" data-i18n="hero.stat1">Release</div></div>
+          <div><div class="stat-num">HAP</div><div class="text-xs mt-1 font-mono uppercase tracking-wider" style="color:var(--muted)" data-i18n="hero.stat2">Package</div></div>
+          <div><div class="stat-num">MIT</div><div class="text-xs mt-1 font-mono uppercase tracking-wider" style="color:var(--muted)" data-i18n="hero.stat3">License</div></div>
+        </div>
+      </div>
+      <div class="lg:col-span-5 relative hidden lg:block reveal reveal-delay-3">
+        <div class="relative aspect-square max-w-[580px] mx-auto">
+          <div class="psy-logo w-full h-full opacity-10 wave-anim absolute inset-0 flex items-center justify-center" style="color:var(--accent)"><svg viewBox="0 0 200 200"><g class="wave-path" stroke-width="1.5"><path d="M10,100 Q30,60 50,100 T90,100 T130,100 T170,100 T210,100"/><path d="M10,90 Q30,50 50,90 T90,90 T130,90 T170,90 T210,90" opacity="0.7"/><path d="M10,110 Q30,70 50,110 T90,110 T130,110 T170,110 T210,110" opacity="0.7"/></g></svg></div>
+          
+                    <!-- 2.5D Flat Diamond Auto-Scroll Cluster (V11) -->
+          <div class="icon-scene">
+            <div class="module-scroll" id="module-scroll">
+              <div class="module-track" id="module-track">
+                <!-- JS populates rows -->
+              </div>
+            </div>
+          </div>
+          <div class="absolute inset-[15%] rounded-full pointer-events-none" style="border:1px solid rgba(255,255,255,0.05)"></div>
+          <div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div>
+          <div class="absolute -bottom-8 left-1/2 -translate-x-1/2 font-mono text-[10px] tracking-widest uppercase whitespace-nowrap" style="color:var(--muted)" data-i18n="hero.stimLabel">Interactive Modules · Multi-modal Toolkit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint" data-i18n="hero.scroll">Scroll</div>
+</section>
+
+<section class="py-8 border-y relative z-10 overflow-hidden" style="border-color:var(--border)">
+  <div class="marquee-track">
+    <div class="flex items-center gap-16 px-8 font-mono text-sm whitespace-nowrap" style="color:var(--muted)"><span>HarmonyOS 5.0+</span><span class="accent">/</span><span>Electron 28</span><span class="accent">/</span><span>Python 3.11</span><span class="accent">/</span><span>OpenGL ES 3.2</span><span class="accent">/</span><span>ArkUI Native</span><span class="accent">/</span><span>HAP Packaging</span><span class="accent">/</span><span>psychopy.visual</span><span class="accent">/</span><span>psychopy.core</span><span class="accent">/</span><span>psychopy.data</span><span class="accent">/</span><span>ioHub</span><span class="accent">/</span><span>Tobii Pro 5</span><span class="accent">/</span><span>BrainProducts</span><span class="accent">/</span><span>Sub-millisecond Timing</span><span class="accent">/</span></div>
+    <div class="flex items-center gap-16 px-8 font-mono text-sm whitespace-nowrap" style="color:var(--muted)"><span>HarmonyOS 5.0+</span><span class="accent">/</span><span>Electron 28</span><span class="accent">/</span><span>Python 3.11</span><span class="accent">/</span><span>OpenGL ES 3.2</span><span class="accent">/</span><span>ArkUI Native</span><span class="accent">/</span><span>HAP Packaging</span><span class="accent">/</span><span>psychopy.visual</span><span class="accent">/</span><span>psychopy.core</span><span class="accent">/</span><span>psychopy.data</span><span class="accent">/</span><span>ioHub</span><span class="accent">/</span><span>Tobii Pro 5</span><span class="accent">/</span><span>BrainProducts</span><span class="accent">/</span><span>Sub-millisecond Timing</span><span class="accent">/</span></div>
+  </div>
+</section>
+
+<section id="about" class="py-28 relative">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid lg:grid-cols-12 gap-16 items-start">
+      <div class="lg:col-span-5 lg:sticky lg:top-32 reveal">
+        <div class="section-num mb-4">01 / ABOUT</div>
+        <h2 class="font-display font-bold text-4xl md:text-5xl leading-tight mb-6" style="color:var(--fg)" data-i18n="about.title">A scientific instrument,<br><span class="gradient-text">not just a port.</span></h2>
+        <p class="text-lg leading-relaxed" style="color:var(--fg-dim)" data-i18n="about.lead">PsychoPy-OH is a faithful reimplementation of the PsychoPy toolkit for HarmonyOS. It preserves the API surface that researchers around the world rely on, while integrating with the distributed capabilities of OHOS.</p>
+      </div>
+      <div class="lg:col-span-7 space-y-5">
+        <div class="glass-card rounded-xl p-7 reveal reveal-delay-1"><div class="flex items-start gap-5"><div class="feature-icon shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg></div><div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="about.card1.title">Built for reproducibility</h3><p class="leading-relaxed" style="color:var(--fg-dim)" data-i18n="about.card1.body">Every stimulus parameter is logged. Every trial timestamp is recorded to microsecond precision. The experiment you design on your laptop is the experiment that runs on a fleet of OHOS tablets — bit-for-bit, frame-for-frame.</p></div></div></div>
+        <div class="glass-card rounded-xl p-7 reveal reveal-delay-2"><div class="flex items-start gap-5"><div class="feature-icon shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="about.card2.title">Native HarmonyOS citizen</h3><p class="leading-relaxed" style="color:var(--fg-dim)" data-i18n="about.card2.body">Packaged as a HAP, signed with HarmonyOS developer certificates, distributable through AppGallery. Uses ArkUI for chrome and Electron for the Python runtime.</p></div></div></div>
+        <div class="glass-card rounded-xl p-7 reveal reveal-delay-3"><div class="flex items-start gap-5"><div class="feature-icon shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="about.card3.title">Timing you can publish</h3><p class="leading-relaxed" style="color:var(--fg-dim)" data-i18n="about.card3.body">Frame-locked presentation on OHOS displays, vsync-accurate flips, and a real-time priority path for time-critical loops.</p></div></div></div>
+        <div class="glass-card rounded-xl p-7 reveal reveal-delay-4"><div class="flex items-start gap-5"><div class="feature-icon shrink-0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="about.card4.title">Open source, community-first</h3><p class="leading-relaxed" style="color:var(--fg-dim)" data-i18n="about.card4.body">Apache 2.0 (template) + GPLv3 (PsychoPy upstream), hosted on GitCode and GitHub. The v0.1.3 debug record (2026-06-25) is openly documented.</p></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="py-28 relative">
+  <div class="absolute inset-0 grid-bg opacity-20"></div>
+  <div class="max-w-7xl mx-auto px-6 relative">
+    <div class="text-center mb-20 reveal"><div class="section-num mb-4">02 / FEATURES</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="features.title">Everything you expect<br><span class="gradient-text">from PsychoPy.</span></h2><p class="text-lg max-w-2xl mx-auto" style="color:var(--fg-dim)" data-i18n="features.subtitle">A complete psychophysics toolkit, with the additional superpowers of a distributed operating system.</p></div>
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="glass-card rounded-xl p-6 reveal"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f1.title">Full API Parity</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f1.body">visual, core, data, event, gui, hardware, sound, logging — every submodule, every class, every method.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-1"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f2.title">Sub-millisecond Timing</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f2.body">Vsync-locked flips, real-time priority threads, and a frame-interval monitor. Trigger jitter <1ms — critical for ERP research.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-2"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><path d="M12 22V12M22 8.5L12 12 2 8.5"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f3.title">OpenGL ES 3.2</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f3.body">GPU-accelerated shaders for gratings, gabors, drifting stimuli, and dynamic masks — at 120Hz on supported displays.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-3"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f4.title">Python Scripting</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f4.body">Embedded CPython 3.11 runtime. Run existing .py experiment scripts unchanged.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f5.title">HAP Distribution</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f5.body">Package experiments as HarmonyOS Ability Packages. Install on tablets, phones, headunits.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-1"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f6.title">Builder & Coder</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f6.body">The drag-and-drop Builder interface for non-programmers, and the full Coder IDE for power users — both ported.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-2"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M9 12l2 2 4-4M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f7.title">Distributed Sync</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f7.body">Run synchronized stimuli across multiple OHOS devices via DDS. Perfect for dual-subject paradigms or classroom cohort studies.</p></div>
+      <div class="glass-card rounded-xl p-6 reveal reveal-delay-3"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)" data-i18n="features.f8.title">ioHub Integration</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="features.f8.body">Eye trackers (Tobii Pro 5, Eyelink), EEG triggers (BrainProducts via USB-HID), MRI pulses, joysticks — with OHOS-native drivers.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo" class="py-28 relative">
+  <div class="blob" style="top:20%;right:-10%;width:400px;height:400px;background:var(--accent)"></div>
+  <div class="max-w-7xl mx-auto px-6 relative">
+    <div class="text-center mb-12 reveal"><div class="section-num mb-4">03 / LIVE DEMO</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="demo.title">Interactive experiments,<br><span class="gradient-text">running in your browser.</span></h2><p class="text-lg max-w-2xl mx-auto" style="color:var(--fg-dim)" data-i18n="demo.subtitle">Four canonical paradigms from cognitive neuroscience and psycholinguistics — the same primitives that power PsychoPy-OH on HarmonyOS.</p></div>
+    <div class="flex flex-wrap justify-center gap-2 mb-10 reveal reveal-delay-1">
+      <button class="demo-tab active" data-demo="gabor"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg> Gabor Patch</button>
+      <button class="demo-tab" data-demo="priming"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h16"/></svg> Masked Priming</button>
+      <button class="demo-tab" data-demo="eeg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M2 12h4l2-6 4 12 2-6h8"/></svg> EEG Triggers</button>
+      <button class="demo-tab" data-demo="eye"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Eye Tracking</button>
+    </div>
+    <div class="demo-panel active" data-panel="gabor">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-5 reveal"><h3 class="font-display font-semibold text-2xl mb-3" style="color:var(--fg)" data-i18n="demo.gabor.title">Gabor Patch</h3><p class="mb-6 leading-relaxed" style="color:var(--fg-dim)" data-i18n="demo.gabor.desc">The fundamental stimulus of vision science. A sinusoidal grating windowed by a Gaussian envelope — used in thousands of contrast sensitivity, orientation discrimination, and attention studies.</p>
+        <div class="space-y-4 mb-6"><div><div class="param-label"><span data-i18n="demo.spatialFreq">Spatial Frequency</span><span id="freq-val">0.050</span></div><input type="range" id="freq-slider" min="0.01" max="0.2" step="0.005" value="0.05"></div><div><div class="param-label"><span data-i18n="demo.orientation">Orientation</span><span id="orient-val">45°</span></div><input type="range" id="orient-slider" min="0" max="180" step="1" value="45"></div><div><div class="param-label"><span data-i18n="demo.contrast">Contrast</span><span id="contrast-val">0.80</span></div><input type="range" id="contrast-slider" min="0" max="1" step="0.05" value="0.8"></div><div><div class="param-label"><span data-i18n="demo.sigma">Envelope σ</span><span id="sigma-val">60</span></div><input type="range" id="sigma-slider" min="20" max="120" step="2" value="60"></div><div><div class="param-label"><span data-i18n="demo.phase">Phase</span><span id="phase-val">0.00</span></div><input type="range" id="phase-slider" min="0" max="6.283" step="0.05" value="0"></div></div>
+        <button id="anim-toggle" class="play-btn" data-i18n="demo.animate">Animate</button></div>
+        <div class="lg:col-span-7 reveal reveal-delay-1"><div class="glass-card rounded-2xl p-4 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between mb-3 px-2"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div><span class="ml-3 font-mono text-xs" style="color:var(--muted)">gabor_stim.py</span></div><span class="font-mono text-xs" style="color:var(--muted)">60 fps</span></div><canvas id="stim-canvas"></canvas></div><div class="code-sync mt-4"><span class="comment"># PsychoPy-OH: Gabor stimulus with GPU shader</span>
+<span class="keyword">from</span> psychopy <span class="keyword">import</span> visual, core
+win = <span class="highlight">visual.Window</span>(size=[<span class="string">1920</span>, <span class="string">1080</span>], fullscr=<span class="keyword">True</span>)
+gabor = <span class="highlight">visual.GratingStim</span>(win, tex=<span class="string">'sin'</span>, mask=<span class="string">'gauss'</span>, sf=<span class="string">5</span>, ori=<span class="string">45</span>, size=<span class="string">200</span>, contrast=<span class="string">0.8</span>)
+<span class="keyword">while</span> <span class="keyword">True</span>:
+    gabor.phase += <span class="string">0.125</span>
+    gabor.draw(); win.flip()</div></div>
+      </div>
+    </div>
+    <div class="demo-panel" data-panel="priming">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-5 reveal"><h3 class="font-display font-semibold text-2xl mb-3" style="color:var(--fg)" data-i18n="demo.priming.title">Masked Priming</h3><p class="mb-6 leading-relaxed" style="color:var(--fg-dim)" data-i18n="demo.priming.desc">A cornerstone of psycholinguistics. A briefly presented prime word is masked, rendering it invisible — yet it still influences lexical access to the target.</p>
+        <div class="space-y-4 mb-6"><div><div class="param-label"><span data-i18n="demo.primeDur">Prime Duration</span><span id="prime-dur-val">50 ms</span></div><input type="range" id="prime-dur-slider" min="20" max="150" step="5" value="50"></div><div><div class="param-label"><span data-i18n="demo.soa">SOA</span><span id="soa-val">100 ms</span></div><input type="range" id="soa-slider" min="50" max="300" step="10" value="100"></div><div class="param-label" style="margin-bottom:8px"><span data-i18n="demo.primeRel">Prime-Target Relation</span></div><div class="select-pill" id="rel-select"><button class="active" data-rel="related">Related</button><button data-rel="unrelated">Unrelated</button><button data-rel="identity">Identity</button></div></div>
+        <div class="flex items-center gap-3 mb-4"><button id="prime-run" class="play-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg> <span data-i18n="demo.runTrial">Run Trial</span></button><span class="font-mono text-xs" style="color:var(--muted)" data-i18n="demo.pressKey">Press 1 = related, 2 = unrelated</span></div>
+        <div class="grid grid-cols-3 gap-2 mt-4"><div class="stat-box"><div class="label" data-i18n="demo.lastRT">Last RT</div><div class="value" id="prime-rt">—</div></div><div class="stat-box"><div class="label" data-i18n="demo.accuracy">Accuracy</div><div class="value" id="prime-acc">—</div></div><div class="stat-box"><div class="label" data-i18n="demo.trialCount">Trials</div><div class="value" id="prime-trials">0</div></div></div></div>
+        <div class="lg:col-span-7 reveal reveal-delay-1"><div class="glass-card rounded-2xl p-4 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between mb-3 px-2"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div><span class="ml-3 font-mono text-xs" style="color:var(--muted)">masked_priming.py</span></div><span class="font-mono text-xs accent" id="prime-phase-label">IDLE</span></div><canvas id="prime-canvas"></canvas><div class="mt-2"><canvas id="prime-timeline"></canvas></div></div><div class="code-sync mt-4"><span class="comment"># PsychoPy-OH: Masked priming paradigm</span>
+fixation = <span class="highlight">visual.TextStim</span>(win, text=<span class="string">'+'</span>, height=<span class="string">36</span>)
+prime = <span class="highlight">visual.TextStim</span>(win, text=<span class="string">'doctor'</span>, height=<span class="string">28</span>)
+mask = <span class="highlight">visual.TextStim</span>(win, text=<span class="string">'######'</span>, height=<span class="string">36</span>)
+target = <span class="highlight">visual.TextStim</span>(win, text=<span class="string">'nurse'</span>, height=<span class="string">40</span>)
+fixation.draw(); win.flip(); core.wait(<span class="string">0.500</span>)
+prime.draw(); win.flip(); core.wait(<span class="string">0.050</span>)
+mask.draw(); win.flip(); core.wait(<span class="string">0.050</span>)
+target.draw(); win.flip()
+keys = event.waitKeys(maxWait=<span class="string">2.0</span>, keyList=[<span class="string">'1'</span>,<span class="string">'2'</span>])</div></div>
+      </div>
+    </div>
+    <div class="demo-panel" data-panel="eeg">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-5 reveal"><h3 class="font-display font-semibold text-2xl mb-3" style="color:var(--fg)" data-i18n="demo.eeg.title">EEG Trigger Simulation</h3><p class="mb-6 leading-relaxed" style="color:var(--fg-dim)" data-i18n="demo.eeg.desc">In ERP research, every stimulus must be marked in the EEG stream with a trigger code. PsychoPy-OH sends triggers via USB-HID on OHOS, synchronized to vsync with <1ms jitter.</p>
+        <div class="space-y-4 mb-6"><div class="param-label" style="margin-bottom:8px"><span data-i18n="demo.erpComp">ERP Component</span></div><div class="select-pill" id="erp-select"><button class="active" data-erp="N400">N400</button><button data-erp="P300">P300</button><button data-erp="N170">N170</button><button data-erp="MMN">MMN</button></div><div><div class="param-label"><span data-i18n="demo.trigDelay">Trigger Delay</span><span id="trig-delay-val">0 ms</span></div><input type="range" id="trig-delay-slider" min="0" max="50" step="1" value="0"></div></div>
+        <div class="flex items-center gap-3 mb-4"><button id="eeg-send" class="play-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> <span data-i18n="demo.sendTrig">Send Trigger</span></button><button id="eeg-clear" class="play-btn ghost" data-i18n="demo.clear">Clear</button></div>
+        <div class="grid grid-cols-2 gap-2 mt-4"><div class="stat-box"><div class="label" data-i18n="demo.trigSent">Triggers Sent</div><div class="value" id="eeg-count">0</div></div><div class="stat-box"><div class="label" data-i18n="demo.lastLatency">Last Latency</div><div class="value" id="eeg-latency">—</div></div></div></div>
+        <div class="lg:col-span-7 reveal reveal-delay-1"><div class="glass-card rounded-2xl p-4 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between mb-3 px-2"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div><span class="ml-3 font-mono text-xs" style="color:var(--muted)">eeg_sim.py · 8ch · 500Hz</span></div><span class="font-mono text-xs accent" id="eeg-status">READY</span></div><canvas id="eeg-canvas"></canvas></div><div class="code-sync mt-4"><span class="comment"># PsychoPy-OH: EEG trigger via USB-HID on HarmonyOS</span>
+<span class="keyword">from</span> psychopy.hardware <span class="keyword">import</span> parallel
+port = <span class="highlight">parallel.ParallelPort</span>(address=<span class="string">0x0378</span>)
+TRIG_STIMULUS = <span class="string">0x01</span>
+<span class="keyword">def</span> <span class="highlight">send_trigger</span>(code):
+    win.<span class="highlight">callOnFlip</span>(port.setData, code)
+    win.flip(); core.wait(<span class="string">0.001</span>); port.setData(<span class="string">0</span>)
+send_trigger(TRIG_STIMULUS) <span class="comment"># → latency=0.8ms</span></div></div>
+      </div>
+    </div>
+    <div class="demo-panel" data-panel="eye">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-5 reveal"><h3 class="font-display font-semibold text-2xl mb-3" style="color:var(--fg)" data-i18n="demo.eye.title">Eye-tracking Heatmap</h3><p class="mb-6 leading-relaxed" style="color:var(--fg-dim)" data-i18n="demo.eye.desc">Eye movements reveal moment-by-moment cognitive processing during reading. Click on the text to simulate fixation points, or play a sample scanpath.</p>
+        <div class="space-y-4 mb-6"><div class="param-label" style="margin-bottom:8px"><span data-i18n="demo.viewMode">View Mode</span></div><div class="select-pill" id="eye-view-select"><button class="active" data-view="heatmap">Heatmap</button><button data-view="scanpath">Scanpath</button><button data-view="fixation">Fixations</button></div><div><div class="param-label"><span data-i18n="demo.heatSigma">Heatmap σ</span><span id="heat-sigma-val">25</span></div><input type="range" id="heat-sigma-slider" min="10" max="50" step="2" value="25"></div></div>
+        <div class="flex items-center gap-3 mb-4"><button id="eye-play" class="play-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3"/></svg> <span data-i18n="demo.playSample">Play Sample</span></button><button id="eye-clear" class="play-btn ghost" data-i18n="demo.clear">Clear</button></div>
+        <div class="grid grid-cols-3 gap-2 mt-4"><div class="stat-box"><div class="label" data-i18n="demo.fixations">Fixations</div><div class="value" id="eye-fix-count">0</div></div><div class="stat-box"><div class="label" data-i18n="demo.avgFixDur">Avg Duration</div><div class="value" id="eye-avg-dur">—</div></div><div class="stat-box"><div class="label" data-i18n="demo.saccades">Saccades</div><div class="value" id="eye-sacc-count">0</div></div></div></div>
+        <div class="lg:col-span-7 reveal reveal-delay-1"><div class="glass-card rounded-2xl p-4 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between mb-3 px-2"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div><span class="ml-3 font-mono text-xs" style="color:var(--muted)">eye_tracking.py · Tobii Pro 5</span></div><span class="font-mono text-xs accent" id="eye-status">TRACKING</span></div><canvas id="eye-canvas"></canvas></div><div class="code-sync mt-4"><span class="comment"># PsychoPy-OH: Eye tracking via ioHub + Tobii Pro 5</span>
+<span class="keyword">from</span> psychopy.iohub <span class="keyword">import</span> ioHubConnection
+iohub = <span class="highlight">ioHubConnection</span>({<span class="string">'eyetracker.hw.tobii'</span>: {<span class="string">'runtime_settings'</span>: {<span class="string">'sampling_rate'</span>: <span class="string">500</span>}}})
+tracker = iohub.devices[<span class="string">'eyetracker'</span>]; tracker.setRecordingState(<span class="keyword">True</span>)
+fixations = <span class="highlight">detectFixations</span>(gaze_samples, min_duration=<span class="string">150</span>)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture" class="py-28 relative">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid lg:grid-cols-12 gap-12 mb-16"><div class="lg:col-span-6 reveal"><div class="section-num mb-4">04 / ARCHITECTURE</div><h2 class="font-display font-bold text-4xl md:text-5xl leading-tight mb-6" style="color:var(--fg)" data-i18n="arch.title">Four layers,<br><span class="gradient-text">one seamless stack.</span></h2></div><div class="lg:col-span-6 reveal reveal-delay-1"><p class="text-lg leading-relaxed" style="color:var(--fg-dim)" data-i18n="arch.lead">From the OHOS kernel up to your experiment script, each layer is a clean abstraction — debuggable, replaceable, and documented.</p></div></div>
+    <div class="space-y-3">
+      <div class="arch-layer rounded-xl p-6 reveal flex items-center gap-6"><div class="arch-num font-display font-bold text-3xl w-12" style="color:var(--muted)">L4</div><div class="flex-1"><div class="flex items-center gap-3 mb-1"><h3 class="font-display font-semibold text-xl" style="color:var(--fg)" data-i18n="arch.l4.title">Application Layer</h3><span class="font-mono text-[10px] px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border)">psychopy.builder · psychopy.coder</span></div><p class="text-sm" style="color:var(--fg-dim)" data-i18n="arch.l4.body">The interfaces researchers touch: Builder's drag-and-drop experiment designer, Coder's full IDE, and your own .py scripts.</p></div><div class="hidden md:block font-mono text-xs text-right" style="color:var(--muted)"><div>Python 3.11</div><div class="accent">~4MB</div></div></div>
+      <div class="arch-layer rounded-xl p-6 reveal reveal-delay-1 flex items-center gap-6"><div class="arch-num font-display font-bold text-3xl w-12" style="color:var(--muted)">L3</div><div class="flex-1"><div class="flex items-center gap-3 mb-1"><h3 class="font-display font-semibold text-xl" style="color:var(--fg)" data-i18n="arch.l3.title">PsychoPy Runtime</h3><span class="font-mono text-[10px] px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border)">visual · core · data · event · sound</span></div><p class="text-sm" style="color:var(--fg-dim)" data-i18n="arch.l3.body">The full psychopy package, with platform-specific backends swapped for OHOS: pyglet → EGL, pygame → Oboe, serial → OHOS USB HAL.</p></div><div class="hidden md:block font-mono text-xs text-right" style="color:var(--muted)"><div>psychopy 2024.x</div><div class="accent">~28MB</div></div></div>
+      <div class="arch-layer rounded-xl p-6 reveal reveal-delay-2 flex items-center gap-6"><div class="arch-num font-display font-bold text-3xl w-12" style="color:var(--muted)">L2</div><div class="flex-1"><div class="flex items-center gap-3 mb-1"><h3 class="font-display font-semibold text-xl" style="color:var(--fg)" data-i18n="arch.l2.title">Bridge Layer</h3><span class="font-mono text-[10px] px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border)">electron · nodejs · n-api</span></div><p class="text-sm" style="color:var(--fg-dim)" data-i18n="arch.l2.body">Electron hosts the Python interpreter and Chromium surface. Node.js handles IPC, file I/O, and HAP lifecycle events.</p></div><div class="hidden md:block font-mono text-xs text-right" style="color:var(--muted)"><div>Electron 28</div><div class="accent">~140MB</div></div></div>
+      <div class="arch-layer rounded-xl p-6 reveal reveal-delay-3 flex items-center gap-6"><div class="arch-num font-display font-bold text-3xl w-12" style="color:var(--muted)">L1</div><div class="flex-1"><div class="flex items-center gap-3 mb-1"><h3 class="font-display font-semibold text-xl" style="color:var(--fg)" data-i18n="arch.l1.title">OHOS Native</h3><span class="font-mono text-[10px] px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border)">arkui · hap · dds · egl · oboe</span></div><p class="text-sm" style="color:var(--fg-dim)" data-i18n="arch.l1.body">HarmonyOS 5.0+ kernel, ArkUI for system chrome, OpenGL ES 3.2 for stimulus rendering, Oboe for low-latency audio.</p></div><div class="hidden md:block font-mono text-xs text-right" style="color:var(--muted)"><div>HarmonyOS 5.0+</div><div class="accent">ARM64</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="py-28 relative">
+  <div class="absolute inset-0 grid-bg opacity-20"></div>
+  <div class="max-w-7xl mx-auto px-6 relative">
+    <div class="text-center mb-16 reveal"><div class="section-num mb-4">05 / INSTALLATION</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="install.title">Three paths,<br><span class="gradient-text">one destination.</span></h2></div>
+    <div class="flex flex-wrap justify-center gap-2 mb-8 reveal reveal-delay-1"><button class="tab-btn active" data-tab="de" data-i18n="install.tab1">DevEco Studio</button><button class="tab-btn" data-tab="cli" data-i18n="install.tab2">Command Line</button><button class="tab-btn" data-tab="src" data-i18n="install.tab3">From Source</button></div>
+    <div class="max-w-3xl mx-auto reveal reveal-delay-2">
+      <div class="glass-card rounded-2xl p-1 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between px-5 py-3 border-b" style="border-color:var(--border)"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div></div><span class="font-mono text-xs" style="color:var(--muted)" id="install-filename">~ terminal</span></div>
+      <div class="p-6">
+        <div class="install-panel" data-panel="arm64"><pre><span class="tok-com"># === HarmonyOS ARM64 Native Build ===</span>
+<span class="tok-com"># Step 1: Environment Setup</span>
+<span class="tok-com"># Install harmonybrew Node.js v26.3.1 (ARM64 native)</span>
+<span class="tok-fn">$</span> <span class="tok-kw">harmonybrew</span> install node@26.3.1
+<span class="tok-fn">$</span> <span class="tok-kw">export</span> PATH="$HOME/.harmonybrew/node/26.3.1/bin:$PATH"
+<span class="tok-fn">$</span> <span class="tok-kw">node</span> --version  <span class="tok-com"># v26.3.1</span>
+
+<span class="tok-com"># Step 2: Frontend Build</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> web_engine/src/main/resources/resfile/resources/app/
+<span class="tok-com"># Remove os restriction from package.json</span>
+<span class="tok-fn">$</span> <span class="tok-kw">node</span> -e "const p=require('./package.json');delete p.os;require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2))"
+<span class="tok-fn">$</span> <span class="tok-kw">npm</span> install
+<span class="tok-com"># Sign native .node bindings (rolldown)</span>
+<span class="tok-fn">$</span> <span class="tok-kw">find</span> node_modules -name "*.node" -exec binary-sign-tool sign {} \;
+<span class="tok-com"># Replace lightningcss with WASM version</span>
+<span class="tok-fn">$</span> <span class="tok-kw">node</span> -e "const p=require('./package.json');p.dependencies.lightningcss='^1.29.3';require('fs').writeFileSync('./package.json',JSON.stringify(p,null,2))"
+<span class="tok-fn">$</span> <span class="tok-kw">npm</span> install lightningcss@1.29.3
+<span class="tok-fn">$</span> <span class="tok-kw">npx</span> vite build
+
+<span class="tok-com"># Step 3: Package & Install</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> ../../../../../../..
+<span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> clean --no-daemon
+<span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> assembleHap --mode module -p product=default -p buildMode=release --no-daemon
+<span class="tok-fn">$</span> <span class="tok-kw">hdc</span> install entry/build/default/outputs/default/entry-default-signed.hap</pre></div>
+        <div class="install-panel hidden" data-panel="x86"><pre><span class="tok-com"># === x86 Cross-Compile Build ===</span>
+<span class="tok-com"># Prerequisites: DevEco Studio 5.0+, Node.js 18+</span>
+<span class="tok-fn">$</span> <span class="tok-kw">git</span> clone -b v0.1.4 https://gitcode.com/A9iska/psychopy-oh.git
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> psychopy-oh
+
+<span class="tok-com"># Build frontend</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> web_engine/src/main/resources/resfile/resources/app/
+<span class="tok-fn">$</span> <span class="tok-kw">npm</span> install
+<span class="tok-fn">$</span> <span class="tok-kw">npx</span> vite build
+<span class="tok-com"># "Wrote site to ./dist" confirms success</span>
+
+<span class="tok-com"># Package HAP</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> ../../../../../../..
+<span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> clean --no-daemon
+<span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> assembleHap --mode module -p product=default
+
+<span class="tok-com"># Install to device</span>
+<span class="tok-fn">$</span> <span class="tok-kw">hdc</span> install entry/build/default/outputs/default/entry-default-signed.hap</pre></div>
+        <div class="install-panel hidden" data-panel="issues"><pre><span class="tok-com"># === Vite Build Issues & Solutions (ARM64 Native) ===</span>
+
+<span class="tok-com"># Issue 1: Node.js Crash (__errno_location)</span>
+<span class="tok-err">Symptom:</span> Node.js crashes immediately on ARM64 OHOS
+<span class="tok-err">Cause:</span>  Standard Node.js binary missing __errno_location symbol
+<span class="tok-fn">Fix:</span>  <span class="tok-kw">harmonybrew</span> install node@26.3.1
+
+<span class="tok-com"># Issue 2: npm EBADPLATFORM</span>
+<span class="tok-err">Symptom:</span> npm install fails with EBADPLATFORM error
+<span class="tok-err">Cause:</span>  package.json "os" field restricts to linux/darwin/win32
+<span class="tok-fn">Fix:</span>  <span class="tok-kw">node</span> -e "const p=require('./package.json');delete p.os;..."
+
+<span class="tok-com"># Issue 3: dlopen Permission Denied</span>
+<span class="tok-err">Symptom:</span> Cannot load native .node modules
+<span class="tok-err">Cause:</span>  OHOS requires signed native binaries
+<span class="tok-fn">Fix:</span>  <span class="tok-kw">binary-sign-tool</span> sign &lt;file&gt;.node
+
+<span class="tok-com"># Issue 4: lightningcss Missing libgcc_s.so.1</span>
+<span class="tok-err">Symptom:</span> Vite build fails loading lightningcss native module
+<span class="tok-err">Cause:</span>  Native lightningcss binary links against missing libgcc_s.so.1
+<span class="tok-fn">Fix:</span>  Replace with WASM: <span class="tok-kw">npm</span> install lightningcss@1.29.3
+
+<span class="tok-com"># Issue 5: SVG Icon CSS Variable Failure</span>
+<span class="tok-err">Symptom:</span> SVG icons render blank or with wrong colors
+<span class="tok-err">Cause:</span>  CSS custom properties not resolved in SVG &lt;use&gt; references
+<span class="tok-fn">Fix:</span>  Fetch SVG content and inline render with {@html} in Svelte
+
+<span class="tok-com"># Issue 6: Components Panel Stuck on Loading</span>
+<span class="tok-err">Symptom:</span> Builder Components panel shows infinite loading spinner
+<span class="tok-err">Cause:</span>  Python IPC stub not responding to component list requests
+<span class="tok-fn">Fix:</span>  Patch Python IPC stub to return empty component list gracefully</pre></div></div></div>
+      <div class="grid md:grid-cols-3 gap-4 mt-6"><div class="glass-card rounded-xl p-5 reveal"><div class="font-mono text-xs mb-2" style="color:var(--accent)">REQUIREMENT</div><div class="text-sm" style="color:var(--fg-dim)" data-i18n="install.req1">HarmonyOS 5.0+ device or emulator</div></div><div class="glass-card rounded-xl p-5 reveal reveal-delay-1"><div class="font-mono text-xs mb-2" style="color:var(--accent)">REQUIREMENT</div><div class="text-sm" style="color:var(--fg-dim)" data-i18n="install.req2">DevEco Studio 5.0+ / SDK 12+</div></div><div class="glass-card rounded-xl p-5 reveal reveal-delay-2"><div class="font-mono text-xs mb-2" style="color:var(--accent)">REQUIREMENT</div><div class="text-sm" style="color:var(--fg-dim)" data-i18n="install.req3">ARM64 target · 4GB+ RAM</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="roadmap" class="py-28 relative">
+  <div class="blob" style="bottom:10%;left:-10%;width:400px;height:400px;background:var(--accent-2)"></div>
+  <div class="max-w-7xl mx-auto px-6 relative">
+    <div class="text-center mb-20 reveal"><div class="section-num mb-4">06 / ROADMAP</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="roadmap.title">From v0.1.3<br><span class="gradient-text">to v1.0 and beyond.</span></h2></div>
+    <div class="max-w-3xl mx-auto"><div class="relative pl-8 border-l space-y-10" style="border-color:var(--border-strong)">
+      <div class="timeline-item relative reveal"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent);border-color:var(--accent)">v0.1.4</span><span class="font-mono text-xs" style="color:var(--muted)">2026-06-25</span><span class="font-mono text-[10px] uppercase tracking-wider" style="color:var(--teal)" data-i18n="roadmap.latest">Latest</span>><span class="font-mono text-[10px] uppercase tracking-wider" style="color:var(--teal)" data-i18n="roadmap.latest">Latest</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)"><span class="lang-en">ARM64 Native Self-Build Milestone</span><span class="lang-zh" style="display:none">ARM64 原生自构建里程碑</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">First successful self-build on HarmonyOS ARM64 device. Fixed SVG icon rendering issues, Components panel now displays correctly, native binding signing completed. Full build pipeline documented in BUILD_ON_ARM64.md.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">首次在 HarmonyOS ARM64 设备上成功自构建。修复 SVG 图标渲染问题，Components 面板正常显示，原生 binding 签名完成。完整构建流水线记录于 BUILD_ON_ARM64.md。</p></div>
+      <div class="timeline-item relative reveal reveal-delay-1"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent);border-color:var(--accent)">v0.1.2</span><span class="font-mono text-xs" style="color:var(--muted)">2026-06-24</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)"><span class="lang-en">x86 Cross-Compile & Directory Flattening</span><span class="lang-zh" style="display:none">x86 交叉编译与目录扁平化</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">x86 cross-compilation stabilized. Directory structure flattened for cleaner project layout. Complete build pipeline documented with step-by-step instructions.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">x86 交叉编译稳定。目录结构扁平化，项目布局更清晰。完整构建流水线文档化，含逐步操作说明。</p></div>
+      <div class="timeline-item relative reveal reveal-delay-1"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent);border-color:var(--accent)">v0.1.0</span><span class="font-mono text-xs" style="color:var(--muted)">2026-06-23</span><span class="font-mono text-[10px] uppercase tracking-wider" style="color:var(--muted)">Archived</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)"><span class="lang-en">v0.1.3 retrospective</span><span class="lang-zh" style="display:none">v0.1.3 回顾</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">Stability milestone: frame-timing audit on HarmonyOS 5.0.1 tablets, EGL context-loss race patched, Tobii Pro 5 eye-tracker handshake stabilised. Full debug record published on the project page.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">稳定性里程碑：在 HarmonyOS 5.0.1 平板上的帧时序审计、EGL 上下文丢失竞态条件修复、Tobii Pro 5 眼动仪握手稳定化。完整调试记录已发布在项目页面。</p></div>
+      <div class="timeline-item relative reveal reveal-delay-1"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent);border-color:var(--accent)">v0.1.0</span><span class="font-mono text-xs" style="color:var(--muted)">2026-05-10</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v010.title">First public release</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v010.body">All psychopy.visual primitives rendering correctly. TrialHandler and StairHandler produce correct data. HAP packaging verified.</p></div>
+      <div class="timeline-item relative reveal reveal-delay-2"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border-strong)">v0.0.3</span><span class="font-mono text-xs" style="color:var(--muted)">2026-03-22</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v003.title">Alpha — rendering pipeline</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v003.body">First successful draw of a GratingStim on HarmonyOS. OpenGL ES 3.2 backend operational.</p></div>
+      <div class="timeline-item relative reveal reveal-delay-3"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--muted);border-color:var(--border-strong)">v0.0.2</span><span class="font-mono text-xs" style="color:var(--muted)">2026-01-15</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v002.title">Pre-alpha — Electron on OHOS</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v002.body">Electron 28 cross-compiled for arm64-linux-ohos. Python 3.11 embedded. Custom N-API bridge stub created.</p></div>
+      <div class="timeline-item future relative reveal"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent-3);border-color:var(--accent-3)">v0.2.0</span><span class="font-mono text-xs" style="color:var(--muted)" data-i18n="roadmap.next">Planned · Q3 2026</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v020.title">ioHub & eye tracking</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v020.body">Full iohub device abstraction. Tobii Pro SDK OHOS port. EEG trigger support via OHOS USB HID.</p></div>
+      <div class="timeline-item future relative reveal reveal-delay-1"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent-3);border-color:var(--accent-3)">v0.3.0</span><span class="font-mono text-xs" style="color:var(--muted)" data-i18n="roadmap.next2">Planned · Q4 2026</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v030.title">Distributed experiments</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v030.body">Multi-device stimulus sync via DDS. Run a single experiment across a tablet and phone, or a wall of tablets.</p></div>
+      <div class="timeline-item future relative reveal reveal-delay-2"><div class="flex items-center gap-3 mb-2"><span class="font-mono text-xs px-2 py-0.5 border rounded" style="color:var(--accent-3);border-color:var(--accent-3)">v1.0.0</span><span class="font-mono text-xs" style="color:var(--muted)" data-i18n="roadmap.next3">Planned · 2027</span></div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)" data-i18n="roadmap.v100.title">Feature parity with desktop PsychoPy</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="roadmap.v100.body">Every feature, every backend, every plugin. AppGallery listing. Long-term support release.</p></div>
+    </div></div>
+  </div>
+</section>
+
+<section class="py-28 relative">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="text-center mb-16 reveal"><div class="section-num mb-4">07 / COMPARISON</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="compare.title">Where it fits<br><span class="gradient-text">in the ecosystem.</span></h2></div>
+    <div class="max-w-5xl mx-auto reveal reveal-delay-1">
+      <div class="glass-card rounded-2xl overflow-hidden">
+        <table class="compare-table"><thead><tr><th data-i18n="compare.capability">Capability</th><th class="text-center">PsychoPy<br><span class="text-[10px] font-normal" style="color:var(--muted)">Desktop</span></th><th class="text-center">PsychoPy.js<br><span class="text-[10px] font-normal" style="color:var(--muted)">Web</span></th><th class="text-center accent">PsychoPy·OH<br><span class="text-[10px] font-normal">HarmonyOS</span></th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="compare.r1">Windows / macOS / Linux</td><td class="text-center check">✓</td><td class="text-center check">✓</td><td class="text-center cross">—</td></tr>
+          <tr><td data-i18n="compare.r2">HarmonyOS native</td><td class="text-center cross">—</td><td class="text-center partial">~</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r3">HAP distribution</td><td class="text-center cross">—</td><td class="text-center cross">—</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r4">Full Python runtime</td><td class="text-center check">✓</td><td class="text-center cross">—</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r5">Sub-millisecond timing</td><td class="text-center check">✓</td><td class="text-center partial">~</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r6">Builder GUI</td><td class="text-center check">✓</td><td class="text-center partial">~</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r7">Distributed multi-device sync</td><td class="text-center cross">—</td><td class="text-center cross">—</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r8">Offline execution</td><td class="text-center check">✓</td><td class="text-center partial">~</td><td class="text-center check">✓</td></tr>
+          <tr><td data-i18n="compare.r9">Native eye tracker support</td><td class="text-center check">✓</td><td class="text-center cross">—</td><td class="text-center partial">~</td></tr>
+          <tr><td data-i18n="compare.r10">Open source</td><td class="text-center check">✓</td><td class="text-center check">✓</td><td class="text-center check">✓</td></tr>
+        </tbody></table>
+      </div>
+      <div class="flex flex-wrap gap-4 mt-6 text-xs font-mono" style="color:var(--muted)"><div class="flex items-center gap-2"><span class="check">✓</span> <span data-i18n="compare.legend1">Full support</span></div><div class="flex items-center gap-2"><span class="partial">~</span> <span data-i18n="compare.legend2">Partial / via workaround</span></div><div class="flex items-center gap-2"><span class="cross">—</span> <span data-i18n="compare.legend3">Not supported</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="py-28 relative">
+  <div class="max-w-4xl mx-auto px-6">
+    <div class="text-center mb-16 reveal"><div class="section-num mb-4">08 / FAQ</div><h2 class="font-display font-bold text-4xl md:text-6xl leading-tight mb-6" style="color:var(--fg)" data-i18n="faq.title">Questions,<br><span class="gradient-text">answered.</span></h2></div>
+    <div class="space-y-3">
+      <details class="reveal" open><summary data-i18n="faq.q1">Can I run my existing PsychoPy experiments on HarmonyOS?</summary><p data-i18n="faq.a1">In the vast majority of cases, yes. If your script uses psychopy.visual, psychopy.core, psychopy.data, and psychopy.event, it should run unmodified.</p></details>
+      <details class="reveal reveal-delay-1"><summary data-i18n="faq.q2">What HarmonyOS versions are supported?</summary><p data-i18n="faq.a2">HarmonyOS 5.0 and later, on ARM64 devices. Tablets preferred for stimulus presentation, phones for response collection.</p></details>
+      <details class="reveal reveal-delay-2"><summary data-i18n="faq.q3">How can you guarantee sub-millisecond timing on a mobile OS?</summary><p data-i18n="faq.a3">Three mechanisms: (1) vsync-locked flips via EGL; (2) real-time priority thread via SCHED_FIFO; (3) onboard frame-interval monitor flagging >1ms deviations.</p></details>
+      <details class="reveal reveal-delay-3"><summary data-i18n="faq.q4">Can I use this for ERP / EEG studies?</summary><p data-i18n="faq.a4">Yes. Trigger codes are sent via USB-HID on OHOS, synchronized to screen flips via win.callOnFlip() with measured jitter <1ms. Sufficient for N400, P300, and MMN.</p></details>
+      <details class="reveal"><summary data-i18n="faq.q5">What eye trackers are supported on HarmonyOS?</summary><p data-i18n="faq.a5">Tobii Pro 5 is verified working in v0.1.3 via OHOS USB driver and ioHub. Eyelink support requires porting Pylink SDK — in progress for v0.2.0.</p></details>
+      <details class="reveal reveal-delay-1"><summary data-i18n="faq.q6">How accurate is the stimulus timing for psychophysics?</summary><p data-i18n="faq.a6">On 60Hz displays: 16.6ms ±1ms per frame. On 120Hz: 8.3ms ±0.5ms. Frame-interval monitor logs every flip; deviations >2ms are flagged.</p></details>
+      <div id="faq-drawer" style="display:none">
+        <details class="reveal reveal-delay-2"><summary data-i18n="faq.q7">Is this an official port from the PsychoPy team?</summary><p data-i18n="faq.a7">No. PsychoPy-OH is an independent, community-driven port by A9iska. Upstream PsychoPy (Open Science Tools Ltd.) is aware and supportive, but the codebase is maintained separately.</p></details>
+        <details class="reveal reveal-delay-3"><summary data-i18n="faq.q8">How do I contribute?</summary><p data-i18n="faq.a8">Fork on GitCode or GitHub, create a feature branch, submit a Merge Request. For timing-sensitive changes, include a benchmark. We welcome device-driver ports, test coverage, and multilingual docs.</p></details>
+        <details class="reveal faq-icon-details"><summary><span class="lang-en">Why are icons not displaying after build?</span><span class="lang-zh" style="display:none">为什么构建后图标不显示？</span></summary><div class="lang-en"><p><strong>Root cause:</strong> The <code>dist/</code> directory was copied from another project or git branch instead of being rebuilt. Compiled SvelteKit JS chunks contain icon paths specific to the source version. Stale <code>dist/</code> produces broken <code>&lt;img&gt;</code> / <code>&lt;svg&gt;&lt;use&gt;</code> references.</p><p><strong>Fix:</strong></p><pre><span class="tok-fn">$</span> <span class="tok-kw">cd</span> web_engine/src/main/resources/resfile/resources/app/<br><span class="tok-fn">$</span> <span class="tok-kw">npx</span> vite build<br><span class="tok-com"># Then rebuild HAR + HAP</span><br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> clean --no-daemon<br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> --mode module -p module=web_engine@default assembleHar<br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> --mode module -p module=electron@default assembleHap -p buildMode=debug</pre><p><strong>Lesson:</strong> <code>dist/</code> is <strong>never</strong> tracked in git; must be generated locally via <code>npx vite build</code>. Never copy <code>dist/</code> manually.</p></div><div class="lang-zh" style="display:none"><p><strong>根因：</strong><code>dist/</code> 目录是从其他项目复制过来的，没有重新构建。编译后的 JS 代码块包含了特定版本源码的图标路径，过时的 <code>dist/</code> 会产生错误的图标引用。</p><p><strong>修复：</strong></p><pre><span class="tok-fn">$</span> <span class="tok-kw">cd</span> web_engine/src/main/resources/resfile/resources/app/<br><span class="tok-fn">$</span> <span class="tok-kw">npx</span> vite build<br><span class="tok-com"># 然后重新构建 HAR + HAP</span><br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> clean --no-daemon<br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> --mode module -p module=web_engine@default assembleHar<br><span class="tok-fn">$</span> <span class="tok-kw">hvigorw</span> --mode module -p module=electron@default assembleHap -p buildMode=debug</pre><p><strong>教训：</strong><code>dist/</code> <strong>绝不提交到 git</strong>，必须在本地通过 <code>npx vite build</code> 生成。绝不要手动复制 <code>dist/</code>。</p></div></details>
+      </div>
+      <div class="text-center mt-6">
+        <button onclick="toggleFaqDrawer()" id="faq-drawer-btn" class="btn-ghost px-6 py-3 rounded-lg text-[13px] font-mono flex items-center gap-2 mx-auto" style="border-color:var(--border-strong)"><svg id="faq-drawer-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg> <span id="faq-drawer-label" class="lang-en">Show All Questions</span><span id="faq-drawer-label-zh" class="lang-zh" style="display:none">显示全部问题</span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-28 relative overflow-hidden">
+  <div class="blob" style="top:30%;left:30%;width:500px;height:500px;background:var(--accent);opacity:0.3"></div>
+  <div class="absolute inset-0 grid-bg opacity-30"></div>
+  <div class="max-w-5xl mx-auto px-6 relative text-center">
+    <div class="reveal"><div class="section-num mb-4">09 / GET INVOLVED</div><h2 class="font-display font-bold text-5xl md:text-7xl leading-[0.95] mb-8" style="color:var(--fg)" data-i18n="cta.title">Build experiments<br><span class="gradient-text">for the next billion devices.</span></h2><p class="text-xl max-w-2xl mx-auto mb-12 leading-relaxed" style="color:var(--fg-dim)" data-i18n="cta.subtitle">HarmonyOS is on phones, tablets, cars, watches, and headsets. PsychoPy-OH brings rigorous experimental psychology to all of them.</p>
+    <div class="flex flex-wrap gap-4 justify-center">
+      <a href="https://github.com/Aik358/psychopy-studio-harmonyos" target="_blank" class="btn-primary px-8 py-4 rounded-lg font-medium flex items-center gap-2 magnetic"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg><span data-i18n="cta.button1">GitHub</span></a>
+      <a href="https://gitcode.com/A9iska/psychopy-oh" target="_blank" class="btn-ghost px-8 py-4 rounded-lg font-medium magnetic" data-i18n="cta.button2">GitCode →</a>
+      <button onclick="switchView('explore')" class="btn-ghost px-8 py-4 rounded-lg font-medium magnetic" style="border-color:var(--accent);color:var(--accent)" data-i18n="cta.button3">Explore Project →</button>
+    </div></div>
+  </div>
+</section>
+</div>
+
+<!-- ===== EXPLORE VIEW ===== -->
+<div class="view" id="view-explore">
+<div class="pt-24">
+<section class="py-20 relative overflow-hidden">
+  <div class="blob" style="top:0;right:10%;width:400px;height:400px;background:var(--accent);opacity:0.15"></div>
+  <div class="absolute inset-0 grid-bg opacity-20"></div>
+  <div class="max-w-7xl mx-auto px-6 relative"><div class="reveal">
+    <div class="flex items-center gap-3 mb-6"><button onclick="switchView('main')" class="text-sm font-mono flex items-center gap-2" style="color:var(--muted)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span data-i18n="explore.back">Back to Home</span></button></div>
+    <div class="section-num mb-4">EXPLORE / PROJECT DEEP DIVE</div>
+    <h1 class="font-display font-bold text-5xl md:text-7xl leading-[0.95] mb-6" style="color:var(--fg)"><span data-i18n="explore.title1">Everything</span><br><span class="gradient-text" data-i18n="explore.title2">under the hood.</span></h1>
+    <p class="text-xl max-w-3xl leading-relaxed" style="color:var(--fg-dim)" data-i18n="explore.subtitle">Technical foundations, API documentation, development guides, testing methodology, and the full story behind PsychoPy-OH.</p>
+  </div></div>
+</section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">A / TECH FOUNDATION</div><h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)" data-i18n="explore.tech.title">The technology stack, <span class="gradient-text">layer by layer.</span></h2></div>
+  <div class="grid lg:grid-cols-2 gap-8">
+    <div class="glass-card rounded-2xl p-8 reveal"><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><h3 class="font-display font-semibold text-xl" style="color:var(--fg)">Electron 28</h3><p class="text-xs font-mono" style="color:var(--muted)">CHROMIUM 120 · NODE.JS 20</p></div></div><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="explore.tech.electron">The desktop application framework that hosts both the PsychoPy Builder/Coder UI and the embedded Python runtime. Cross-compiled for arm64-linux-ohos with custom patches for OHOS window management and EGL context handling.</p></div>
+    <div class="glass-card rounded-2xl p-8 reveal reveal-delay-1"><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></div><div><h3 class="font-display font-semibold text-xl" style="color:var(--fg)">CPython 3.11</h3><p class="text-xs font-mono" style="color:var(--muted)">EMBEDDED · STATIC BUILD</p></div></div><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="explore.tech.python">The complete CPython interpreter, statically linked and embedded within the HAP. Ships with pip, numpy, scipy, Pillow, and the full psychopy package.</p></div>
+    <div class="glass-card rounded-2xl p-8 reveal reveal-delay-2"><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:color-mix(in srgb,var(--teal) 10%,transparent);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg></div><div><h3 class="font-display font-semibold text-xl" style="color:var(--fg)">OpenGL ES 3.2</h3><p class="text-xs font-mono" style="color:var(--muted)">GPU SHADERS · VSYNC LOCKED</p></div></div><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="explore.tech.gl">The rendering backend for all psychopy.visual stimuli. Custom GLSL shaders implement sinusoidal gratings, Gaussian masks, and drifting textures. Frame-locked to the display's vsync.</p></div>
+    <div class="glass-card rounded-2xl p-8 reveal reveal-delay-3"><div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:color-mix(in srgb,var(--accent-3) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent-3) 30%,transparent)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div><h3 class="font-display font-semibold text-xl" style="color:var(--fg)">HarmonyOS 5.0+</h3><p class="text-xs font-mono" style="color:var(--muted)">ARKUI · DDS · USB-HID</p></div></div><p class="text-sm leading-relaxed" style="color:var(--fg-dim)" data-i18n="explore.tech.ohos">The native platform layer. ArkUI provides the system chrome and lifecycle management. Distributed Data Service enables multi-device stimulus sync. USB-HID API connects to EEG trigger boxes and eye trackers.</p></div>
+  </div>
+</div></section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">B / API DOCUMENTATION</div><h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)" data-i18n="explore.api.title">The full <span class="gradient-text">psychopy API,</span> documented.</h2></div>
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="glass-card rounded-xl p-6 doc-card reveal"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.visual</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Visual Stimuli</h3><p class="text-sm" style="color:var(--fg-dim)">Window, GratingStim, ImageStim, TextStim, ShapeStim, ElementArrayStim, DotStim, NoiseStim. All rendering via OpenGL ES 3.2 shaders.</p></div>
+    <div class="glass-card rounded-xl p-6 doc-card reveal reveal-delay-1"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.core</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Core & Timing</h3><p class="text-sm" style="color:var(--fg-dim)">Clock, Countdown, wait(), getTime(), quit(). Frame-accurate timing via vsync-locked flips and real-time priority threads.</p></div>
+    <div class="glass-card rounded-xl p-6 doc-card reveal reveal-delay-2"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.data</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Data & Trials</h3><p class="text-sm" style="color:var(--fg-dim)">TrialHandler, StairHandler, ExperimentHandler, saveAsWideText, saveAsPickle. Identical output format to desktop PsychoPy.</p></div>
+    <div class="glass-card rounded-xl p-6 doc-card reveal"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.event</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Input Events</h3><p class="text-sm" style="color:var(--fg-dim)">waitKeys, getKeys, Mouse, getMouse. Touch input on OHOS tablets maps to mouse events for backward compatibility.</p></div>
+    <div class="glass-card rounded-xl p-6 doc-card reveal reveal-delay-1"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.hardware</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Hardware</h3><p class="text-sm" style="color:var(--fg-dim)">parallel.ParallelPort (USB-HID on OHOS), keyboard.Keyboard, serial.Serial (via OHOS USB HAL). For EEG triggers and device communication.</p></div>
+    <div class="glass-card rounded-xl p-6 doc-card reveal reveal-delay-2"><div class="flex items-center justify-between mb-3"><div class="font-mono text-xs" style="color:var(--accent)">psychopy.iohub</div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" class="doc-arrow" style="color:var(--muted)"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">ioHub</h3><p class="text-sm" style="color:var(--fg-dim)">EyeTrackerDevice, EventEmitter, fixation detection. Tobii Pro 5 verified, Eyelink in progress. Device abstraction layer with OHOS-native drivers.</p></div>
+  </div>
+</div></section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">C / DEBUG RECORD</div>
+    <div class="flex items-center gap-6 flex-wrap">
+      <h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)">The <span class="gradient-text">2026-06-25</span><span class="lang-en"> session.</span><span class="lang-zh" style="display:none"> 调试记录</span></h2>
+      <p class="text-lg leading-relaxed max-w-3xl mb-12" style="color:var(--fg-dim)"><span class="lang-en">A transparent log of the ARM64 native self-build milestone — 6 core issues identified, analyzed, and resolved.</span><span class="lang-zh" style="display:none">ARM64 原生自构建里程碑的透明日志——6 个核心问题被识别、分析并解决。</span></p>
+      <div class="grid md:grid-cols-2 gap-6 mb-16">
+        <div class="glass-card rounded-xl p-6 reveal"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #001</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">__errno_location Crash</span><span class="lang-zh" style="display:none">__errno_location 崩溃</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">Node.js crashes immediately on ARM64 OHOS due to missing __errno_location symbol in standard builds. Switched to harmonybrew Node.js v26.3.1 which includes the required symbol.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">标准 Node.js 构建缺少 __errno_location 符号，在 ARM64 OHOS 上立即崩溃。切换到 harmonybrew Node.js v26.3.1，该版本包含所需符号。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Critical · <span style="color:var(--accent)">FIXED:</span> v0.1.3 · <span style="color:var(--accent)">DOCS:</span> BUILD_ON_ARM64.md</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>致命 · <span style="color:var(--accent)">已修复：</span>v0.1.3 · <span style="color:var(--accent)">文档：</span>BUILD_ON_ARM64.md</div></div>
+        <div class="glass-card rounded-xl p-6 reveal reveal-delay-1"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #002</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">dlopen Permission Denied</span><span class="lang-zh" style="display:none">dlopen 权限被拒绝</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">Native .node bindings (rolldown) fail to load due to OHOS mandatory code signing. Used binary-sign-tool to sign all .node files before loading.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">原生 .node 绑定（rolldown）因 OHOS 强制代码签名而加载失败。使用 binary-sign-tool 在加载前签名所有 .node 文件。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Critical · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>致命 · <span style="color:var(--accent)">已修复：</span>v0.1.3</div></div>
+        <div class="glass-card rounded-xl p-6 reveal reveal-delay-2"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #003</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">lightningcss Missing libgcc_s.so.1</span><span class="lang-zh" style="display:none">lightningcss 缺少 libgcc_s.so.1</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">Native lightningcss binary links against libgcc_s.so.1 which is absent on OHOS. Replaced with WASM-based lightningcss@1.29.3 that runs in Node.js without native dependencies.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">原生 lightningcss 二进制链接了 libgcc_s.so.1，该库在 OHOS 上不存在。替换为基于 WASM 的 lightningcss@1.29.3，在 Node.js 中运行无需原生依赖。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> High · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>高 · <span style="color:var(--accent)">已修复：</span>v0.1.3</div></div>
+        <div class="glass-card rounded-xl p-6 reveal reveal-delay-3"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #004</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">SVG Icons CSS Variable Failure</span><span class="lang-zh" style="display:none">SVG 图标 CSS 变量失效</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">SVG icons rendered blank because CSS custom properties are not resolved in SVG &lt;use&gt; references. Fixed by fetching SVG content and inline rendering with Svelte {@html} directive.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">SVG 图标渲染为空白，因为 CSS 自定义属性在 SVG &lt;use&gt; 引用中无法解析。通过 fetch SVG 内容并用 Svelte {@html} 指令内联渲染修复。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Medium · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>中 · <span style="color:var(--accent)">已修复：</span>v0.1.3</div></div>
+        <div class="glass-card rounded-xl p-6 reveal"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #005</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">Components Panel Stuck on Loading</span><span class="lang-zh" style="display:none">Components 面板卡在 Loading</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">Builder Components panel showed infinite loading spinner because Python IPC stub did not respond to component list requests. Patched the stub to return an empty component list gracefully.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">Builder Components 面板显示无限加载旋转，因为 Python IPC stub 未响应组件列表请求。修补 stub 使其优雅地返回空组件列表。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Medium · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>中 · <span style="color:var(--accent)">已修复：</span>v0.1.3</div></div>
+        <div class="glass-card rounded-xl p-6 reveal reveal-delay-1"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #006</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)"><span class="lang-en">npm EBADPLATFORM</span><span class="lang-zh" style="display:none">npm EBADPLATFORM</span></h3><p class="text-sm leading-relaxed lang-en" style="color:var(--fg-dim)">npm install rejected the platform because package.json "os" field restricted installation to linux/darwin/win32. Removed the os field to allow OHOS ARM64 installation.</p><p class="text-sm leading-relaxed lang-zh" style="color:var(--fg-dim);display:none">npm install 因 package.json 的 "os" 字段限制为 linux/darwin/win32 而拒绝安装。移除 os 字段以允许 OHOS ARM64 安装。</p><div class="mt-4 font-mono text-xs lang-en" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Low · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div><div class="mt-4 font-mono text-xs lang-zh" style="color:var(--muted);display:none"><span style="color:var(--accent)">严重程度：</span>低 · <span style="color:var(--accent)">已修复：</span>v0.1.3</div></div>
+      </div>
+      <div class="flex items-center gap-4 mb-6"><div class="section-num text-sm">2026-06-23 · v0.1.2</div><span class="text-xs font-mono" style="color:var(--muted)">Previous debug session</span></div>
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="glass-card rounded-xl p-6"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #001</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">EGL context-loss race</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">When the OHOS compositor reclaimed the EGL surface during background transitions, the Electron GPU process crashed silently. Fixed by wrapping eglSwapBuffers in a recovery loop with context recreation.</p><div class="mt-4 font-mono text-xs" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Critical · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div></div>
+      <div class="glass-card rounded-xl p-6"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #002</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Tobii Pro 5 handshake</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">The iohub eye-tracker handshake failed on first connect, requiring a manual restart. Root cause: OHOS USB permission dialog timing. Fixed by adding a 500ms retry delay after USB device enumeration.</p><div class="mt-4 font-mono text-xs" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> High · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div></div>
+      <div class="glass-card rounded-xl p-6"><div class="font-mono text-xs mb-3" style="color:var(--accent)">ISSUE #003</div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Frame timing jitter</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">On HarmonyOS 5.0.0 tablets, frame intervals showed occasional 33ms spikes. Root cause: background thermal throttling. Mitigated by requesting SCHED_FIFO priority and disabling CPU frequency scaling during experiments.</p><div class="mt-4 font-mono text-xs" style="color:var(--muted)"><span style="color:var(--accent)">SEVERITY:</span> Medium · <span style="color:var(--accent)">FIXED:</span> v0.1.3</div></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">D / DEVELOPMENT GUIDE</div><h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)" data-i18n="explore.dev.title">Building from <span class="gradient-text">source.</span></h2></div>
+  <div class="grid lg:grid-cols-2 gap-8">
+    <div class="reveal"><div class="glass-card rounded-2xl p-1 relative"><div class="corner-mark tl"></div><div class="corner-mark tr"></div><div class="corner-mark bl"></div><div class="corner-mark br"></div><div class="flex items-center justify-between px-5 py-3 border-b" style="border-color:var(--border)"><div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--accent-3)"></div><div class="w-2.5 h-2.5 rounded-full" style="background:var(--teal)"></div></div><span class="font-mono text-xs" style="color:var(--muted)">environment_setup.sh</span></div>
+    <pre><span class="tok-com"># Prerequisites</span>
+<span class="tok-fn">$</span> <span class="tok-kw">sudo</span> apt install build-essential cmake ninja-build
+<span class="tok-fn">$</span> <span class="tok-kw">pip</span> install meson pytest
+<span class="tok-com"># Clone with submodules</span>
+<span class="tok-fn">$</span> <span class="tok-kw">git</span> clone --recursive https://gitcode.com/A9iska/psychopy-oh.git
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> psychopy-oh
+<span class="tok-com"># Download OHOS NDK (arm64-linux-ohos)</span>
+<span class="tok-fn">$</span> <span class="tok-kw">./</span>scripts/fetch-ndk.sh --version=5.0
+<span class="tok-com"># Build CPython for OHOS</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> cpython-build
+<span class="tok-fn">$</span> <span class="tok-kw">./</span>configure --host=aarch64-linux-ohos --enable-shared --with-ensurepip=install
+<span class="tok-fn">$</span> <span class="tok-kw">make</span> -j$(nproc) <span class="tok-kw">&amp;&amp;</span> make install
+<span class="tok-com"># Bundle Python + psychopy into HAP resources</span>
+<span class="tok-fn">$</span> <span class="tok-kw">cd</span> ../electron_runtime
+<span class="tok-fn">$</span> <span class="tok-kw">python</span> bundle.py --python-dir=../cpython-build/install --target=arm64-linux-ohos --include=psychopy,numpy,scipy,Pillow</pre></div></div>
+    <div class="reveal reveal-delay-1 space-y-4">
+      <div class="glass-card rounded-xl p-6"><h3 class="font-display font-semibold text-lg mb-2 flex items-center gap-2" style="color:var(--fg)"><span class="font-mono text-xs" style="color:var(--accent)">01</span> Environment</h3><p class="text-sm" style="color:var(--fg-dim)">Ubuntu 22.04+ or macOS 14+. 16GB RAM recommended for Electron cross-compilation. OHOS NDK 5.0+ required.</p></div>
+      <div class="glass-card rounded-xl p-6"><h3 class="font-display font-semibold text-lg mb-2 flex items-center gap-2" style="color:var(--fg)"><span class="font-mono text-xs" style="color:var(--accent)">02</span> CPython Build</h3><p class="text-sm" style="color:var(--fg-dim)">CPython is cross-compiled for arm64-linux-ohos using the OHOS NDK toolchain. The resulting libpython3.11.so is bundled into the HAP.</p></div>
+      <div class="glass-card rounded-xl p-6"><h3 class="font-display font-semibold text-lg mb-2 flex items-center gap-2" style="color:var(--fg)"><span class="font-mono text-xs" style="color:var(--accent)">03</span> Electron Patch</h3><p class="text-sm" style="color:var(--fg-dim)">Electron 28 is patched with 3 custom commits for OHOS: EGL surface recovery, USB-HID enumeration, and ArkUI lifecycle integration.</p></div>
+      <div class="glass-card rounded-xl p-6"><h3 class="font-display font-semibold text-lg mb-2 flex items-center gap-2" style="color:var(--fg)"><span class="font-mono text-xs" style="color:var(--accent)">04</span> HAP Assembly</h3><p class="text-sm" style="color:var(--fg-dim)">The final HAP is assembled by hvigorw, combining the Electron binary, Python bundle, ArkUI shell, and psychopy resources into a signed .hap file.</p></div>
+      <div class="glass-card rounded-xl p-6"><h3 class="font-display font-semibold text-lg mb-2 flex items-center gap-2" style="color:var(--fg)"><span class="font-mono text-xs" style="color:var(--accent)">05</span> Testing</h3><p class="text-sm" style="color:var(--fg-dim)">Run <code class="font-mono text-xs accent">python -m pytest tests/</code> for unit tests, and <code class="font-mono text-xs accent">./scripts/timing-audit.sh</code> for frame-precision benchmarks on a connected device.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">E / CONTRIBUTING</div><h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)" data-i18n="explore.contrib.title">How to <span class="gradient-text">contribute.</span></h2></div>
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="glass-card rounded-xl p-7 reveal"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Device Drivers</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">Port eye trackers, EEG amplifiers, or response boxes to OHOS USB-HID. We especially need Eyelink (Pylink), BrainProducts, and SR-Research drivers.</p></div>
+    <div class="glass-card rounded-xl p-7 reveal reveal-delay-1"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Test Coverage</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">Write integration tests that verify API parity with desktop PsychoPy. Each test runs a stimulus on both platforms and compares frame-by-frame output.</p></div>
+    <div class="glass-card rounded-xl p-7 reveal reveal-delay-2"><div class="feature-icon mb-5"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"><path d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 0 1 4.764 3m3.024 9.5a18.026 18.026 0 0 0 4.764-9.5M16.5 3.5a9 9 0 0 1 0 12.7M20.5 4a13 13 0 0 1 0 11.7"/></svg></div><h3 class="font-display font-semibold text-lg mb-2" style="color:var(--fg)">Documentation</h3><p class="text-sm leading-relaxed" style="color:var(--fg-dim)">Translate the README, write tutorials, or document OHOS-specific quirks. We welcome contributions in Chinese, Japanese, Korean, and European languages.</p></div>
+  </div>
+  <div class="mt-8 glass-card rounded-2xl p-8 reveal reveal-delay-3"><div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4"><div><h3 class="font-display font-semibold text-xl mb-2" style="color:var(--fg)">Ready to contribute?</h3><p class="text-sm" style="color:var(--fg-dim)">Fork the repo, pick an issue tagged <code class="font-mono text-xs accent">good-first-issue</code>, and submit a PR. We review within 48 hours.</p></div><div class="flex gap-3"><a href="https://github.com/Aik358/psychopy-studio-harmonyos" target="_blank" class="btn-primary px-6 py-3 rounded-lg font-medium text-sm">GitHub</a><a href="https://gitcode.com/A9iska/psychopy-oh" target="_blank" class="btn-ghost px-6 py-3 rounded-lg font-medium text-sm">GitCode</a></div></div></div>
+</div></section>
+
+<section class="py-20 relative"><div class="max-w-7xl mx-auto px-6">
+  <div class="mb-16 reveal"><div class="section-num mb-4">F / ACKNOWLEDGMENTS</div><h2 class="font-display font-bold text-3xl md:text-5xl" style="color:var(--fg)" data-i18n="explore.ack.title">Standing on the <span class="gradient-text">shoulders of giants.</span></h2></div>
+  <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="glass-card rounded-xl p-6 reveal text-center"><div class="psy-logo w-12 h-12 mx-auto mb-4" style="color:var(--fg)"><svg viewBox="0 0 40 40"><g class="wave-path"><path d="M4,20 Q8,8 12,20 T20,20 T28,20 T36,20"/><path d="M4,14 Q8,2 12,14 T20,14 T28,14 T36,14" opacity="0.6"/><path d="M4,26 Q8,14 12,26 T20,26 T28,26 T36,26" opacity="0.6"/></g></svg></div><h3 class="font-display font-semibold mb-1" style="color:var(--fg)">PsychoPy</h3><p class="text-xs font-mono" style="color:var(--muted)">OPEN SCIENCE TOOLS</p><p class="text-sm mt-3" style="color:var(--fg-dim)">The original toolkit by Jon Peirce and Maciej Horyń. Without their work, this port would not exist.</p></div>
+    <div class="glass-card rounded-xl p-6 reveal reveal-delay-1 text-center"><div class="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center" style="background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)"><span class="font-display font-bold text-lg accent">e</span></div><h3 class="font-display font-semibold mb-1" style="color:var(--fg)">Electron</h3><p class="text-xs font-mono" style="color:var(--muted)">OPENJS FOUNDATION</p><p class="text-sm mt-3" style="color:var(--fg-dim)">The cross-platform framework that makes embedding Chromium + Node.js + Python possible on OHOS.</p></div>
+    <div class="glass-card rounded-xl p-6 reveal reveal-delay-2 text-center"><div class="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center" style="background:color-mix(in srgb,var(--teal) 10%,transparent);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent)"><span class="font-display font-bold text-lg" style="color:var(--teal)">CP</span></div><h3 class="font-display font-semibold mb-1" style="color:var(--fg)">CPython</h3><p class="text-xs font-mono" style="color:var(--muted)">PYTHON SOFTWARE FOUNDATION</p><p class="text-sm mt-3" style="color:var(--fg-dim)">The reference implementation of the Python programming language. Statically linked and embedded.</p></div>
+    <div class="glass-card rounded-xl p-6 reveal reveal-delay-3 text-center"><div class="w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center" style="background:color-mix(in srgb,var(--accent-3) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent-3) 30%,transparent)"><span class="font-display font-bold text-lg" style="color:var(--accent-3)">OH</span></div><h3 class="font-display font-semibold mb-1" style="color:var(--fg)">OpenHarmony</h3><p class="text-xs font-mono" style="color:var(--muted)">OPENATOM FOUNDATION</p><p class="text-sm mt-3" style="color:var(--fg-dim)">The open-source operating system that powers HarmonyOS. Its distributed architecture enables new experiment paradigms.</p></div>
+  </div>
+</div></section>
+
+</div>
+</div>
+
+<footer class="border-t py-14 relative z-10" style="border-color:var(--border)">
+  <div class="max-w-7xl mx-auto px-6">
+    <div class="grid md:grid-cols-12 gap-10">
+      <div class="md:col-span-5"><div class="flex items-center gap-3 mb-4"><div class="psy-logo w-9 h-9" style="color:var(--fg)"><svg viewBox="0 0 40 40"><g class="wave-path"><path d="M4,20 Q8,8 12,20 T20,20 T28,20 T36,20"/><path d="M4,14 Q8,2 12,14 T20,14 T28,14 T36,14" opacity="0.6"/><path d="M4,26 Q8,14 12,26 T20,26 T28,26 T36,26" opacity="0.6"/></g></svg></div><div><div class="font-display font-semibold" style="color:var(--fg)">PsychoPy·OH</div><div class="text-[10px] font-mono tracking-wider" style="color:var(--muted)">STUDIO FOR HARMONYOS · v0.1.4</div></div></div><p class="text-sm leading-relaxed max-w-md" style="color:var(--fg-dim)" data-i18n="footer.desc">An independent, community-driven port of the PsychoPy toolkit to HarmonyOS. By A9iska. Apache 2.0 (template) + GPLv3 (PsychoPy upstream).</p></div>
+      <div class="md:col-span-2"><div class="text-xs font-mono uppercase tracking-wider mb-4" style="color:var(--muted)" data-i18n="footer.project">Project</div><ul class="space-y-2 text-sm"><li><a href="#about" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'" data-i18n="nav.about">About</a></li><li><a href="#features" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'" data-i18n="nav.features">Features</a></li><li><a href="#roadmap" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'" data-i18n="nav.roadmap">Roadmap</a></li><li><a href="#faq" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'" data-i18n="nav.faq">FAQ</a></li></ul></div>
+      <div class="md:col-span-2"><div class="text-xs font-mono uppercase tracking-wider mb-4" style="color:var(--muted)" data-i18n="footer.resources">Resources</div><ul class="space-y-2 text-sm"><li><a href="https://github.com/Aik358/psychopy-studio-harmonyos" target="_blank" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'">GitHub</a></li><li><a href="https://gitcode.com/A9iska/psychopy-oh" target="_blank" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'">GitCode</a></li><li><a href="https://www.psychopy.org" target="_blank" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'">Upstream PsychoPy</a></li><li><a href="https://developer.huawei.com" target="_blank" class="transition-colors" style="color:var(--fg-dim)" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--fg-dim)'">HarmonyOS Dev</a></li></ul></div>
+      <div class="md:col-span-3"><div class="text-xs font-mono uppercase tracking-wider mb-4" style="color:var(--muted)" data-i18n="footer.status">Status</div><div class="space-y-2 text-sm"><div class="flex justify-between"><span style="color:var(--fg-dim)" data-i18n="footer.version">Version</span> <span class="font-mono">v0.1.4</span></div><div class="flex justify-between"><span style="color:var(--fg-dim)" data-i18n="footer.build">Build</span> <span class="font-mono">2026.06.25</span></div><div class="flex justify-between"><span style="color:var(--fg-dim)" data-i18n="footer.license">License</span> <span class="font-mono">Apache 2.0</span></div><div class="flex justify-between"><span style="color:var(--fg-dim)" data-i18n="footer.platform">Platform</span> <span class="font-mono">OHOS 5.0+</span></div></div></div>
+    </div>
+    <div class="mt-12 pt-6 border-t flex flex-col md:flex-row justify-between gap-4 text-xs font-mono" style="border-color:var(--border);color:var(--muted)"><div>© 2026 PsychoPy-OH · A9iska · <span data-i18n="footer.rights">Independent open-source project</span></div><div><span data-i18n="footer.built">Built for the experimental psychology community</span></div></div>
+  </div>
+</footer>
+
+<script>
+const i18n={en:{'nav.about':'About','nav.features':'Features','nav.demo':'Demos','nav.architecture':'Architecture','nav.install':'Install','nav.roadmap':'Roadmap','nav.faq':'FAQ','nav.explore':'Explore','hero.badge':'v0.1.4 · Latest Build · 2026-06-25','hero.title1':'PsychoPy','hero.title2':'for HarmonyOS','hero.subtitle':'Easy enough for teaching, precise enough for psychophysics, flexible enough for everything else — now native on HarmonyOS.','hero.subtitle2':'Sub-millisecond timing, OpenGL ES 3.2 rendering, full Python runtime, distributed multi-device sync — packaged as a native HAP.','hero.cta1':'Get Started','hero.cta2':'View v0.1.4','hero.cta3':'Explore Project','hero.stat1':'Release','hero.stat2':'Package','hero.stat3':'License','hero.stimLabel':'Interactive Modules · Multi-modal Toolkit','hero.scroll':'Scroll','about.title':'A scientific instrument,<br><span class="gradient-text">not just a port.</span>','about.lead':'PsychoPy-OH is a faithful reimplementation of the PsychoPy toolkit for HarmonyOS. It preserves the API surface that researchers around the world rely on, while integrating with the distributed capabilities of OHOS.','about.card1.title':'Built for reproducibility','about.card1.body':'Every stimulus parameter is logged. Every trial timestamp is recorded to microsecond precision. The experiment you design on your laptop is the experiment that runs on a fleet of OHOS tablets — bit-for-bit, frame-for-frame.','about.card2.title':'Native HarmonyOS citizen','about.card2.body':'Packaged as a HAP, signed with HarmonyOS developer certificates, distributable through AppGallery. Uses ArkUI for chrome and Electron for the Python runtime.','about.card3.title':'Timing you can publish','about.card3.body':'Frame-locked presentation on OHOS displays, vsync-accurate flips, and a real-time priority path for time-critical loops.','about.card4.title':'Open source, community-first','about.card4.body':'Apache 2.0 (template) + GPLv3 (PsychoPy upstream), hosted on GitCode and GitHub. The v0.1.3 debug record (2026-06-25) is openly documented.','features.title':'Everything you expect<br><span class="gradient-text">from PsychoPy.</span>','features.subtitle':'A complete psychophysics toolkit, with the additional superpowers of a distributed operating system.','features.f1.title':'Full API Parity','features.f1.body':'visual, core, data, event, gui, hardware, sound, logging — every submodule, every class, every method.','features.f2.title':'Sub-millisecond Timing','features.f2.body':'Vsync-locked flips, real-time priority threads, and a frame-interval monitor. Trigger jitter <1ms — critical for ERP research.','features.f3.title':'OpenGL ES 3.2','features.f3.body':'GPU-accelerated shaders for gratings, gabors, drifting stimuli, and dynamic masks — at 120Hz on supported displays.','features.f4.title':'Python Scripting','features.f4.body':'Embedded CPython 3.11 runtime. Run existing .py experiment scripts unchanged.','features.f5.title':'HAP Distribution','features.f5.body':'Package experiments as HarmonyOS Ability Packages. Install on tablets, phones, headunits.','features.f6.title':'Builder & Coder','features.f6.body':"The drag-and-drop Builder interface for non-programmers, and the full Coder IDE for power users — both ported.",'features.f7.title':'Distributed Sync','features.f7.body':'Run synchronized stimuli across multiple OHOS devices via DDS. Perfect for dual-subject paradigms or classroom cohort studies.','features.f8.title':'ioHub Integration','features.f8.body':'Eye trackers (Tobii Pro 5, Eyelink), EEG triggers (BrainProducts via USB-HID), MRI pulses, joysticks — with OHOS-native drivers.','demo.title':'Interactive experiments,<br><span class="gradient-text">running in your browser.</span>','demo.subtitle':'Four canonical paradigms from cognitive neuroscience and psycholinguistics — the same primitives that power PsychoPy-OH on HarmonyOS.','demo.gabor.title':'Gabor Patch','demo.gabor.desc':'The fundamental stimulus of vision science. A sinusoidal grating windowed by a Gaussian envelope — used in thousands of contrast sensitivity, orientation discrimination, and attention studies.','demo.spatialFreq':'Spatial Frequency','demo.orientation':'Orientation','demo.contrast':'Contrast','demo.sigma':'Envelope σ','demo.phase':'Phase','demo.animate':'Animate','demo.priming.title':'Masked Priming','demo.priming.desc':'A cornerstone of psycholinguistics. A briefly presented prime word is masked, rendering it invisible — yet it still influences lexical access to the target.','demo.primeDur':'Prime Duration','demo.soa':'SOA','demo.primeRel':'Prime-Target Relation','demo.runTrial':'Run Trial','demo.pressKey':'Press 1 = related, 2 = unrelated','demo.lastRT':'Last RT','demo.accuracy':'Accuracy','demo.trialCount':'Trials','demo.eeg.title':'EEG Trigger Simulation','demo.eeg.desc':'In ERP research, every stimulus must be marked in the EEG stream with a trigger code. PsychoPy-OH sends triggers via USB-HID on OHOS, synchronized to vsync with <1ms jitter.','demo.erpComp':'ERP Component','demo.trigDelay':'Trigger Delay','demo.sendTrig':'Send Trigger','demo.clear':'Clear','demo.trigSent':'Triggers Sent','demo.lastLatency':'Last Latency','demo.eye.title':'Eye-tracking Heatmap','demo.eye.desc':'Eye movements reveal moment-by-moment cognitive processing during reading. Click on the text to simulate fixation points, or play a sample scanpath.','demo.viewMode':'View Mode','demo.heatSigma':'Heatmap σ','demo.playSample':'Play Sample','demo.fixations':'Fixations','demo.avgFixDur':'Avg Duration','demo.saccades':'Saccades','arch.title':'Four layers,<br><span class="gradient-text">one seamless stack.</span>','arch.lead':'From the OHOS kernel up to your experiment script, each layer is a clean abstraction — debuggable, replaceable, and documented.','arch.l4.title':'Application Layer','arch.l4.body':"The interfaces researchers touch: Builder's drag-and-drop experiment designer, Coder's full IDE, and your own .py scripts.",'arch.l3.title':'PsychoPy Runtime','arch.l3.body':'The full psychopy package, with platform-specific backends swapped for OHOS: pyglet → EGL, pygame → Oboe, serial → OHOS USB HAL.','arch.l2.title':'Bridge Layer','arch.l2.body':'Electron hosts the Python interpreter and Chromium surface. Node.js handles IPC, file I/O, and HAP lifecycle events.','arch.l1.title':'OHOS Native','arch.l1.body':'HarmonyOS 5.0+ kernel, ArkUI for system chrome, OpenGL ES 3.2 for stimulus rendering, Oboe for low-latency audio.','install.title':'Three paths,<br><span class="gradient-text">one destination.</span>','install.tab1':'HarmonyOS (ARM64)','install.tab2':'x86 (Cross-Compile)','install.tab3':'Vite Build Issues','install.req1':'HarmonyOS 5.0+ device or emulator','install.req2':'DevEco Studio 5.0+ / SDK 12+','install.req3':'ARM64 target · 4GB+ RAM','roadmap.title':'From v0.1.3<br><span class="gradient-text">to v1.0 and beyond.</span>','roadmap.latest':'Latest','roadmap.v011.title':'ARM64 Native Self-Build Milestone','roadmap.v011.body':'First successful self-build on HarmonyOS ARM64 device. Fixed SVG icon rendering issues, Components panel now displays correctly, native binding signing completed.','roadmap.v010.title':'First public release','roadmap.v010.body':'All psychopy.visual primitives rendering correctly. TrialHandler and StairHandler produce correct data. HAP packaging verified.','roadmap.v003.title':'Alpha — rendering pipeline','roadmap.v003.body':'First successful draw of a GratingStim on HarmonyOS. OpenGL ES 3.2 backend operational.','roadmap.v002.title':'Pre-alpha — Electron on OHOS','roadmap.v002.body':'Electron 28 cross-compiled for arm64-linux-ohos. Python 3.11 embedded. Custom N-API bridge stub created.','roadmap.next':'Planned · Q3 2026','roadmap.next2':'Planned · Q4 2026','roadmap.next3':'Planned · 2027','roadmap.v020.title':'ioHub & eye tracking','roadmap.v020.body':'Full iohub device abstraction. Tobii Pro SDK OHOS port. EEG trigger support via OHOS USB HID.','roadmap.v030.title':'Distributed experiments','roadmap.v030.body':'Multi-device stimulus sync via DDS. Run a single experiment across a tablet and phone, or a wall of tablets.','roadmap.v100.title':'Feature parity with desktop PsychoPy','roadmap.v100.body':'Every feature, every backend, every plugin. AppGallery listing. Long-term support release.','compare.title':'Where it fits<br><span class="gradient-text">in the ecosystem.</span>','compare.capability':'Capability','compare.r1':'Windows / macOS / Linux','compare.r2':'HarmonyOS native','compare.r3':'HAP distribution','compare.r4':'Full Python runtime','compare.r5':'Sub-millisecond timing','compare.r6':'Builder GUI','compare.r7':'Distributed multi-device sync','compare.r8':'Offline execution','compare.r9':'Native eye tracker support','compare.r10':'Open source','compare.legend1':'Full support','compare.legend2':'Partial / via workaround','compare.legend3':'Not supported','faq.title':'Questions,<br><span class="gradient-text">answered.</span>','faq.q1':'Can I run my existing PsychoPy experiments on HarmonyOS?','faq.a1':'In the vast majority of cases, yes. If your script uses psychopy.visual, psychopy.core, psychopy.data, and psychopy.event, it should run unmodified.','faq.q2':'What HarmonyOS versions are supported?','faq.a2':'HarmonyOS 5.0 and later, on ARM64 devices. Tablets preferred for stimulus presentation, phones for response collection.','faq.q3':'How can you guarantee sub-millisecond timing on a mobile OS?','faq.a3':'Three mechanisms: (1) vsync-locked flips via EGL; (2) real-time priority thread via SCHED_FIFO; (3) onboard frame-interval monitor flagging >1ms deviations.','faq.q4':'Can I use this for ERP / EEG studies?','faq.a4':'Yes. Trigger codes are sent via USB-HID on OHOS, synchronized to screen flips via win.callOnFlip() with measured jitter <1ms. Sufficient for N400, P300, and MMN.','faq.q5':'What eye trackers are supported on HarmonyOS?','faq.a5':'Tobii Pro 5 is verified working in v0.1.3 via OHOS USB driver and ioHub. Eyelink support requires porting Pylink SDK — in progress for v0.2.0.','faq.q6':'How accurate is the stimulus timing for psychophysics?','faq.a6':'On 60Hz displays: 16.6ms ±1ms per frame. On 120Hz: 8.3ms ±0.5ms. Frame-interval monitor logs every flip; deviations >2ms are flagged.','faq.q7':'Is this an official port from the PsychoPy team?','faq.a7':'No. PsychoPy-OH is an independent, community-driven port by A9iska. Upstream PsychoPy (Open Science Tools Ltd.) is aware and supportive, but the codebase is maintained separately.','faq.q8':'How do I contribute?','faq.a8':'Fork on GitCode or GitHub, create a feature branch, submit a Merge Request. For timing-sensitive changes, include a benchmark. We welcome device-driver ports, test coverage, and multilingual docs.','cta.title':'Build experiments<br><span class="gradient-text">for the next billion devices.</span>','cta.subtitle':'HarmonyOS is on phones, tablets, cars, watches, and headsets. PsychoPy-OH brings rigorous experimental psychology to all of them.','cta.button1':'GitHub','cta.button2':'GitCode →','cta.button3':'Explore Project →','footer.desc':'An independent, community-driven port of the PsychoPy toolkit to HarmonyOS. By A9iska. Apache 2.0 (template) + GPLv3 (PsychoPy upstream).','footer.project':'Project','footer.resources':'Resources','footer.status':'Status','footer.version':'Version','footer.build':'Build','footer.license':'License','footer.platform':'Platform','footer.rights':'Independent open-source project','footer.built':'Built for the experimental psychology community','explore.back':'Back to Home','explore.title1':'Everything','explore.title2':'under the hood.','explore.subtitle':'Technical foundations, API documentation, development guides, testing methodology, and the full story behind PsychoPy-OH.','explore.tech.title':'The technology stack, <span class="gradient-text">layer by layer.</span>','explore.tech.electron':'The desktop application framework that hosts both the PsychoPy Builder/Coder UI and the embedded Python runtime. Cross-compiled for arm64-linux-ohos with custom patches for OHOS window management and EGL context handling.','explore.tech.python':'The complete CPython interpreter, statically linked and embedded within the HAP. Ships with pip, numpy, scipy, Pillow, and the full psychopy package.','explore.tech.gl':'The rendering backend for all psychopy.visual stimuli. Custom GLSL shaders implement sinusoidal gratings, Gaussian masks, and drifting textures. Frame-locked to the display vsync.','explore.tech.ohos':'The native platform layer. ArkUI provides the system chrome and lifecycle management. Distributed Data Service enables multi-device stimulus sync. USB-HID API connects to EEG trigger boxes and eye trackers.','explore.api.title':'The full <span class="gradient-text">psychopy API,</span> documented.','explore.debug.title':'The <span class="gradient-text">2026-06-25</span> debug session.','explore.debug.lead':'A transparent log of the timing audit, EGL context fix, and iohub handshake stabilization that shipped in v0.1.3.','explore.dev.title':'Building from <span class="gradient-text">source.</span>','explore.contrib.title':'How to <span class="gradient-text">contribute.</span>','explore.ack.title':'Standing on the <span class="gradient-text">shoulders of giants.</span>'},zh:{'nav.about':'关于','nav.features':'特性','nav.demo':'演示','nav.architecture':'架构','nav.install':'安装','nav.roadmap':'路线','nav.faq':'问答','nav.explore':'探索','hero.badge':'v0.1.4 · 最新构建 · 2026-06-25','hero.title1':'PsychoPy','hero.title2':'鸿蒙版','hero.subtitle':'易教、精测、灵活——三合一的实验心理学工具包，现原生于鸿蒙。','hero.subtitle2':'亚毫秒级定时、OpenGL ES 3.2 渲染、完整 Python 运行时、分布式多设备同步，打包为原生 HAP。','hero.cta1':'快速开始','hero.cta2':'查看 v0.1.4','hero.cta3':'探索项目','hero.stat1':'版本','hero.stat2':'包格式','hero.stat3':'许可证','hero.stimLabel':'交互模块 · 多模态工具包','hero.scroll':'向下滚动','about.title':'一件科学仪器，<br><span class="gradient-text">而不只是移植。</span>','about.lead':'PsychoPy-OH 是 PsychoPy 工具包在 HarmonyOS 上的忠实重实现。它保留了全球研究者依赖的 API 接口，同时融合了 OHOS 的分布式能力。','about.card1.title':'为可复现性而生','about.card1.body':'每一个刺激参数都被记录。每一次试验时间戳都精确到微秒。你在笔记本上设计的实验，与运行在 OHOS 平板集群上的实验——逐位、逐帧地一致。','about.card2.title':'原生鸿蒙公民','about.card2.body':'打包为 HAP，使用 HarmonyOS 开发者证书签名，可通过应用市场分发。ArkUI 负责界面，Electron 承载 Python 运行时。','about.card3.title':'经得起同行评审的定时','about.card3.body':'在 OHOS 显示器上帧锁定呈现，vsync 精确翻转，对时间关键循环使用实时优先级路径。','about.card4.title':'开源，社区优先','about.card4.body':'Apache 2.0（模板）+ GPLv3（PsychoPy 上游），托管于 GitCode 和 GitHub。v0.1.3 调试记录公开记录。','features.title':'你期待 PsychoPy 的<br><span class="gradient-text">一切功能。</span>','features.subtitle':'完整的心理物理工具包，附加分布式操作系统的超能力。','features.f1.title':'完整 API 兼容','features.f1.body':'visual、core、data、event、gui、hardware、sound、logging——每个子模块、每个类、每个方法。','features.f2.title':'亚毫秒级定时','features.f2.body':'vsync 锁定翻转，实时优先级线程，帧间隔监视器。触发器抖动 <1ms——对 ERP 研究至关重要。','features.f3.title':'OpenGL ES 3.2','features.f3.body':'GPU 加速着色器，处理光栅、Gabor、漂移刺激与动态遮罩——支持设备上 120Hz。','features.f4.title':'Python 脚本','features.f4.body':'内嵌 CPython 3.11 运行时。原有 .py 实验脚本无需修改即可运行。','features.f5.title':'HAP 分发','features.f5.body':'将实验打包为鸿蒙 Ability Package。可安装于平板、手机、车机。','features.f6.title':'Builder 与 Coder','features.f6.body':'面向非程序员的拖拽式 Builder 界面，以及面向高级用户的完整 Coder IDE——均已移植。','features.f7.title':'分布式同步','features.f7.body':'通过 DDS 在多台 OHOS 设备上同步运行刺激。适用于双被试范式或课堂队列研究。','features.f8.title':'ioHub 集成','features.f8.body':'眼动仪（Tobii Pro 5、Eyelink）、EEG 触发器（BrainProducts via USB-HID）、MRI 脉冲、摇杆——配备 OHOS 原生驱动。','demo.title':'交互式实验，<br><span class="gradient-text">在你的浏览器中运行。</span>','demo.subtitle':'四个来自认知神经科学与心理语言学的经典范式——与 PsychoPy-OH 在鸿蒙上的原语相同。','demo.gabor.title':'Gabor 刺激','demo.gabor.desc':'视觉科学的基础刺激。正弦光栅经高斯窗加权——用于数千项对比敏感度、方向辨别与注意研究。','demo.spatialFreq':'空间频率','demo.orientation':'方向','demo.contrast':'对比度','demo.sigma':'包络 σ','demo.phase':'相位','demo.animate':'动画','demo.priming.title':'掩蔽启动','demo.priming.desc':'心理语言学的基石。短暂呈现的启动词被掩蔽，使其不可见——但仍然影响对目标词的词汇通达。','demo.primeDur':'启动词时长','demo.soa':'SOA','demo.primeRel':'启动-目标关系','demo.runTrial':'运行试验','demo.pressKey':'按 1=相关，2=无关','demo.lastRT':'上次 RT','demo.accuracy':'正确率','demo.trialCount':'试验数','demo.eeg.title':'EEG 触发模拟','demo.eeg.desc':'在 ERP 研究中，每个刺激都需在 EEG 数据流中标记触发码。PsychoPy-OH 通过 OHOS USB-HID 发送触发器，与 vsync 同步，抖动 <1ms。','demo.erpComp':'ERP 成分','demo.trigDelay':'触发延迟','demo.sendTrig':'发送触发','demo.clear':'清除','demo.trigSent':'已发触发','demo.lastLatency':'上次延迟','demo.eye.title':'眼动热力图','demo.eye.desc':'眼动揭示了阅读中逐时刻的认知加工。在文本区域点击模拟注视点，或播放示例扫描路径。','demo.viewMode':'视图模式','demo.heatSigma':'热力图 σ','demo.playSample':'播放示例','demo.fixations':'注视数','demo.avgFixDur':'平均时长','demo.saccades':'眼跳数','arch.title':'四层架构，<br><span class="gradient-text">一套无缝技术栈。</span>','arch.lead':'从 OHOS 内核到你的实验脚本，每一层都是清晰的抽象——可调试、可替换、有文档。','arch.l4.title':'应用层','arch.l4.body':'研究者直接接触的界面：Builder 的拖拽式实验设计器、Coder 的完整 IDE，以及你自己的 .py 脚本。','arch.l3.title':'PsychoPy 运行时','arch.l3.body':'完整的 psychopy 包，平台特定后端替换为 OHOS：pyglet → EGL，pygame → Oboe，serial → OHOS USB HAL。','arch.l2.title':'桥接层','arch.l2.body':'Electron 承载 Python 解释器与 Chromium 渲染面。Node.js 处理 IPC、文件 I/O 与 HAP 生命周期事件。','arch.l1.title':'OHOS 原生层','arch.l1.body':'HarmonyOS 5.0+ 内核，ArkUI 提供系统界面，OpenGL ES 3.2 渲染刺激，Oboe 提供低延迟音频。','install.title':'三条路径，<br><span class="gradient-text">一个终点。</span>','install.tab1':'HarmonyOS (ARM64)','install.tab2':'x86 (交叉编译)','install.tab3':'Vite 构建问题','install.req1':'HarmonyOS 5.0+ 设备或模拟器','install.req2':'DevEco Studio 5.0+ / SDK 12+','install.req3':'ARM64 目标 · 4GB+ 内存','roadmap.title':'从 v0.1.3<br><span class="gradient-text">走向 v1.0 与更远。</span>','roadmap.latest':'最新','roadmap.v011.title':'ARM64 原生自构建里程碑','roadmap.v011.body':'首次在 HarmonyOS ARM64 设备上成功自构建。修复 SVG 图标渲染问题，Components 面板正常显示，原生 binding 签名完成。','roadmap.v010.title':'首个公开版本','roadmap.v010.body':'所有 psychopy.visual 基元正确渲染。TrialHandler 与 StairHandler 产生正确数据。HAP 打包验证通过。','roadmap.v003.title':'Alpha——渲染管线','roadmap.v003.body':'首次在鸿蒙上成功绘制 GratingStim。OpenGL ES 3.2 后端运行。','roadmap.v002.title':'Pre-alpha——OHOS 上的 Electron','roadmap.v002.body':'Electron 28 为 arm64-linux-ohos 交叉编译。Python 3.11 已嵌入。创建 N-API 桥接桩。','roadmap.next':'计划 · 2026 Q3','roadmap.next2':'计划 · 2026 Q4','roadmap.next3':'计划 · 2027','roadmap.v020.title':'ioHub 与眼动追踪','roadmap.v020.body':'完整 iohub 设备抽象。Tobii Pro SDK 鸿蒙移植。通过 OHOS USB HID 支持 EEG 触发。','roadmap.v030.title':'分布式实验','roadmap.v030.body':'通过 DDS 实现多设备刺激同步。在平板与手机上运行同一实验，或平板墙队列研究。','roadmap.v100.title':'与桌面版 PsychoPy 功能对齐','roadmap.v100.body':'每一项功能、每个后端、每个插件。上架应用市场。长期支持版本。','compare.title':'在生态中<br><span class="gradient-text">它处于何处。</span>','compare.capability':'能力','compare.r1':'Windows / macOS / Linux','compare.r2':'鸿蒙原生','compare.r3':'HAP 分发','compare.r4':'完整 Python 运行时','compare.r5':'亚毫秒级定时','compare.r6':'Builder 图形界面','compare.r7':'分布式多设备同步','compare.r8':'离线执行','compare.r9':'原生眼动仪支持','compare.r10':'开源','compare.legend1':'完全支持','compare.legend2':'部分支持','compare.legend3':'不支持','faq.title':'问题，<br><span class="gradient-text">有答案。</span>','faq.q1':'我可以在鸿蒙上运行现有的 PsychoPy 实验吗？','faq.a1':'绝大多数情况下可以。如果你的脚本使用 psychopy.visual、psychopy.core、psychopy.data 和 psychopy.event，应该可以无需修改运行。','faq.q2':'支持哪些鸿蒙版本？','faq.a2':'HarmonyOS 5.0 及以上，ARM64 设备。平板首选刺激呈现，手机用于响应采集。','faq.q3':'如何在移动操作系统上保证亚毫秒级定时？','faq.a3':'三个机制：（1）通过 EGL 实现 vsync 锁定翻转；（2）通过 SCHED_FIFO 调度实时优先级线程；（3）内置帧间隔监视器标记 >1ms 偏差。','faq.q4':'可以用于 ERP / EEG 研究吗？','faq.a4':'可以。触发码通过 OHOS USB-HID 发送（兼容 BrainProducts TriggerBox），通过 win.callOnFlip() 与屏幕翻转同步，实测抖动 <1ms。足以支持 N400、P300、MMN。','faq.q5':'鸿蒙上支持哪些眼动仪？','faq.a5':'Tobii Pro 5 已在 v0.1.3 中通过 OHOS USB 驱动和 ioHub 验证。Eyelink 支持需移植 Pylink SDK——v0.2.0 进行中。','faq.q6':'刺激定时对心理物理研究有多精确？','faq.a6':'60Hz 显示器：16.6ms ±1ms 每帧。120Hz：8.3ms ±0.5ms。帧间隔监视器记录每次翻转；偏差 >2ms 被标记。','faq.q7':'这是 PsychoPy 团队的官方移植吗？','faq.a7':'不是。PsychoPy-OH 是 A9iska 独立、社区驱动的移植。上游 PsychoPy（Open Science Tools Ltd.）知晓并支持，但代码库独立维护。','faq.q8':'如何贡献？','faq.a8':'在 GitCode 或 GitHub 上 Fork，创建特性分支，提交 Merge Request。对于定时敏感的更改，请附上基准测试。欢迎设备驱动移植、测试覆盖和多语言文档。','cta.title':'为下一个十亿设备<br><span class="gradient-text">构建实验。</span>','cta.subtitle':'鸿蒙覆盖手机、平板、汽车、手表、头显。PsychoPy-OH 将严谨的实验心理学带至所有这些设备。','cta.button1':'GitHub','cta.button2':'GitCode →','cta.button3':'探索项目 →','footer.desc':'独立、社区驱动的 PsychoPy 工具包鸿蒙移植。作者 A9iska。Apache 2.0（模板）+ GPLv3（PsychoPy 上游）。','footer.project':'项目','footer.resources':'资源','footer.status':'状态','footer.version':'版本','footer.build':'构建','footer.license':'许可证','footer.platform':'平台','footer.rights':'独立开源项目','footer.built':'为实验心理学社区用心打造','explore.back':'返回主页','explore.title1':'一切','explore.title2':'尽在其中。','explore.subtitle':'技术基座、API 文档、开发指南、测试方法论，以及 PsychoPy-OH 背后的完整故事。','explore.tech.title':'技术栈，<span class="gradient-text">逐层解析。</span>','explore.tech.electron':'桌面应用框架，承载 PsychoPy Builder/Coder 界面和内嵌 Python 运行时。为 arm64-linux-ohos 交叉编译，包含 OHOS 窗口管理和 EGL 上下文处理的自定义补丁。','explore.tech.python':'完整的 CPython 解释器，静态链接并嵌入 HAP。附带 pip、numpy、scipy、Pillow 和完整的 psychopy 包。','explore.tech.gl':'所有 psychopy.visual 刺激的渲染后端。自定义 GLSL 着色器实现正弦光栅、高斯遮罩和漂移纹理。通过 EGL_swap_buffers 帧锁定到显示器 vsync。','explore.tech.ohos':'原生平台层。ArkUI 提供系统界面和生命周期管理。分布式数据服务实现多设备刺激同步。USB-HID API 连接 EEG 触发盒和眼动仪。','explore.api.title':'完整 <span class="gradient-text">psychopy API</span> 文档。','explore.debug.title':'<span class="gradient-text">2026-06-25</span> 调试记录。','explore.debug.lead':'v0.1.3 中发布的时序审计、EGL 上下文修复和 iohub 握手稳定化的透明日志。','explore.dev.title':'从 <span class="gradient-text">源码构建。</span>','explore.contrib.title':'如何 <span class="gradient-text">贡献。</span>','explore.ack.title':'站在 <span class="gradient-text">巨人的肩膀上。</span>'}};
+function setLang(l){document.documentElement.lang=l==='zh'?'zh-CN':'en';document.documentElement.dataset.lang=l;document.querySelectorAll('[data-i18n]').forEach(e=>{const k=e.getAttribute('data-i18n');if(i18n[l][k]!==undefined)e.innerHTML=i18n[l][k]});document.querySelectorAll('#lang-en,#lang-zh').forEach(b=>b.classList.remove('active'));const a=document.getElementById('lang-'+l);if(a)a.classList.add('active');document.querySelectorAll('.lang-en').forEach(e=>e.style.display=l==='en'?'':'none');document.querySelectorAll('.lang-zh').forEach(e=>e.style.display=l==='zh'?'':'none');const fdl=document.getElementById('faq-drawer-label'),fdlz=document.getElementById('faq-drawer-label-zh'),fdd=document.getElementById('faq-drawer');if(fdl&&fdlz&&fdd){const isOpen=fdd.style.display!=='none';fdl.textContent=isOpen?(l==='en'?'Show Less':'收起'):(l==='en'?'Show All Questions':'显示全部问题');if(fdlz)fdlz.textContent=isOpen?(l==='en'?'Show Less':'收起'):(l==='en'?'Show All Questions':'显示全部问题')}try{localStorage.setItem('psychopy-lang',l)}catch(e){}}
+setLang((()=>{try{return localStorage.getItem('psychopy-lang')}catch(e){return null}})()||((navigator.language||'en').toLowerCase().startsWith('zh')?'zh':'en'));
+function toggleDebug(){const p=document.getElementById('debug-v011'),b=document.getElementById('debug-toggle-btn'),l=document.getElementById('debug-toggle-label'),lz=document.getElementById('debug-toggle-label-zh'),isEn=document.documentElement.dataset.lang!=='zh';if(p.style.display==='none'){p.style.display='block';l.textContent=isEn?'Hide Past Records':'隐藏过往记录';if(lz)lz.textContent=isEn?'Hide Past Records':'隐藏过往记录';b.style.borderColor='var(--accent)';b.style.color='var(--accent)'}else{p.style.display='none';l.textContent=isEn?'Past Records':'过往记录';if(lz)lz.textContent=isEn?'Past Records':'过往记录';b.style.borderColor='var(--border-strong)';b.style.color=''}}
+function toggleFaqDrawer(){const d=document.getElementById('faq-drawer'),b=document.getElementById('faq-drawer-btn'),l=document.getElementById('faq-drawer-label'),lz=document.getElementById('faq-drawer-label-zh'),ico=document.getElementById('faq-drawer-icon'),isEn=document.documentElement.dataset.lang!=='zh';if(d.style.display==='none'){d.style.display='block';l.textContent=isEn?'Show Less':'收起';if(lz)lz.textContent=isEn?'Show Less':'收起';ico.style.transform='rotate(180deg)'}else{d.style.display='none';l.textContent=isEn?'Show All Questions':'显示全部问题';if(lz)lz.textContent=isEn?'Show All Questions':'显示全部问题';ico.style.transform=''}}
+document.getElementById('lang-en').onclick=()=>setLang('en');document.getElementById('lang-zh').onclick=()=>setLang('zh');
+
+const root=document.documentElement;
+function setTheme(t){root.setAttribute('data-theme',t);document.getElementById('theme-icon-sun').style.display=t==='light'?'block':'none';document.getElementById('theme-icon-moon').style.display=t==='light'?'none':'block';try{localStorage.setItem('psychopy-theme',t)}catch(e){}}
+setTheme((()=>{try{return localStorage.getItem('psychopy-theme')}catch(e){return null}})()||'dark');
+document.getElementById('theme-toggle').onclick=()=>setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');
+
+function switchView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById('view-'+v).classList.add('active');window.scrollTo({top:0,behavior:'instant'});setTimeout(()=>{document.querySelectorAll('#view-'+v+' .reveal').forEach(e=>{e.classList.remove('visible');ro.observe(e)})},50)}
+
+const cd=document.getElementById('cursor-dot'),cr=document.getElementById('cursor-ring');let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cd.style.left=mx+'px';cd.style.top=my+'px'});
+(function a(){rx+=(mx-rx)*0.15;ry+=(my-ry)*0.15;cr.style.left=rx+'px';cr.style.top=ry+'px';requestAnimationFrame(a)})();
+document.querySelectorAll('a,button,.glass-card,.demo-tab,input,.tab-btn,.select-pill button,details summary').forEach(e=>{e.addEventListener('mouseenter',()=>cr.classList.add('hover'));e.addEventListener('mouseleave',()=>cr.classList.remove('hover'))});
+document.querySelectorAll('.magnetic').forEach(e=>{e.addEventListener('mousemove',ev=>{const r=e.getBoundingClientRect();e.style.transform=`translate(${(ev.clientX-r.left-r.width/2)*0.15}px,${(ev.clientY-r.top-r.height/2)*0.15}px)`});e.addEventListener('mouseleave',()=>e.style.transform='translate(0,0)')});
+
+const ro=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('visible');ro.unobserve(x.target)}})},{threshold:0.1,rootMargin:'0px 0px -50px 0px'});
+document.querySelectorAll('.reveal').forEach(e=>ro.observe(e));
+
+// Hero bg
+class HeroBG{constructor(c){this.c=c;this.ctx=c.getContext('2d');this.d=[];this.resize();window.addEventListener('resize',()=>this.resize());this.init();this.animate()}resize(){const d=Math.min(devicePixelRatio||1,2);this.c.width=this.c.offsetWidth*d;this.c.height=this.c.offsetHeight*d;this.ctx.setTransform(1,0,0,1,0,0);this.ctx.scale(d,d);this.w=this.c.offsetWidth;this.h=this.c.offsetHeight}init(){this.d=[];for(let i=0;i<50;i++)this.d.push({x:Math.random()*this.w,y:Math.random()*this.h,vx:(Math.random()-0.5)*0.2,vy:(Math.random()-0.5)*0.2,r:Math.random()*1.2+0.3,a:Math.random()*0.3+0.1,p:Math.random()*6.28})}animate(){this.ctx.clearRect(0,0,this.w,this.h);const t=Date.now()*0.001;const ac=getComputedStyle(root).getPropertyValue('--accent').trim();let r=238,g=58,b=58;if(ac.startsWith('#')&&ac.length===7){r=parseInt(ac.slice(1,3),16);g=parseInt(ac.slice(3,5),16);b=parseInt(ac.slice(5,7),16)}this.d.forEach(d=>{d.x+=d.vx;d.y+=d.vy;if(d.x<0)d.x=this.w;if(d.x>this.w)d.x=0;if(d.y<0)d.y=this.h;if(d.y>this.h)d.y=0;const p=0.6+0.4*Math.sin(t*1.5+d.p);this.ctx.beginPath();this.ctx.arc(d.x,d.y,Math.max(0.1,d.r),0,6.28);this.ctx.fillStyle=`rgba(${r},${g},${b},${d.a*p})`;this.ctx.fill()});for(let i=0;i<this.d.length;i++)for(let j=i+1;j<this.d.length;j++){const dx=this.d[i].x-this.d[j].x,dy=this.d[i].y-this.d[j].y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<100){this.ctx.beginPath();this.ctx.moveTo(this.d[i].x,this.d[i].y);this.ctx.lineTo(this.d[j].x,this.d[j].y);this.ctx.strokeStyle=`rgba(${r},${g},${b},${(1-dist/100)*0.06})`;this.ctx.lineWidth=0.5;this.ctx.stroke()}}requestAnimationFrame(()=>this.animate())}}
+new HeroBG(document.getElementById('hero-canvas'));
+
+// 2.5D Flat Diamond Auto-Scroll Modules (V11)
+    const SCROLL_MODULES = [
+      // Left: visual, core, data, iohub, build
+      ['visual','cyan','eye','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="white" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>'],
+      ['core','orange','clock','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>'],
+      ['data','green','chart','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg>'],
+      ['iohub','purple','eye','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>'],
+      ['build','yellow','grid','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>'],
+      // Right: coder, runner, stim, sound, pavlovia
+      ['coder','blue','code','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'],
+      ['runner','pink','play','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4" fill="white" stroke="none"/></svg>'],
+      ['stim','teal','image','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" fill="white" opacity="0.9" stroke="none"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5L5 21"/></svg>'],
+      ['sound','coral','audio','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'],
+      ['pavlov','red','cloud','<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>'],
+    ];
+
+    function makeModuleHTML(name, color, icon) {
+      const fid = 'h-' + name;
+      return `<div class="module" data-c="${color}">
+        <svg class="diamond-svg" viewBox="0 0 138 98">
+          <defs>
+            <filter id="halo-${fid}" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="6"/>
+            </filter>
+          </defs>
+          <polygon class="halo-blur" points="69,4 134,49 69,94 4,49" fill="var(--c)" filter="url(#halo-${fid})" opacity="0.85"/>
+          <polygon class="dia" points="69,4 134,49 69,94 4,49"/>
+        </svg>
+        <div class="mod-icon">
+          ${icon}
+          <span class="mod-label">${name}</span>
+        </div>
+      </div>`;
+    }
+
+    // Pairs: (L,R) per row, alternate order
+    const LEFT = SCROLL_MODULES.slice(0, 5);
+    const RIGHT = SCROLL_MODULES.slice(5, 10);
+    
+    // Generate rows: L+R, then R+L (alternating) for visual variety
+    function makeRow(a, b) {
+      return `<div class="module-row">${makeModuleHTML(a[0], a[1], a[3])}${makeModuleHTML(b[0], b[1], b[3])}</div>`;
+    }
+
+    function makeRowReversed(a, b) {
+      return `<div class="module-row">${makeModuleHTML(b[0], b[1], b[3])}${makeModuleHTML(a[0], a[1], a[3])}</div>`;
+    }
+
+    const TRACK = document.getElementById('module-track');
+    if (TRACK) {
+      let rowsHTML = '';
+      // Generate 2 full cycles of rows for seamless scroll
+      const patterns = [
+        () => makeRow(LEFT[0], RIGHT[0]),
+        () => makeRowReversed(LEFT[1], RIGHT[1]),
+        () => makeRow(LEFT[2], RIGHT[2]),
+        () => makeRowReversed(LEFT[3], RIGHT[3]),
+        () => makeRow(LEFT[4], RIGHT[4]),
+      ];
+      // 3 full cycles for dense scroll
+      for (let c = 0; c < 3; c++)
+        for (let i = 0; i < 5; i++) rowsHTML += patterns[i]();
+      TRACK.innerHTML = rowsHTML;
+    }
+
+    // Hover pause scroll
+    const moduleScroll = document.getElementById('module-scroll');
+    if (moduleScroll) {
+      moduleScroll.addEventListener('mouseenter', () => {
+        TRACK.style.animationPlayState = 'paused';
+      });
+      moduleScroll.addEventListener('mouseleave', () => {
+        TRACK.style.animationPlayState = 'running';
+      });
+    }
+
+    // iconCluster dead code kept for compat (no-op)
+    const iconCluster = document.getElementById('icon-cluster');
+
+// Demo tabs
+
+document.querySelectorAll('.demo-tab').forEach(b=>b.onclick=e=>{document.querySelectorAll('.demo-tab').forEach(x=>x.classList.remove('active'));e.target.closest('.demo-tab').classList.add('active');document.querySelectorAll('.demo-panel').forEach(p=>{p.classList.toggle('active',p.dataset.panel===e.target.closest('.demo-tab').dataset.demo);if(p.dataset.panel===e.target.closest('.demo-tab').dataset.demo){setTimeout(()=>{if(window.priming&&p.dataset.panel==='priming')window.priming.resize();if(window.eeg&&p.dataset.panel==='eeg')window.eeg.resize();if(window.eye&&p.dataset.panel==='eye')window.eye.resize()},50)}})});
+
+// Install tabs
+document.querySelectorAll('.tab-btn[data-tab]').forEach(b=>b.onclick=e=>{document.querySelectorAll('.tab-btn[data-tab]').forEach(x=>x.classList.remove('active'));e.target.classList.add('active');document.querySelectorAll('.install-panel').forEach(p=>p.classList.toggle('hidden',p.dataset.panel!==e.target.dataset.tab));document.getElementById('install-filename').textContent={arm64:'harmonybrew (ARM64)',x86:'DevEco Studio (x86)',issues:'BUILD_ON_ARM64.md'}[e.target.dataset.tab]});
+
+// Gabor
+class Gabor{constructor(){this.c=document.getElementById('stim-canvas');this.ctx=this.c.getContext('2d');this.p={freq:0.05,orient:Math.PI/4,contrast:0.8,sigma:60,phase:0};this.anim=false;this.resize();window.addEventListener('resize',()=>this.resize());this.bind();this.draw()}resize(){const d=Math.min(devicePixelRatio||1,2);this.c.width=this.c.offsetWidth*d;this.c.height=this.c.offsetHeight*d;this.ctx.setTransform(1,0,0,1,0,0);this.ctx.scale(d,d);this.w=this.c.offsetWidth;this.h=this.c.offsetHeight;this.draw()}bind(){const b=(id,k,f,t)=>{const s=document.getElementById(id),v=document.getElementById(id.replace('-slider','-val'));s.oninput=e=>{const x=parseFloat(e.target.value);this.p[k]=t?t(x):x;v.textContent=f(x);if(!this.anim)this.draw()}};b('freq-slider','freq',x=>x.toFixed(3));b('orient-slider','orient',x=>x+'°',x=>x*Math.PI/180);b('contrast-slider','contrast',x=>x.toFixed(2));b('sigma-slider','sigma',x=>x.toFixed(0));b('phase-slider','phase',x=>x.toFixed(2));document.getElementById('anim-toggle').onclick=e=>{this.anim=!this.anim;e.target.textContent=this.anim?(document.documentElement.dataset.lang==='zh'?'停止':'Pause'):(document.documentElement.dataset.lang==='zh'?'动画':'Animate');if(this.anim)this.animate()}}draw(){const img=this.ctx.createImageData(this.w,this.h),cx=this.w/2,cy=this.h/2,{freq,orient,contrast,sigma,phase}=this.p,data=img.data,s2=2*sigma*sigma,cO=Math.cos(orient),sO=Math.sin(orient);for(let y=0;y<this.h;y++)for(let x=0;x<this.w;x++){const dx=x-cx,dy=y-cy,d2=dx*dx+dy*dy,env=Math.exp(-d2/s2);if(env<0.001)continue;const gr=Math.cos(2*Math.PI*freq*(dx*cO+dy*sO)+phase),v=(gr*contrast*env+1)/2,i=(y*this.w+x)*4;data[i]=v*238;data[i+1]=v*58;data[i+2]=v*58;data[i+3]=255*Math.min(1,env*1.3)}this.ctx.putImageData(img,0,0)}animate(){if(!this.anim)return;this.p.phase+=0.04;if(this.p.phase>6.28)this.p.phase-=6.28;document.getElementById('phase-slider').value=this.p.phase;document.getElementById('phase-val').textContent=this.p.phase.toFixed(2);this.draw();requestAnimationFrame(()=>this.animate())}}
+new Gabor();
+
+// Priming
+class Priming{constructor(){this.c=document.getElementById('prime-canvas');this.ctx=this.c.getContext('2d');this.tc=document.getElementById('prime-timeline');this.tctx=this.tc.getContext('2d');this.p={primeDur:50,soa:100,rel:'related'};this.st='idle';this.stStart=0;this.tc0=0;this.cc=0;this.stim={related:[['doctor','nurse'],['bread','butter'],['table','chair'],['cat','dog'],['sun','moon']],unrelated:[['doctor','table'],['bread','cat'],['table','sun'],['cat','bread'],['sun','dog']],identity:[['nurse','nurse'],['butter','butter'],['chair','chair'],['dog','dog'],['moon','moon']]};this.resize();window.addEventListener('resize',()=>this.resize());this.bind();this.draw();document.addEventListener('keydown',e=>{if(this.st==='target'&&(e.key==='1'||e.key==='2'))this.resp(e.key)});this.animate()}resize(){const d=Math.min(devicePixelRatio||1,2);[this.c,this.tc].forEach(c=>{c.width=c.offsetWidth*d;c.height=c.offsetHeight*d;c.getContext('2d').setTransform(1,0,0,1,0,0);c.getContext('2d').scale(d,d)});this.w=this.c.offsetWidth;this.h=this.c.offsetHeight;this.tlw=this.tc.offsetWidth;this.tlh=this.tc.offsetHeight}bind(){document.getElementById('prime-dur-slider').oninput=e=>{this.p.primeDur=+e.target.value;document.getElementById('prime-dur-val').textContent=e.target.value+' ms'};document.getElementById('soa-slider').oninput=e=>{this.p.soa=+e.target.value;document.getElementById('soa-val').textContent=e.target.value+' ms'};document.querySelectorAll('#rel-select button').forEach(b=>b.onclick=e=>{document.querySelectorAll('#rel-select button').forEach(x=>x.classList.remove('active'));e.target.classList.add('active');this.p.rel=e.target.dataset.rel});document.getElementById('prime-run').onclick=()=>this.run()}run(){if(this.st!=='idle')return;const ps=this.stim[this.p.rel];this.cp=ps[Math.floor(Math.random()*ps.length)];this.tc0++;document.getElementById('prime-trials').textContent=this.tc0;document.getElementById('prime-run').disabled=true;this.trans('fixation')}trans(s){this.st=s;this.stStart=performance.now();document.getElementById('prime-phase-label').textContent={idle:'IDLE',fixation:'FIXATION +',prime:'PRIME',mask:'MASK',target:'TARGET — RESPOND',feedback:'FEEDBACK'}[s]||s}resp(k){if(this.st!=='target')return;const rt=performance.now()-this.stStart;const rr=k==='1';const cor=rr===(this.p.rel!=='unrelated');if(cor)this.cc++;document.getElementById('prime-rt').textContent=rt.toFixed(0)+' ms';document.getElementById('prime-acc').textContent=this.tc0>0?Math.round(this.cc/this.tc0*100)+'%':'—';this.fb={cor,rt};this.trans('feedback');setTimeout(()=>{this.trans('idle');document.getElementById('prime-run').disabled=false},1500)}draw(){this.ctx.fillStyle='#050709';this.ctx.fillRect(0,0,this.w,this.h);const cx=this.w/2,cy=this.h/2;let t='',c='#fff',s=36;if(this.st==='idle'){t=document.documentElement.dataset.lang==='zh'?'点击"运行试验"开始':'Click "Run Trial"';c='#6a7290';s=15}else if(this.st==='fixation'){t='+';s=48}else if(this.st==='prime'){t=this.cp[0];c='#888';s=28}else if(this.st==='mask'){t='#######';s=36}else if(this.st==='target'){t=this.cp[1];s=40}else if(this.st==='feedback'){const f=this.fb,zh=document.documentElement.dataset.lang==='zh';t=(f.cor?(zh?'✓ 正确':'✓ CORRECT'):(zh?'✗ 错误':'✗ WRONG'))+'  ·  RT = '+f.rt.toFixed(0)+' ms';c=f.cor?'#00d4ff':'#ee3a3a';s=20}this.ctx.fillStyle=c;this.ctx.font=`600 ${s}px 'JetBrains Mono',monospace`;this.ctx.textAlign='center';this.ctx.textBaseline='middle';this.ctx.fillText(t,cx,cy);const el=performance.now()-this.stStart,dur={fixation:500,prime:this.p.primeDur,mask:Math.max(50,this.p.soa-this.p.primeDur)};if(dur[this.st]){const p=Math.min(1,el/dur[this.st]);this.ctx.fillStyle='rgba(0,212,255,0.7)';this.ctx.fillRect(0,0,this.w*p,3)}this.drawTL(el)}drawTL(el){this.tctx.fillStyle='#050709';this.tctx.fillRect(0,0,this.tlw,this.tlh);const tot=500+this.p.soa+2000,sc=this.tlw/tot;[{n:'FIX',o:0,d:500,c:'#666'},{n:'PRIME',o:500,d:this.p.primeDur,c:'#ff6b4a'},{n:'MASK',o:500+this.p.primeDur,d:Math.max(50,this.p.soa-this.p.primeDur),c:'#999'},{n:'TARGET',o:500+this.p.soa,d:2000,c:'#00d4ff'}].forEach(e=>{const x=e.o*sc,w=Math.max(2,e.d*sc);this.tctx.fillStyle=e.c;this.tctx.globalAlpha=0.3;this.tctx.fillRect(x,this.tlh*0.25,w,this.tlh*0.5);this.tctx.globalAlpha=1;if(w>20){this.tctx.font='8px JetBrains Mono';this.tctx.textAlign='center';this.tctx.fillText(e.n,x+w/2,this.tlh*0.15)}});if(this.st!=='idle'&&this.st!=='feedback'){const so={fixation:0,prime:500,mask:500+this.p.primeDur,target:500+this.p.soa};const ct=(so[this.st]||0)+el,x=ct*sc;this.tctx.strokeStyle='#ee3a3a';this.tctx.lineWidth=2;this.tctx.beginPath();this.tctx.moveTo(x,0);this.tctx.lineTo(x,this.tlh);this.tctx.stroke()}}animate(){if(this.st!=='idle'&&this.st!=='feedback'){const el=performance.now()-this.stStart,dur={fixation:500,prime:this.p.primeDur,mask:Math.max(50,this.p.soa-this.p.primeDur)};if(this.st in dur&&el>=dur[this.st]){const nx={fixation:'prime',prime:'mask',mask:'target'};if(nx[this.st])this.trans(nx[this.st])}else if(this.st==='target'&&el>=2000)this.resp('2')}this.draw();requestAnimationFrame(()=>this.animate())}}
+try{window.priming=new Priming()}catch(e){console.warn('Priming demo init failed, using fallback',e);const c=document.getElementById('prime-canvas');if(c){const ctx=c.getContext('2d');ctx.fillStyle='#050709';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#ee3a3a';ctx.font='16px JetBrains Mono';ctx.textAlign='center';ctx.fillText('Priming Demo',c.width/2,c.height/2-10);ctx.fillStyle='#6a7590';ctx.font='12px JetBrains Mono';ctx.fillText('Click "Run Trial" to start',c.width/2,c.height/2+14)}}
+try{window.eeg=new EEG()}catch(e){console.warn('EEG demo init failed, using fallback',e);const c=document.getElementById('eeg-canvas');if(c){const ctx=c.getContext('2d');ctx.fillStyle='#050709';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#00d4ff';ctx.font='16px JetBrains Mono';ctx.textAlign='center';ctx.fillText('EEG Trigger Simulator',c.width/2,c.height/2-10);ctx.fillStyle='#6a7590';ctx.font='12px JetBrains Mono';ctx.fillText('Click "Send Trigger" to simulate',c.width/2,c.height/2+14)}}
+try{window.eye=new Eye()}catch(e){console.warn('Eye demo init failed, using fallback',e);const c=document.getElementById('eye-canvas');if(c){const ctx=c.getContext('2d');ctx.fillStyle='#050709';ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle='#c084fc';ctx.font='16px JetBrains Mono';ctx.textAlign='center';ctx.fillText('Eye-tracking Heatmap',c.width/2,c.height/2-10);ctx.fillStyle='#6a7590';ctx.font='12px JetBrains Mono';ctx.fillText('Click to place fixations',c.width/2,c.height/2+14)}}
+</script>
+</body>
+</html>
