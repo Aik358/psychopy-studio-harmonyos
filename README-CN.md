@@ -158,7 +158,7 @@ hdc app install electron/build/default/outputs/default/electron-default-signed.h
 
 ### 教训总结
 
-1. **`dist/` 必须提交到 git** — `.gitignore` 最初忽略了 `dist/`，导致其他用户克隆后需要自行 `npx vite build`。已修复（从 `.gitignore` 移除）。
+1. **`dist/` 必须每次修改之后重新构建 git** 这是前端vite同步修改的重要要求。x86的DevEco更方便，原生鸿蒙电脑npm缺少插件，有待更新，或者使用特殊方法如HarmonyBrew
 2. **`targetSdkVersion` 与 `compatibleSdkVersion` 格式必须一致** — API 10-25 用 `productVersion(apiLevel)` 格式（如 `6.1.0(23)`），API 26+ 用纯版本号格式（如 `26.0.0`）。不可混用。
 3. **CSS 变量在外部 SVG 中不生效** — 如果 SVG 通过 `<img>` 或 `<use>` 加载，`var(--outline)` 等不会从 HTML 页面继承。解决方式有二：
    - 用 `fetch()` 拉取 SVG 内容 → 内联渲染（`{@html svgContent}`）→ CSS 变量可继承
