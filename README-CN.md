@@ -1,6 +1,6 @@
 # PsychoPy Studio - 鸿蒙移植版
 
-[English](./README.md) | [项目首页](https://A9iska.gitee.io/psychopy-oh)
+[English](./README.md) | [项目首页](https://aik358.github.io/psychopy-studio-harmonyos/)
 
 ## 项目简介
 
