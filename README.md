@@ -1,6 +1,6 @@
 # PsychoPy Studio - HarmonyOS Port
 
-[简体中文](./README-CN.md) | [Project Homepage](https://A9iska.gitee.io/psychopy-oh)
+[简体中文](./README-CN.md) | [Project Homepage](https://aik358.github.io/psychopy-studio-harmonyos/)
 
 ## Overview
 
