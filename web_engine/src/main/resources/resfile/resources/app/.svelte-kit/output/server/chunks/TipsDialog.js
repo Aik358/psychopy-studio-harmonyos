@@ -1,6 +1,5 @@
-import { a as tick, c as on, i as onDestroy } from "./internal.js";
+import { i as onDestroy, l as on, o as tick } from "./internal.js";
 import { D as escape_html, E as attr, St as run, a as bind_props, b as setContext, d as spread_props, et as snapshot, f as stringify, i as await_block, l as props_id, m as html, n as attr_style, o as derived, r as attributes, s as ensure_array_like, t as attr_class, ut as ATTACHMENT_KEY, v as getContext, y as hasContext } from "./server.js";
-import "./client.js";
 import { B as Icon, C as Device, D as profiles, E as pending, F as CompactButton, G as devices, I as PanelButton, J as projects$1, K as electron, M as Dialog, N as DropdownButton, O as RadioButton, P as Menu, R as Button, T as Param, Y as python$1, d as Version, f as browseFileOpen, g as writeFile, i as Experiment, j as MessageDialog, l as CodeEditor, n as prefs, p as browseFileSave, q as git$1, r as Script, z as Tooltip } from "./Theme.js";
 import { clsx } from "clsx";
 import path from "path-browserify";
@@ -13,6 +12,37 @@ function Panel($$renderer, $$props) {
 	children?.($$renderer);
 	$$renderer.push(`<!----></div></div>`);
 }
+//#endregion
+//#region src/lib/sharedViewStore.svelte.js
+var store = {
+	activeView: "builder",
+	builderState: {
+		saved: false,
+		experimentJSON: null,
+		file: null,
+		routineName: null,
+		readmeShown: false,
+		project: null
+	},
+	coderState: {
+		saved: false,
+		pages: null,
+		tab: 0
+	},
+	runnerState: {
+		saved: false,
+		runlist: null,
+		selection: null,
+		tab: "alerts",
+		output: null
+	},
+	generatedCode: {
+		python: null,
+		js: null,
+		experimentJSON: null,
+		sourceFile: null
+	}
+};
 //#endregion
 //#region src/lib/utils/Frame.svelte
 function Frame($$renderer, $$props) {
@@ -5825,4 +5855,4 @@ function TipsDialog($$renderer, $$props) {
 	});
 }
 //#endregion
-export { Pane_resizer as C, Panel as D, Frame as E, Shortcuts as S, Pane_group as T, Notebook as _, BugReport as a, Item as b, Notebook_1 as c, NewProjectDlg as d, UserCtrl as f, Listbook as g, Page as h, Ribbon as i, ParamCtrl as l, ButtonTab as m, Gap as n, PrefsDialog as o, Dialog_1$2 as p, Section as r, ParamsDialog as s, TipsDialog as t, ProjectCtrl as u, SubMenu as v, Pane as w, current as x, Separator as y };
+export { Pane_resizer as C, store as D, Frame as E, Panel as O, Shortcuts as S, Pane_group as T, Notebook as _, BugReport as a, Item as b, Notebook_1 as c, NewProjectDlg as d, UserCtrl as f, Listbook as g, Page as h, Ribbon as i, ParamCtrl as l, ButtonTab as m, Gap as n, PrefsDialog as o, Dialog_1$2 as p, Section as r, ParamsDialog as s, TipsDialog as t, ProjectCtrl as u, SubMenu as v, Pane as w, current as x, Separator as y };

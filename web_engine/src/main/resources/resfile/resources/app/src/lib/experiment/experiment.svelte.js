@@ -7,6 +7,7 @@ import { Routine, StandaloneRoutine } from "./routine.svelte";
 import { Component } from "./component.svelte";
 import { Flow, LoopInitiator } from "./flow.svelte";
 import { setupPython } from "$lib/python";
+import { exportExperimentToJS } from "$lib/utils/psychojs-exporter.js";
 
 
 export class Experiment {
@@ -564,52 +565,121 @@ export class Experiment {
     }
 
     /**
-     * Run this experiment in JS.
-     * 
-     * @param {boolean} compile If true, compile the experiment to JS before running
+     * Run this experiment in PsychoJS via system browser.
+     * Uses the official compiled JS if available, otherwise generates from model.
      */
     async runJS(compile=true) {
-        // compile first if requested
-        let target
-        if (compile) {
-            target = await this.writeScript("PsychoJS")
-        } else {
-            // otherwise, construct output path
-            target = path.join(
-                this.file.parent,
-                this.file.stem + ".py"
-            )
+        if (!electron) {
+            alert("Browser running is only available in Electron/PsychoPy-Oh.");
+            return;
         }
-
-        if (this.pilotMode) {
-            // fail if there's no Python to run server in
-            if (!python) {
-                console.error("Script running is not available in browser.")
-                return
-            }
-            // get PsychoJS library
-            await python.liaison.send("app",
-                {
-                    command: "run",
-                    args: [
-                        "psychopy.tools.servertools:getPsychoJS"
-                    ],
-                    kwargs: {
-                        cwd: this.file.parent,
-                        useVersion: $state.snapshot(this.settings.params['Use version']?.val)
+        if (!python || !python.psychojs || typeof python.psychojs.browserRun !== 'function') {
+            alert("[PsychoJS Browser] python.psychojs.browserRun IPC not available.");
+            return;
+        }
+        try {
+            let expName = this.file?.stem || "experiment";
+            let expDir = this.file?.parent || "";
+            // Try multiple possible official JS filenames
+            let jsCandidates = [
+                path.join(expDir, expName + ".js"),
+                path.join(expDir, (expName || "").replace(/[-\s]+/g, "") + ".js"),
+            ];
+            // Also check for .js files in expDir via scandir
+            try {
+                let dirFiles = await electron.files.scandir(expDir, false);
+                for (let f of dirFiles) {
+                    if (f.endsWith(".js") && !f.includes("node_modules")) {
+                        jsCandidates.push(path.join(expDir, f));
                     }
-                }, 
-                100000
-            )
-            // start a server
-            let address = await python.psychojs.run(this.file.parent)
-            // open experiment in browser
-            let params = new URLSearchParams(
-                this.pilotMode ? {__pilotToken: "local"} : {}
-            )
-            window.open(`http://${address}?${params.toString()}`)
-        } else {
-            // todo: Run in JS on Pavlovia (not pilot)
+                }
+            } catch(e) {}
+
+            let finalJSCode = "";
+            let conditionsJSON = "";
+            let resourceFiles = [];
+            let officialJSPath = "";
+
+            // Try each candidate
+            for (let candidate of jsCandidates) {
+                try {
+                    let exists = await electron.files.exists(candidate);
+                    if (exists) {
+                        console.log(`[PsychoJS Browser] Testing official JS: ${candidate}`);
+                        finalJSCode = await electron.files.load(candidate);
+                        officialJSPath = candidate;
+                        console.log(`[PsychoJS Browser] Loaded official JS: ${candidate} (${finalJSCode.length} chars)`);
+                        break;
+                    }
+                } catch(e) {
+                    console.warn(`[PsychoJS Browser] Skip candidate ${candidate}: ${e.message}`);
+                }
+            }
+
+            if (officialJSPath) {
+
+                // Find XLSX conditions files referenced in the experiment
+                for (const flowItem of (this.flow?.flat || [])) {
+                    if (typeof flowItem.addTerminator === 'function') {
+                        let condFile = flowItem.params?.conditionsFile?.val || flowItem._conditionsFile;
+                        if (condFile) {
+                            let condPath = condFile;
+                            if (expDir && !path.isAbsolute(condFile)) {
+                                condPath = path.join(expDir, condFile);
+                            }
+                            resourceFiles.push({ rel: condFile, abs: condPath });
+                        }
+                    }
+                }
+            } else {
+                // Use generated code
+                console.log(`[PsychoJS Browser] Compiling experiment from model...`);
+                if (typeof exportExperimentToJS !== 'function') {
+                    alert("[PsychoJS Browser] exportExperimentToJS is not loaded.");
+                    return;
+                }
+
+                // Read conditions from loops
+                let conditions = [];
+                for (const flowItem of (this.flow?.flat || [])) {
+                    if (typeof flowItem.addTerminator === 'function') {
+                        let condFile = flowItem.params?.conditionsFile?.val || flowItem._conditionsFile;
+                        if (!condFile) continue;
+                        let condPath = condFile;
+                        if (expDir && !path.isAbsolute(condFile)) {
+                            condPath = path.join(expDir, condFile);
+                        }
+                        try {
+                            if (python.psychojs.readConditions) {
+                                conditionsJSON = await python.psychojs.readConditions(condPath);
+                                conditions = JSON.parse(conditionsJSON || "[]");
+                                console.log(`[PsychoJS Browser] Loaded ${conditions.length} conditions`);
+                            }
+                        } catch (e) {
+                            console.warn(`[PsychoJS Browser] Could not read conditions: ${condPath}`, e);
+                        }
+                        break;
+                    }
+                }
+
+                finalJSCode = exportExperimentToJS(this, {
+                    debug: this.settings.params?.debugMode?.val === "True",
+                    conditions: conditions
+                });
+            }
+
+            console.log(`[PsychoJS Browser] JS length: ${finalJSCode.length}, resources: ${resourceFiles.length}`);
+
+            console.log(`[PsychoJS Browser] Calling python.psychojs.browserRun...`);
+            const result = await python.psychojs.browserRun(
+                finalJSCode, expName, conditionsJSON,
+                officialJSPath ? JSON.stringify(resourceFiles) : "",
+                officialJSPath ? expDir : ""
+            );
+            console.log(`[PsychoJS Browser] Result:`, result);
+        } catch (err) {
+            console.error(`[PsychoJS Browser] ERROR:`, err);
+            alert(`[PsychoJS Browser] Failed: ${err?.message || err}\nCheck console (Ctrl+Shift+I) for details.`);
         }
     }
 }

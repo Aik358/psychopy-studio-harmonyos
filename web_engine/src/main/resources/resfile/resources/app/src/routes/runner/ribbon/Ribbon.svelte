@@ -93,8 +93,8 @@
         />
     </RibbonSection>
 
-    {#if python?.ready}
-        <RibbonSection label=Run icon="/icons/btn-runpy.svg">
+    <RibbonSection label=Run icon="/icons/btn-runpy.svg">
+        {#if python?.ready}
             <IconButton 
                 icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}py.svg" 
                 label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment locally" 
@@ -104,16 +104,16 @@
                 cancel={python.scripts.stop}
                 borderless
             />
-            <IconButton 
-                icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg" 
-                label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment in browser" 
-                onclick={(evt) => current.runlist[current.selection]?.runJS()}
-                disabled={current.selection === undefined || !(current.runlist[current.selection] instanceof Experiment)}
-                bind:awaiting={current.awaiting.runjs}
-                borderless
-            />
-        </RibbonSection>
-    {/if}
+        {/if}
+        <IconButton 
+            icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg" 
+            label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment in browser" 
+            onclick={(evt) => current.runlist[current.selection]?.runJS()}
+            disabled={current.selection === undefined || !(current.runlist[current.selection] instanceof Experiment)}
+            bind:awaiting={current.awaiting.runjs}
+            borderless
+        />
+    </RibbonSection>
 
     <RibbonSection label=Pavlovia icon="/icons/rbn-pavlovia.svg">
         <UserCtrl />

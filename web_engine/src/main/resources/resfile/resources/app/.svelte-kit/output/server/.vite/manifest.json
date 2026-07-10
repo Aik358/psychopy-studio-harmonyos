@@ -14,7 +14,7 @@
     "name": "Theme",
     "imports": [
       "_internal.js",
-      "_paths.js",
+      "_client.js",
       "_server.js"
     ],
     "css": [
@@ -34,9 +34,8 @@
     "name": "TipsDialog",
     "imports": [
       "_internal.js",
-      "_client.js",
-      "_server.js",
-      "_Theme.js"
+      "_Theme.js",
+      "_server.js"
     ],
     "css": [
       "_app/immutable/assets/TipsDialog.CMGGo0Wm.css"
@@ -48,10 +47,8 @@
     "imports": [
       "_internal.js",
       "_internal2.js",
-      "_paths.js",
-      "_routing.js",
-      "_shared.js",
       "_exports.js",
+      "_shared.js",
       "_server.js"
     ]
   },
@@ -78,15 +75,6 @@
     "file": "chunks/internal2.js",
     "name": "internal"
   },
-  "_paths.js": {
-    "file": "chunks/paths.js",
-    "name": "paths",
-    "imports": [
-      "_internal.js",
-      "_internal2.js",
-      "_routing.js"
-    ]
-  },
   "_pluginManager.Dspt9Gdj.css": {
     "file": "_app/immutable/assets/pluginManager.Dspt9Gdj.css",
     "src": "_pluginManager.Dspt9Gdj.css"
@@ -96,17 +84,13 @@
     "name": "pluginManager",
     "imports": [
       "_internal.js",
+      "_Theme.js",
       "_TipsDialog.js",
-      "_server.js",
-      "_Theme.js"
+      "_server.js"
     ],
     "css": [
       "_app/immutable/assets/pluginManager.Dspt9Gdj.css"
     ]
-  },
-  "_routing.js": {
-    "file": "chunks/routing.js",
-    "name": "routing"
   },
   "_server.js": {
     "file": "chunks/server.js",
@@ -164,9 +148,8 @@
       "_env.js",
       "_utils.js",
       "_internal2.js",
-      "_routing.js",
-      "_shared.js",
       "_exports.js",
+      "_shared.js",
       "_server.js"
     ]
   },
@@ -182,9 +165,9 @@
     "src": "src/routes/+page.svelte",
     "isEntry": true,
     "imports": [
-      "_paths.js",
-      "_server.js",
-      "_Theme.js"
+      "_Theme.js",
+      "_client.js",
+      "_server.js"
     ],
     "css": [
       "_app/immutable/assets/_page.Bcgu6EFI.css"
@@ -227,10 +210,10 @@
     "isEntry": true,
     "imports": [
       "_internal.js",
+      "_Theme.js",
       "_TipsDialog.js",
       "_server.js",
-      "_pluginManager.js",
-      "_Theme.js"
+      "_pluginManager.js"
     ],
     "css": [
       "_app/immutable/assets/_page.a94s6OwD.css"
@@ -243,10 +226,10 @@
     "isEntry": true,
     "imports": [
       "_internal.js",
+      "_Theme.js",
       "_TipsDialog.js",
       "_server.js",
-      "_pluginManager.js",
-      "_Theme.js"
+      "_pluginManager.js"
     ],
     "css": [
       "_app/immutable/assets/_page.CNmMRaah.css"
@@ -259,9 +242,9 @@
     "isEntry": true,
     "imports": [
       "_internal.js",
+      "_Theme.js",
       "_TipsDialog.js",
-      "_server.js",
-      "_Theme.js"
+      "_server.js"
     ],
     "css": [
       "_app/immutable/assets/_page.CJbXT0Gr.css"

@@ -222,8 +222,11 @@
                 borderless
             />
         </RibbonSection>
+    {/if}
 
-        <RibbonSection label=Browser icon="/icons/rbn-browser.svg">
+    <!-- Browser run section: always visible in PsychoPy-Oh, even without Python -->
+    <RibbonSection label=Browser icon="/icons/rbn-browser.svg">
+        {#if python?.ready}
             <IconButton 
                     icon="/icons/btn-compilejs.svg" 
                     label="Write experiment as a .js file" 
@@ -232,16 +235,16 @@
                     bind:awaiting={awaiting.compilejs}
                     borderless
                 />
-                <IconButton 
-                    icon="/icons/btn-{current.experiment.pilotMode ? "pilot" : "run"}js.svg" 
-                    label="{current.experiment.pilotMode ? "Pilot" : "Run"} experiment in browser" 
-                    onclick={(evt) => runJS()}
-                    disabled={!current.experiment.file.file || (!current.experiment.pilotMode && !current.project)}
-                    bind:awaiting={awaiting.runjs}
-                    borderless
-                />
-        </RibbonSection>
-    {/if}
+        {/if}
+            <IconButton 
+                icon="/icons/btn-{current.experiment.pilotMode ? "pilot" : "run"}js.svg" 
+                label="{current.experiment.pilotMode ? "Pilot" : "Run"} experiment in browser" 
+                onclick={(evt) => runJS()}
+                disabled={!current.experiment.file.file}
+                bind:awaiting={awaiting.runjs}
+                borderless
+            />
+    </RibbonSection>
 
     <!-- <RibbonSection id=browser label=Browser icon="/icons/rbn-browser.svg">
         <IconButton 

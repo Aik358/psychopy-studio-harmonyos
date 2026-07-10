@@ -268,12 +268,22 @@ export async function stopPython(executable) {
 }
 
 export async function runJS() {
+    // PsychoPy-Oh: 直接使用前端编译器 + Electron 新窗口
+    console.log("[Builder] runJS() called, electron:", !!electron, "python:", !!python);
+    if (!current.experiment.file.file) {
+        await file_save_as()
+        if (!current.experiment.file.file) return
+    }
+    // 总是优先使用前端内建编译器 + Electron 新窗口
+    if (electron) {
+        await current.experiment.runJS(true)
+        return
+    }
+    // 纯浏览器环境（fallback）
     if (!python) {
         return
     }
-    // compile to JS
     await compileJS()
-    // run
     if (current.experiment.pilotMode) {
         await current.experiment.runJS(true)
     } else {

@@ -23,7 +23,21 @@
         "name": "release"
       }
     ],
-    "signingConfigs": []
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.3__hAgcduji3kjA2N94DwThey7JdINVUZP-J5IjQn4aGI=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BA9538E2D33BA94242A2CA294CBF92B8075CEE43D6C239B8AD0DDD74AE43DCAD0B1EA569951CDFD",
+          "profile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.3__hAgcduji3kjA2N94DwThey7JdINVUZP-J5IjQn4aGI=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.3__hAgcduji3kjA2N94DwThey7JdINVUZP-J5IjQn4aGI=.p12",
+          "storePassword": "0000001BF2A19CAA1C105A7016A8AA393A2153E24AF2CAC6A41B08D2C63CC054B5F44A29E6A99F6D97B53B"
+        }
+      }
+    ]
   },
   "modules": [
     {

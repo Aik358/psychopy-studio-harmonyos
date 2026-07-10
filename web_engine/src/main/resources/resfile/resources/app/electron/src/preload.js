@@ -111,6 +111,10 @@ const python = {
   psychojs: {
     run: (cwd) => ipcRenderer.invoke("python.psychojs.run", cwd).then(resp => resp),
     stop: (address) => ipcRenderer.invoke("python.psychojs.stop", address).then(resp => resp),
+    browserRun: (jsCode, expName, conditionsJSON, resourcesJSON, expDir) => ipcRenderer.invoke("python.psychojs.browserRun", jsCode, expName, conditionsJSON, resourcesJSON, expDir).then(resp => resp),
+    saveLog: (logData, savePath) => ipcRenderer.invoke("python.psychojs.saveLog", logData, savePath).then(resp => resp),
+    browserStop: (address) => ipcRenderer.invoke("python.psychojs.browserStop", address).then(resp => resp),
+    readConditions: (filePath) => ipcRenderer.invoke("python.psychojs.readConditions", filePath).then(resp => resp),
   }
 }
 contextBridge.exposeInMainWorld('python', python)

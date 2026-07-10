@@ -1,7 +1,7 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, m as html, n as attr_style, o as derived, s as ensure_array_like, t as attr_class, v as getContext } from "../../../chunks/server.js";
 import { A as IconButton, B as Icon, D as profiles, E as pending, F as CompactButton, H as openIn, I as PanelButton, J as projects, K as electron, L as ToggleButton, M as Dialog, P as Menu, R as Button, S as Component$1, T as Param, U as showDevTools, V as newWindow, W as showWindow, Y as python, _ as FlowLoop, a as PythonErrors, b as Routine$1, d as Version, f as browseFileOpen, h as parsePath, j as MessageDialog, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as git, t as Theme, u as setupPython, v as LoopInitiator, w as HasParams, x as StandaloneRoutine, y as LoopTerminator, z as Tooltip } from "../../../chunks/Theme.js";
-import { C as Pane_resizer, D as Panel$3, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, c as Notebook_1$1, d as NewProjectDlg, f as UserCtrl, g as Listbook, h as Page, i as Ribbon, l as ParamCtrl, m as ButtonTab, n as Gap, o as PrefsDialog, p as Dialog_1$1, r as Section$1, s as ParamsDialog, t as TipsDialog, u as ProjectCtrl, v as SubMenu, w as Pane, x as current, y as Separator } from "../../../chunks/TipsDialog.js";
+import { C as Pane_resizer, D as store, E as Frame, O as Panel$3, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, c as Notebook_1$1, d as NewProjectDlg, f as UserCtrl, g as Listbook, h as Page, i as Ribbon, l as ParamCtrl, m as ButtonTab, n as Gap, o as PrefsDialog, p as Dialog_1$1, r as Section$1, s as ParamsDialog, t as TipsDialog, u as ProjectCtrl, v as SubMenu, w as Pane, x as current, y as Separator } from "../../../chunks/TipsDialog.js";
 import { t as Dialog_1$2 } from "../../../chunks/pluginManager.js";
 import path from "path-browserify";
 import { marked } from "marked";
@@ -132,6 +132,15 @@ async function stopPython(executable) {
 	await current.experiment.stopPython();
 }
 async function runJS() {
+	console.log("[Builder] runJS() called, electron:", !!electron, "python:", !!python);
+	if (!current.experiment.file.file) {
+		await file_save_as();
+		if (!current.experiment.file.file) return;
+	}
+	if (electron) {
+		await current.experiment.runJS(true);
+		return;
+	}
 	if (!python) return;
 	await compileJS();
 	if (current.experiment.pilotMode) await current.experiment.runJS(true);
@@ -1623,11 +1632,14 @@ function Ribbon_1($$renderer, $$props) {
 							},
 							$$slots: { default: true }
 						});
-						$$renderer.push(`<!----> `);
-						Section$1($$renderer, {
-							label: "Browser",
-							icon: "/icons/rbn-browser.svg",
-							children: ($$renderer) => {
+					} else $$renderer.push("<!--[-1-->");
+					$$renderer.push(`<!--]--> `);
+					Section$1($$renderer, {
+						label: "Browser",
+						icon: "/icons/rbn-browser.svg",
+						children: ($$renderer) => {
+							if (python?.ready) {
+								$$renderer.push("<!--[0-->");
 								IconButton($$renderer, {
 									icon: "/icons/btn-compilejs.svg",
 									label: "Write experiment as a .js file",
@@ -1642,28 +1654,27 @@ function Ribbon_1($$renderer, $$props) {
 										$$settled = false;
 									}
 								});
-								$$renderer.push(`<!----> `);
-								IconButton($$renderer, {
-									icon: `/icons/btn-${current.experiment.pilotMode ? "pilot" : "run"}js.svg`,
-									label: `${current.experiment.pilotMode ? "Pilot" : "Run"} experiment in browser`,
-									onclick: (evt) => runJS(),
-									disabled: !current.experiment.file.file || !current.experiment.pilotMode && !current.project,
-									borderless: true,
-									get awaiting() {
-										return awaiting.runjs;
-									},
-									set awaiting($$value) {
-										awaiting.runjs = $$value;
-										$$settled = false;
-									}
-								});
-								$$renderer.push(`<!---->`);
-							},
-							$$slots: { default: true }
-						});
-						$$renderer.push(`<!---->`);
-					} else $$renderer.push("<!--[-1-->");
-					$$renderer.push(`<!--]--> `);
+							} else $$renderer.push("<!--[-1-->");
+							$$renderer.push(`<!--]--> `);
+							IconButton($$renderer, {
+								icon: `/icons/btn-${current.experiment.pilotMode ? "pilot" : "run"}js.svg`,
+								label: `${current.experiment.pilotMode ? "Pilot" : "Run"} experiment in browser`,
+								onclick: (evt) => runJS(),
+								disabled: !current.experiment.file.file,
+								borderless: true,
+								get awaiting() {
+									return awaiting.runjs;
+								},
+								set awaiting($$value) {
+									awaiting.runjs = $$value;
+									$$settled = false;
+								}
+							});
+							$$renderer.push(`<!---->`);
+						},
+						$$slots: { default: true }
+					});
+					$$renderer.push(`<!----> `);
 					Section$1($$renderer, {
 						label: "Pavlovia",
 						icon: "/icons/rbn-pavlovia.svg",
@@ -3091,6 +3102,12 @@ function ReadMe($$renderer, $$props) {
 //#region src/routes/builder/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
+		if (store.builderState.saved && !current.experiment.file?.file) {
+			if (store.builderState.experimentJSON) current.experiment.fromJSON(store.builderState.experimentJSON);
+			if (store.builderState.routineName && current.experiment.routines[store.builderState.routineName]) current.routine = current.experiment.routines[store.builderState.routineName];
+			if (store.builderState.file) current.experiment.file = store.builderState.file;
+			if (store.builderState.project) current.project = store.builderState.project;
+		}
 		let params = new URLSearchParams(location.search);
 		if (params.get("fileOpen")) openFile(params.get("fileOpen"));
 		setContext("current", current);

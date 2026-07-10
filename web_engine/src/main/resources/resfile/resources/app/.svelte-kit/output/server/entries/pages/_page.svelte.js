@@ -1,5 +1,5 @@
 import { D as escape_html, E as attr, i as await_block } from "../../chunks/server.js";
-import { t as asset } from "../../chunks/paths.js";
+import { o as asset } from "../../chunks/client.js";
 import { B as Icon, K as electron, t as Theme } from "../../chunks/Theme.js";
 //#region src/routes/+page.svelte
 function _page($$renderer, $$props) {

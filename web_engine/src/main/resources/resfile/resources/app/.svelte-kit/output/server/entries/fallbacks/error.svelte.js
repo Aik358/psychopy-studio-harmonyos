@@ -1,6 +1,6 @@
 import "../../chunks/internal.js";
 import { D as escape_html, v as getContext } from "../../chunks/server.js";
-import { t as stores } from "../../chunks/client.js";
+import { n as stores } from "../../chunks/client.js";
 stores.updated.check;
 //#endregion
 //#region node_modules/@sveltejs/kit/src/runtime/app/state/server.js

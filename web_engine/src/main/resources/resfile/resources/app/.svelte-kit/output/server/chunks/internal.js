@@ -787,7 +787,7 @@ var options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\r\n<html lang=\"en\">\r\n	<head>\r\n		<meta charset=\"utf-8\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Nunito.css\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Noto.css\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/JetBrainsMono.css\" />\r\n		<link rel=\"icon\" type=\"image/x-icon\" href=\"" + assets + "/branding/favicon.svg\" />\r\n		<link rel=\"stylesheet\" href=\"" + assets + "/style.css\" />\r\n		<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n		<base target=\"_blank\">\r\n		" + head + "\r\n	</head>\r\n	<body data-sveltekit-preload-data=\"hover\">\r\n		<div style=\"display: contents\">\r\n			" + body + "\r\n		</div>\r\n	</body>\r\n</html>\r\n",
 		error: error_template_default
 	},
-	version_hash: "we7lbs"
+	version_hash: "twfplo"
 };
 async function get_hooks() {
 	let handle;
@@ -808,4 +808,4 @@ async function get_hooks() {
 	};
 }
 //#endregion
-export { tick as a, on as c, set_read_implementation as d, onDestroy as i, read_implementation as l, options as n, createClassComponent as o, index_server_exports as r, append as s, get_hooks as t, set_manifest as u };
+export { settled as a, append as c, set_manifest as d, set_read_implementation as f, onDestroy as i, on as l, options as n, tick as o, index_server_exports as r, createClassComponent as s, get_hooks as t, read_implementation as u };

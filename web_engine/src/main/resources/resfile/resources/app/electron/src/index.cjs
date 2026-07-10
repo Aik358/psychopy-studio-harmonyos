@@ -53,6 +53,57 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   ipcMain.handle("python.scripts.run", () => Promise.resolve("stub-script"));
   ipcMain.handle("python.scripts.finished", () => Promise.resolve());
   ipcMain.handle("python.scripts.stop", () => Promise.resolve(true));
+  // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
+  // 在当前窗口 loadFile() 加载实验（最稳方案）
+  // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
+  // Read and parse XLSX conditions file, return JSON
+  ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
+    try {
+      var XLSX = require("xlsx");
+      var workbook = XLSX.readFile(filePath);
+      var sheet = workbook.Sheets[workbook.SheetNames[0]];
+      var json = XLSX.utils.sheet_to_json(sheet);
+      return JSON.stringify(json);
+    } catch (err) {
+      console.error("[psychojs-browser] readConditions failed:", err?.message || err);
+      return "[]";
+    }
+  });
+
+  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
+    console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir);
+    try {
+      delete require.cache[require.resolve("./psychojs-browser/index.cjs")];
+      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+      const url = await psychoJSBrowser.startServer(
+        jsCode || "", expName || "experiment", conditionsJSON || "",
+        resourcesJSON || "", expDir || ""
+      );
+      console.log("[psychojs-browser] Opened in system browser:", url);
+      return url;
+    } catch (err) {
+      console.error("[psychojs-browser] Failed:", err?.message || err, err?.stack);
+      throw err;
+    }
+  });
+  // 保存实验 log（暂未启用）
+  ipcMain.handle("python.psychojs.saveLog", async (evt, logData, savePath) => {
+    const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+    return await psychoJSBrowser.saveLog(logData, savePath);
+  });
+  // ★ 停掉浏览器实验 server + 清理
+  ipcMain.handle("python.psychojs.browserStop", async (evt, address) => {
+    console.log("[psychojs-browser] browserStop called, address:", address);
+    try {
+      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+      await psychoJSBrowser.stopServer(address);
+      return true;
+    } catch (err) {
+      console.error("[psychojs-browser] stop failed:", err?.message || err);
+      return false;
+    }
+  });
+  // 旧路径保留 stub（避免报错）
   ipcMain.handle("python.psychojs.run", () => Promise.resolve());
   ipcMain.handle("python.psychojs.stop", () => Promise.resolve(true));
   const pythonHandlers = {};
