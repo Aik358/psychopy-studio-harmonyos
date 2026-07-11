@@ -37,6 +37,10 @@ export class UV {
      * @returns {boolean} `true` if uv executables exist, `false` if they don't
      */
     exists() {
+        // On HarmonyOS: UV not needed if we have native Python
+        if (isHarmonyOS() && findNativePython()) {
+            return true;
+        }
         return fs.globSync("uv*", {cwd: this.folder}).length
     }
 
@@ -220,11 +224,6 @@ export class UV {
             const nativePy = findNativePython();
             if (nativePy) return nativePy;
         }
-        // On HarmonyOS: check native Python first
-        if (isHarmonyOS()) {
-            const nativePy = findNativePython();
-            if (nativePy) return nativePy;
-        }
         // substitute "app" for app version
         if (psychopyVersion === "app") {
             psychopyVersion = appVersion
@@ -254,56 +253,14 @@ export class UV {
      * @returns {string} Path to the created executable
      */
     async makeExecutable(psychopyVersion=appVersion, pythonVersion="3.10") {
-        // On HarmonyOS hybrid mode: use system Python to create venv
-        const strategy = getPythonStrategy();
-        if (strategy === "hybrid") {
+        // On HarmonyOS: use system Python directly (no venv needed)
+        if (isHarmonyOS()) {
             const nativePy = findNativePython();
             if (nativePy) {
-                output("uv", "[HarmonyOS] Using native Python to create venv: " + nativePy);
-                if (psychopyVersion.match(/\d+\.\d+\.\*/)) {
-                    psychopyVersion = psychopyVersion.match(/\d+\.\d+/)[0];
-                }
-                const folder = path.join(
-                    app.getPath("appData"), "psychopy4", ".python", psychopyVersion
-                );
-                if (!fs.existsSync(folder)) {
-                    fs.mkdirSync(folder, { recursive: true });
-                }
-                execSync("uv", '\"'+ nativePy + '\"', ["-m", "venv", folder], 30000);
-                const venvPython = path.join(folder,
-                    process.platform === "win32" ? "Scripts\\python.exe" : "bin/python3"
-                );
-                if (fs.existsSync(venvPython)) {
-                    output("uv", "[HarmonyOS] Venv created at: " + venvPython);
-                    return venvPython;
-                }
-                output("uv", "[HarmonyOS] Native venv creation failed, falling back to UV");
+                output("uv", "[HarmonyOS] Using system Python directly: " + nativePy);
+                return nativePy;
             }
-        }
-        // Fall through to standard UV download approach
-        if (strategy === "hybrid") {
-            const nativePy = findNativePython();
-            if (nativePy) {
-                output("uv", "[HarmonyOS] Using native Python to create venv: " + nativePy);
-                if (psychopyVersion.match(/\d+\.\d+\.\*/)) {
-                    psychopyVersion = psychopyVersion.match(/\d+\.\d+/)[0];
-                }
-                const folder = path.join(
-                    app.getPath("appData"), "psychopy4", ".python", psychopyVersion
-                );
-                if (!fs.existsSync(folder)) {
-                    fs.mkdirSync(folder, { recursive: true });
-                }
-                execSync("uv", "\"" + nativePy + "\"", ["-m", "venv", folder], 30000);
-                const venvPython = path.join(folder,
-                    process.platform === "win32" ? "Scripts\\python.exe" : "bin/python3"
-                );
-                if (fs.existsSync(venvPython)) {
-                    output("uv", "[HarmonyOS] Venv created at: " + venvPython);
-                    return venvPython;
-                }
-                output("uv", "[HarmonyOS] Native venv creation failed, falling back to UV");
-            }
+            output("uv", "[HarmonyOS] No native Python found, falling back to UV");
         }
         // strip * if present
         if (psychopyVersion.match(/\d+\.\d+\.\*/)) {
