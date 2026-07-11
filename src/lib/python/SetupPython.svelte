@@ -54,16 +54,16 @@
 
 <MessageDialog
     bind:shown={status.dlg.shown}
-    buttons={status.ready.promise instanceof Promise && false ? {OK: evt => {}} : {
-        "重试连接": evt => {
-            status.dlg.shown = false
+    buttons={{
+        "重试": evt => {
+            status.logs = "";
             setupPython()
         },
-        OK: evt => {}
+        "关闭": evt => {}
     }}
     buttonsDisabled={{
-        "重试连接": status.dlg.busy,
-        OK: false
+        "重试": status.dlg.busy,
+        "关闭": false
     }}
 >
     {@html marked(status.dlg.message || "")}
@@ -93,13 +93,6 @@
             />
             Install failed, see above for error.
         </div>
-        
-        <Button
-            label="Try again?"
-            icon="/icons/btn-refresh.svg"
-            onclick={evt => setupPython()}
-            horizontal
-        />
     {/await}
 </MessageDialog>
 

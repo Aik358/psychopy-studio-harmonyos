@@ -10,116 +10,99 @@ import { Version, ppy2py } from "$lib/utils/versions.js";
  * @param {error} err 
  */
 function handleError(err) {
-    // get error attribute if there is one
     if ("error" in err) {
         err = err.error
     }
-    // log to console
     console.error(err)
-    // send to popup
     status.ready.reject(err)
 }
 
 
 /**
- * Check whether a given IPC channel is registered (i.e. the Python backend is alive).
- * @param {string} channel - e.g. "python.uv.exists"
+ * Check whether the Python backend IPC handlers are registered.
  * @returns {Promise<boolean>}
  */
 async function isPythonBackendAlive() {
     try {
-        // Cheapest probe: ask harmony.isHarmonyOS — it's synchronous and always registered
-        // if python/index.js loaded successfully.
         if (python?.harmony?.isHarmonyOS) {
             await python.harmony.isHarmonyOS();
             return true;
         }
-        // Fallback: try uv.exists
         if (python?.uv?.exists) {
             await python.uv.exists();
             return true;
         }
         return false;
     } catch (err) {
-        // If we get "No handler registered", backend is dead
         const msg = String(err?.message || err);
         if (msg.includes("No handler registered") || msg.includes("does not exist")) {
             return false;
         }
-        // Other errors mean backend IS alive but the operation failed
         return true;
     }
 }
 
 
 /**
- * Detect whether we're running on HarmonyOS and have native Python available.
- * @returns {Promise<{harmony: boolean, python: string|null, version: string|null}>}
- */
-async function detectHarmonyPython() {
-    let harmony = false;
-    let nativePy = null;
-    let pyVer = null;
-    try {
-        if (python?.harmony?.isHarmonyOS) {
-            harmony = await python.harmony.isHarmonyOS();
-        }
-    } catch { /* ignore */ }
-    if (harmony) {
-        try {
-            nativePy = await python.harmony.nativePython();
-        } catch { /* ignore */ }
-        try {
-            pyVer = await python.harmony.pythonVersion();
-        } catch { /* ignore */ }
-    }
-    return { harmony, python: nativePy, version: pyVer };
-}
-
-
-/**
- * Enter fallback mode: Python backend is unavailable.
- * Shows a diagnostic dialog with actionable guidance.
+ * Enter fallback mode: Python backend is unavailable or incomplete.
+ * Runs diagnostics and shows actionable guidance.
+ * 
  * @param {string} reason - Why we're in fallback mode
- * @param {object} info - Extra diagnostic info
+ * @param {object} extra - Extra info { error, diag }
  */
-function enterFallbackMode(reason, info = {}) {
-    const { harmony = false, nativePython = null, pyVersion = null, error = null } = info;
+async function enterFallbackMode(reason, extra = {}) {
+    const { error = null } = extra;
+
+    // Run full diagnostics (if backend is alive enough to answer)
+    let diag = null;
+    let guidance = "";
+    try {
+        if (python?.harmony?.diagnose) {
+            diag = await python.harmony.diagnose();
+            // Import guidance generator from backend
+            if (python?.harmony?.guidance) {
+                guidance = await python.harmony.guidance();
+            }
+        }
+    } catch (_) {
+        // Backend too dead even for diagnostics
+    }
 
     let diagMessage = "### ⚠️ Python 连接失败 — 已进入备用模式\n\n";
     diagMessage += `**原因:** ${reason}\n\n`;
 
-    if (harmony) {
-        diagMessage += "**环境:** HarmonyOS (鸿蒙)\n";
-        if (nativePython) {
-            diagMessage += `**系统 Python:** 找到 \`${nativePython}\`\n`;
-            if (pyVersion) diagMessage += `**Python 版本:** ${pyVersion}\n`;
-            diagMessage += "\nPython 已找到但后端启动失败。请检查：\n";
-            diagMessage += "1. `websockets` 库是否已安装（`pip3 install websockets --user`）\n";
-            diagMessage += "2. `psychopy-lib` 是否已安装（`pip3 install psychopy-lib --no-deps --user`）\n";
-            diagMessage += "3. `liaison_shim.py` 文件是否存在且完整\n";
-            diagMessage += "4. 查看下方日志获取详细错误信息\n";
+    if (diag) {
+        // Use backend-generated guidance
+        if (guidance) {
+            diagMessage = guidance;
         } else {
-            diagMessage += "**系统 Python:** ❌ 未找到\n\n";
-            diagMessage += "鸿蒙设备上未检测到 Python3。请尝试以下操作：\n";
-            diagMessage += "1. 安装 HNP Python：在鸿蒙终端中执行 `hnp install python.org/python_3.12`\n";
-            diagMessage += "2. 或安装 Termux 并通过 `pkg install python` 安装\n";
-            diagMessage += "3. 安装后重启应用\n";
+            // Fallback: generate our own summary
+            diagMessage += `**平台:** ${diag.isHarmonyOS ? "HarmonyOS" : diag.platform}\n`;
+            diagMessage += `**系统 Python:** ${diag.python ? "✅ " + diag.python : "❌ 未找到"}\n`;
+            if (diag.pythonVersion) {
+                diagMessage += `**版本:** ${diag.pythonVersion} ${diag.pythonOk ? "✅" : "❌ (需≥3.9)"}\n`;
+            }
+            diagMessage += `**Harmonybrew:** ${diag.harmonybrew ? "✅" : "❌"}\n`;
+            if (diag.missingRequired?.length > 0) {
+                diagMessage += `**缺少依赖:** ${diag.missingRequired.map(m => m.pip).join(", ")}\n`;
+            }
+            diagMessage += `**推荐方案:** ${diag.recommendation}\n`;
         }
     } else {
-        diagMessage += "**环境:** 非鸿蒙 (Windows/Linux/macOS)\n";
-        diagMessage += "\nPython 后端未正确加载。请检查：\n";
-        diagMessage += "1. Electron 主进程中 Python 模块是否成功导入\n";
-        diagMessage += "2. `extract-zip`、`tar`、`tcp-port-used` 等依赖是否安装\n";
-        diagMessage += "3. 查看 Electron 主进程日志获取导入错误\n";
+        // Backend completely dead — can't even run diagnostics
+        diagMessage += "Python 后端模块加载失败，无法运行诊断。\n\n";
+        diagMessage += "请检查 Electron 主进程日志：\n";
+        diagMessage += "1. `extract-zip`、`tar`、`tcp-port-used` 等 npm 依赖是否可用\n";
+        diagMessage += "2. `python/index.js` 导入是否成功\n";
+        diagMessage += "3. 查看 `[D] Python backend FAILED to load` 日志\n";
     }
 
     if (error) {
-        diagMessage += `\n**错误详情:**\n\`\`\`\n${String(error).substring(0, 500)}\n\`\`\`\n`;
+        diagMessage += `\n**错误详情:**\n\`\`\`\n${String(error).substring(0, 800)}\n\`\`\`\n`;
     }
 
-    diagMessage += "\n---\n**当前状态:** Builder 编辑器可用（代码生成、保存、导出），但以下功能不可用：\n";
-    diagMessage += "- ❌ Python 实验运行\n- ❌ Coder 终端\n- ❌ 条件文件读取（xlsx/csv）\n- ❌ PsychoJS 本地服务器\n";
+    diagMessage += "\n---\n**当前状态:** Builder 编辑器可用，以下功能不可用：\n";
+    diagMessage += "- ❌ Python 实验运行\n- ❌ Coder 终端\n- ❌ 条件文件读取\n";
     diagMessage += "\n修复后点击「重试」重新连接 Python。";
 
     status.message = "Python 不可用 — 备用模式";
@@ -129,17 +112,117 @@ function enterFallbackMode(reason, info = {}) {
     status.logs += `\n[Fallback] ${reason}\n`;
     if (error) status.logs += `[Error] ${String(error)}\n`;
 
-    // Resolve ready as false — app continues in degraded mode
+    // Store diag for auto-install button
+    status._diag = diag;
+
     status.ready.resolve(false);
 }
 
 
+/**
+ * Attempt automatic installation of missing packages.
+ * Uses system Python pip --user, or venv, or harmonybrew.
+ */
+async function attemptAutoInstall() {
+    status.dlg.busy = true;
+    status.message = "正在安装缺失的依赖...";
+    status.logs += "\n[AutoInstall] Starting...\n";
+
+    try {
+        if (python?.harmony?.autoInstall) {
+            const result = await python.harmony.autoInstall();
+            status.logs += `[AutoInstall] Result: ${JSON.stringify(result.results || result)}\n`;
+            
+            if (result.success) {
+                status.message = "依赖安装成功！";
+                status.logs += "[AutoInstall] All packages installed successfully.\n";
+                status.dlg.busy = false;
+                // Retry setup
+                return await setupPython(undefined, true);
+            } else {
+                // Some packages failed
+                const failed = (result.results || []).filter(r => !r.success);
+                status.logs += `[AutoInstall] Failed: ${failed.map(f => f.package).join(", ")}\n`;
+                
+                // Check if we should try venv approach
+                if (result.diag?.venvAvailable && result.diag?.recommendation !== "system_python") {
+                    status.dlg.message = "### ⚠️ --user 安装失败，尝试创建独立 venv\n\n" +
+                        "系统 Python 拒绝了 `--user` 安装。将创建一个独立的虚拟环境 (venv) 来安装依赖。\n" +
+                        "venv 是完全隔离的，不会影响系统其他程序。\n\n" +
+                        "点击「创建 venv」继续。";
+                    // Will be handled by dialog button
+                } else {
+                    status.dlg.message = "### ⚠️ 部分依赖安装失败\n\n" +
+                        `失败的包: ${failed.map(f => f.package).join(", ")}\n\n` +
+                        "可能原因：\n" +
+                        "- 系统不允许安装（权限不足）\n" +
+                        "- 网络问题（无法访问 PyPI）\n" +
+                        "- 包需要编译但缺少编译工具\n\n" +
+                        "建议尝试：\n" +
+                        "1. 手动安装：`pip3 install " + failed.map(f => f.package).join(" ") + "`\n" +
+                        "2. 使用 harmonybrew：`brew install python@3.12` 然后重试\n" +
+                        "3. 使用 venv：`python3 -m venv ~/.psychopy-venv` 后在 venv 中安装\n";
+                }
+                status.dlg.busy = false;
+            }
+        } else {
+            status.logs += "[AutoInstall] autoInstall handler not available\n";
+            status.dlg.busy = false;
+        }
+    } catch (err) {
+        status.logs += `[AutoInstall] Error: ${String(err)}\n`;
+        status.dlg.busy = false;
+        
+        // If auto-install failed, show manual instructions
+        status.dlg.message = "### ❌ 自动安装失败\n\n" +
+            `**错误:** ${String(err).substring(0, 300)}\n\n` +
+            "请手动安装 Python 依赖：\n\n" +
+            "```bash\n" +
+            "# 方式 1：pip --user 安装\n" +
+            "pip3 install --user numpy scipy pillow pyglet websockets esprima\n" +
+            "pip3 install --user psychopy-lib --no-deps\n\n" +
+            "# 方式 2：venv 隔离安装（推荐，不影响系统）\n" +
+            "python3 -m venv ~/.psychopy-venv\n" +
+            "~/.psychopy-venv/bin/pip install numpy scipy pillow pyglet websockets esprima\n" +
+            "~/.psychopy-venv/bin/pip install psychopy-lib --no-deps\n\n" +
+            "# 方式 3：harmonybrew（如系统无 Python）\n" +
+            "brew install python@3.12\n" +
+            "```\n\n" +
+            "安装完成后点击「重试」。";
+    }
+}
+
+
+/**
+ * Create a venv and install packages there (safe fallback).
+ */
+async function createVenvAndInstall() {
+    status.dlg.busy = true;
+    status.message = "正在创建虚拟环境...";
+    status.logs += "\n[Venv] Creating isolated venv...\n";
+
+    // This would call a backend handler to:
+    // 1. python3 -m venv ~/.psychopy-venv
+    // 2. ~/.psychopy-venv/bin/pip install <packages>
+    // For now, we guide the user
+    status.dlg.message = "### 创建虚拟环境\n\n" +
+        "请在终端中执行以下命令：\n\n" +
+        "```bash\n" +
+        "# 1. 创建 venv\n" +
+        "python3 -m venv ~/.psychopy-venv\n\n" +
+        "# 2. 安装依赖\n" +
+        "~/.psychopy-venv/bin/pip install numpy scipy pillow pyglet websockets esprima\n" +
+        "~/.psychopy-venv/bin/pip install psychopy-lib --no-deps\n" +
+        "```\n\n" +
+        "安装完成后点击「重试」。";
+    status.dlg.busy = false;
+}
+
+
 export async function installPython(version=undefined, forceReinstall=false) {
-    // make sure we have a psychopy version
     if (!version || version === "app") {
         version = await electron.version()
     }
-    // is this a prerelease version?
     let prerelease
     if (version === "dev") {
         prerelease = true
@@ -149,42 +232,25 @@ export async function installPython(version=undefined, forceReinstall=false) {
     } else {
         prerelease = false
     }
-    // remove any dogfood details from version
     try {
         version = Version.parse(version).format("patch")
     } catch {}
-    // get python version
     let pyVersion
     if (version === "dev") {
-        // for dev or app, assume python 3.10
         pyVersion = "3.10"
     } else {
-        // make sure we have a Version object
         version = Version.parse(version)
-        // oldest version we can do is 2022.1 as it's the first to use Python >3.8
         if (version.olderThan("2022.1.0")) {
-            console.warn(
-                `Version ${version.format()} of PsychoPy is not supported in PsychoPy Studio as it ` +
-                `cannot run in Python >=3.8. Using the oldest compatible version (2022.1).`
-            )
             version = new Version("2022.1.*")
         }
-        // get python version matching psychopy version
         pyVersion = ppy2py(version)
-        // convert back to string (serializable)
         version = version.format()
     }
-    // if installed and not forcing a reinstall, do nothing
     if (!forceReinstall) {
-        if (
-            await python.uv.findPython(
-                version
-            ).catch(handleError)
-        ) {
+        if (await python.uv.findPython(version).catch(handleError)) {
             return
         }
     }
-    // open dialog to show progress
     status.message = "Installing Python and PsychoPy library..."
     status.dlg.message = (
         `### Installing Python (${pyVersion}) and PsychoPy library (${version ? version : "latest version"})...\n` +
@@ -192,13 +258,8 @@ export async function installPython(version=undefined, forceReinstall=false) {
     )
     status.dlg.shown = true
     status.dlg.busy = true
-    // create venv
-    await python.uv.makeExecutable(
-        version, pyVersion
-    ).catch(handleError)
-    // install packages
+    await python.uv.makeExecutable(version, pyVersion).catch(handleError)
     await python.venv.setup(version, prerelease)
-    // mark as done
     status.dlg.busy = false
 }
 
@@ -209,14 +270,12 @@ export async function setupPython(version=undefined, forceReinstall=false) {
         status.ready.resolve()
         return
     }
-    // new promises
+    // reset state
     status.ready = Promise.withResolvers();
     status.dismiss = Promise.withResolvers();
-    // once status resolves, dismiss message after a brief pause
     status.ready.promise.finally(
         val => setTimeout(evt => status.dismiss.resolve(val), 2000)
     )
-    // make sure we have a psychopy version
     if (!version || version === "app") {
         version = await electron.version()
     }
@@ -225,43 +284,74 @@ export async function setupPython(version=undefined, forceReinstall=false) {
     status.message = "Checking Python backend..."
     const backendAlive = await isPythonBackendAlive();
     if (!backendAlive) {
-        // Backend handlers not registered — enter fallback mode
-        // Try to detect HarmonyOS for tailored guidance
-        let harmonyInfo = {};
-        try {
-            // Direct preload probe — harmony.isHarmonyOS might not be registered either
-            // so we check via a different signal
-            if (python?.harmony?.isHarmonyOS) {
-                harmonyInfo.harmony = await python.harmony.isHarmonyOS().catch(() => false);
-                if (harmonyInfo.harmony) {
-                    harmonyInfo.nativePython = await python.harmony.nativePython().catch(() => null);
-                    harmonyInfo.pyVersion = await python.harmony.pythonVersion().catch(() => null);
-                }
-            }
-        } catch { /* ignore */ }
-
-        enterFallbackMode(
-            "Python IPC handlers 未注册（python/index.js 加载失败）",
-            harmonyInfo
+        await enterFallbackMode(
+            "Python IPC handlers 未注册（python/index.js 加载失败）"
         );
         return;
     }
 
-    // === Step 1: Detect HarmonyOS + native Python ===
-    const hmInfo = await detectHarmonyPython();
-    if (hmInfo.harmony && hmInfo.python) {
-        // HarmonyOS with native Python — skip UV entirely
-        status.message = `Using system Python (${hmInfo.version || "?"})...`
-        status.logs += `[HarmonyOS] Native Python: ${hmInfo.python}\n`
+    // === Step 1: Run diagnostics on HarmonyOS ===
+    let diag = null;
+    try {
+        if (python?.harmony?.diagnose) {
+            diag = await python.harmony.diagnose();
+        }
+    } catch (err) {
+        console.warn("[setupPython] Diagnostics failed:", err);
+    }
 
-        // Check if Python is already running via liaison
+    if (diag?.isHarmonyOS) {
+        // HarmonyOS path with full diagnostics
+
+        if (!diag.python || !diag.pythonOk) {
+            // No suitable system Python
+            await enterFallbackMode(
+                diag.python
+                    ? `系统 Python 版本过低 (${diag.pythonVersion}，需 ≥3.9)`
+                    : "鸿蒙设备上未检测到 Python3",
+                { diag }
+            );
+            return;
+        }
+
+        // We have a usable system Python
+        if (diag.missingRequired.length > 0) {
+            // Packages missing — try auto-install first
+            status.message = `安装缺失依赖 (${diag.missingRequired.length} 个包)...`
+            status.dlg.message = "### 📦 检测到缺少 Python 依赖\n\n" +
+                (await python.harmony.guidance?.() || "") +
+                "\n\n点击「自动安装」将使用 pip 安装缺失的包。";
+            status.dlg.shown = true;
+            status.dlg.busy = false;  // Allow user to click "Auto Install"
+            status._diag = diag;
+
+            // Auto-attempt installation
+            await attemptAutoInstall();
+            
+            // Re-check after install
+            try {
+                diag = await python.harmony.diagnose();
+            } catch (_) {}
+
+            if (diag?.missingRequired?.length > 0) {
+                // Still missing — enter fallback with full guidance
+                await enterFallbackMode(
+                    "部分依赖安装失败，需要手动安装",
+                    { diag }
+                );
+                return;
+            }
+        }
+
+        // All packages present — start liaison
+        status.message = `使用系统 Python (${diag.pythonVersion})...`
+        status.logs += `[HarmonyOS] Python ready: ${diag.python}\n`;
+
         status.message = "Connecting Python"
         let alreadyStarted = false;
         try {
             alreadyStarted = await python.liaison.started(version);
-        } catch {
-            // liaison.started might fail if handler is stub
-        }
+        } catch { /* ignore */ }
 
         if (alreadyStarted) {
             status.message = "Connected Python"
@@ -273,45 +363,24 @@ export async function setupPython(version=undefined, forceReinstall=false) {
                 status.message = "Successfully started Python"
                 status.ready.resolve(true)
             } catch (err) {
-                // Liaison start failed — enter fallback with diagnostic info
-                enterFallbackMode(
+                await enterFallbackMode(
                     "Liaison 启动失败",
-                    {
-                        harmony: true,
-                        nativePython: hmInfo.python,
-                        pyVersion: hmInfo.version,
-                        error: err
-                    }
+                    { error: err, diag }
                 );
                 return;
             }
         }
 
-        // mark python global as ready once Liaison has started
         python.liaison.ready(version).then(
             evt => { python.ready = true }
-        ).catch(() => {
-            // Liaison ready failed — already in fallback from above
-        })
+        ).catch(() => {})
         return;
     }
 
-    if (hmInfo.harmony && !hmInfo.python) {
-        // HarmonyOS but no Python found
-        enterFallbackMode(
-            "鸿蒙设备上未检测到 Python3",
-            { harmony: true, nativePython: null }
-        );
-        return;
-    }
-
-    // === Step 2: Standard (non-HarmonyOS) path — UV-based installation ===
-    // do we already have UV?
+    // === Step 2: Standard (non-HarmonyOS or no diag) path ===
     status.message = "Checking Python..."
     let hasUV = await python.uv.exists().catch(handleError)
-    // install UV
     if (!hasUV || forceReinstall) {
-        // open dialog to show progress
         status.message = "Downloading UV (a Python installer)..."
         status.dlg.message = (
             "### Downloading UV (a Python installer)...\n" +
@@ -319,37 +388,25 @@ export async function setupPython(version=undefined, forceReinstall=false) {
         )
         status.dlg.shown = true
         status.dlg.busy = true
-        // do install
         await python.uv.install().catch(handleError)
         status.dlg.busy = false
     }
-    // do we already have Python?
     let hasPython = await python.uv.findPython(version).catch(handleError)
-    // install Python
     if (!hasPython || forceReinstall) {
-        // kill any existing process
-        // await python.liaison.stop("app")
         await installPython(version, forceReinstall)
     }
-    // is Python already running?
     status.message = "Connecting Python"
     if (await python.liaison.started(version)) {
-        // mark as connected
         status.message = "Connected Python"
         status.ready.resolve(true)
     } else {
-        // start python
         status.message = "Starting Python..."
         await python.liaison.start(version).catch(handleError)
-        // mark success
         status.message = "Successfully started Python"
         status.ready.resolve(true)
     }
-    // mark python global as ready once Liaison has started
     python.liaison.ready(version).then(
-        evt => {
-            python.ready = true
-        }
+        evt => { python.ready = true }
     )
 
     return python
