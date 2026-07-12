@@ -350,7 +350,10 @@ function startingWindows() {
   let ready = Promise.withResolvers()
   // show when ready (if requested)
   if (show) {
-    win.once("ready-to-show", evt => {
+    let shown = false;
+    function showWin() {
+      if (shown) return;
+      shown = true;
       logging.log(`Loaded ${url}`)
       win.show();
       if (fullscreen) {
@@ -363,12 +366,21 @@ function startingWindows() {
       if (prefs?.params?.debugMode?.val === "True") {
         win.webContents.openDevTools();
       }
-    })
+    }
+    win.once("ready-to-show", evt => showWin());
+    // fallback: force show after 8 seconds even if ready-to-show didn't fire
+    setTimeout(() => showWin(), 8000);
     win.webContents.on("ipc-message", (evt, tag) => {
       if (tag === "ready") {
         ready.resolve(win.webContents.id)
       }
     })
+    // fallback: resolve ready after 10 seconds
+    setTimeout(() => {
+      if (ready.promise.state !== 'fulfilled') {
+        ready.resolve(win.webContents.id)
+      }
+    }, 10000);
   } else {
     win.once("ready-to-show", evt => ready.resolve(win.webContents.id))
   }
