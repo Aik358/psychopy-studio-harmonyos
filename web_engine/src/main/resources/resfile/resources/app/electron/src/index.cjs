@@ -44,6 +44,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   } catch (harmonyErr) {
     console.error('[!] Failed to load harmony-python.js:', harmonyErr?.message || harmonyErr);
     console.error('[!] Stack:', harmonyErr?.stack?.substring(0, 500));
+    dialog.showErrorBox('PsychoPy Debug', 'harmony-python.js load failed: ' + (harmonyErr?.message || harmonyErr) + '\n\n' + (harmonyErr?.stack?.substring(0, 500) || ''));
     // Register ALL stubs matching preload.js API so frontend doesn't crash
     // Liaison
     ipcMain.handle("python.liaison.ready", () => false);
@@ -207,13 +208,17 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
+  try {
+    console.log('[D] createWindow started');
   // if app is already running...
   if (started) {
+    console.log('[D] already started, calling startingWindows()');
     startingWindows()
     return
   }
   // mark started
   started = true
+  console.log('[D] creating splash window');
   // create splash
   windows.splash = new BrowserWindow({
     icon: favicon,
@@ -229,12 +234,14 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   windows.splash.center();
   if (prefs.params?.showSplash?.val !== "False") {
     windows.splash.show();
+    console.log('[D] splash shown');
   }
 
   // keep track of ready statuses
   let ready = {
     svelte: Promise.withResolvers()
   }
+  console.log('[D] Promise.withResolvers OK, platform=' + process.platform);
   // if on windows, get frame to open with from argv
   if (process.platform === "win32") {
     onFileOpen(undefined, process.argv[isDev ? 2 : 1])
@@ -293,6 +300,10 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   }
 
   // show when Svelte has loaded and min time has been reached, or when max time has been reached
+  console.log('[D] setting up Promise.any, isDev=' + isDev);
+  if (!isDev) {
+    console.log('[D] production mode, starting Express on ' + svelte.address.host + ':' + svelte.address.port);
+  }
   Promise.any([
     Promise.all([
       mintime,
@@ -301,12 +312,20 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     maxtime
   ]).then(
     () => {
+      console.log('[D] Promise.any resolved, checking windows...');
       // make sure at least one window is open
       if (!Object.keys(windows).filter(key => key !== "splash").length) {
+        console.log('[D] no windows open, calling startingWindows()');
         startingWindows()
+      } else {
+        console.log('[D] windows already open: ' + Object.keys(windows).filter(key => key !== "splash").join(', '));
       }
     }
-  )
+  ).catch(err => {
+    console.error('[D] Promise.any error:', err);
+    dialog.showErrorBox('PsychoPy Debug', 'Promise.any error: ' + (err?.message || err));
+  });
+  console.log('[D] createWindow setup complete');
 };
 
 function startingWindows() {
@@ -316,18 +335,27 @@ function startingWindows() {
     } catch {
       targets = ["builder"]
     }
+    console.log('[D] startingWindows targets:', JSON.stringify(targets));
     for (let target of targets) {
+      console.log('[D] calling newWindow(' + target + ')');
       newWindow(target, true, false).then(
-        // show tips if requested
-        id => windows[id].webContents.send(
-          "showTips", prefs.params?.showStartupTips?.val === "True"
-        )
-      )
+        id => {
+          console.log('[D] newWindow(' + target + ') resolved with id=' + id);
+          windows[id].webContents.send(
+            "showTips", prefs.params?.showStartupTips?.val === "True"
+          )
+        }
+      ).catch(err => {
+        console.error('[D] newWindow(' + target + ') error:', err?.message || err);
+        dialog.showErrorBox('PsychoPy Debug', 'newWindow error: ' + (err?.message || err));
+      });
     }
   }
 
 
   async function newWindow(target = null, show = true, fullscreen = false) {
+    console.log('[D] newWindow start, target=' + target);
+    try {
   // create window
   let win = new BrowserWindow({
     icon: favicon,
@@ -398,8 +426,14 @@ function startingWindows() {
     win.once("ready-to-show", evt => ready.resolve(win.webContents.id))
   }
   // wait until ready
+  console.log('[D] newWindow waiting for ready promise');
   return await ready.promise
-}
+    } catch (nwErr) {
+      console.error('[D] newWindow error:', nwErr?.message || nwErr, nwErr?.stack?.substring(0, 300));
+      dialog.showErrorBox('PsychoPy Debug', 'newWindow crash: ' + (nwErr?.message || nwErr) + '\n\n' + (nwErr?.stack?.substring(0, 500) || ''));
+      throw nwErr;
+    }
+  }
 
 async function authenticatePavlovia(url) {
     // create window
@@ -608,4 +642,9 @@ async function authenticatePavlovia(url) {
       { recursive: true }
     )
   }
-})();
+  console.log('[D] IIFE setup complete, app.whenReady will call createWindow');
+  })().catch(err => {
+    console.error('[!] FATAL: IIFE crashed:', err?.message || err);
+    console.error('[!] Stack:', err?.stack?.substring(0, 800));
+    try { dialog.showErrorBox('PsychoPy FATAL', 'IIFE crash: ' + (err?.message || err) + '\n\n' + (err?.stack?.substring(0, 800) || '')); } catch(e) {}
+  });
