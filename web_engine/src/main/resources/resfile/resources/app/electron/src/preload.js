@@ -1,4 +1,6 @@
-const { ipcRenderer, contextBridge, webUtils } = require('electron');
+const { ipcRenderer, contextBridge } = require('electron');
+let webUtils;
+try { webUtils = require('electron').webUtils; } catch(_) { webUtils = undefined; }
 
 
 // details about Electron process
