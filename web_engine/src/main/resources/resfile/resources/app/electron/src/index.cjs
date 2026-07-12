@@ -326,6 +326,10 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     dialog.showErrorBox('PsychoPy Debug', 'Promise.any error: ' + (err?.message || err));
   });
   console.log('[D] createWindow setup complete');
+  } catch (cwErr) {
+    console.error('[D] createWindow FATAL:', cwErr?.message || cwErr, cwErr?.stack?.substring(0, 500));
+    try { dialog.showErrorBox('PsychoPy Debug', 'createWindow crash: ' + (cwErr?.message || cwErr) + '\n\n' + (cwErr?.stack?.substring(0, 500) || '')); } catch(e) {}
+  }
 };
 
 function startingWindows() {
