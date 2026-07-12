@@ -11,6 +11,11 @@ import proc from "child_process";
 import { app, ipcMain } from "electron";
 import logging from "./logging.js";
 import { output, decoder } from "./python/utils.js";
+import { fileURLToPath } from "url";
+
+// ESM polyfill for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── HarmonyOS Python paths ──────────────────────────────────
 const HARMONY_PYTHON_PATHS = [
