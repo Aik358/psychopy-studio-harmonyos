@@ -194,50 +194,109 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
-  console.log('[D] createWindow loading builder');
-  started = true;
+  // if app is already running...
+  if (started) {
+    startingWindows()
+    return
+  }
+  // mark started
+  started = true
+  // create splash
+  windows.splash = new BrowserWindow({
+    icon: favicon,
+    title: "PsychoPy Studio",
+    width: 720,
+    height: 400,
+    show: false,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true
+  });
+  windows.splash.loadFile(path.join(__dirname, 'splash.html'));
+  windows.splash.center();
+  if (prefs.params?.showSplash?.val !== "False") {
+    windows.splash.show();
+  }
 
-  const express = require('express');
-  const expressApp = express();
-  const distPath = path.join(__dirname, '../../dist');
-  expressApp.use(express.static(distPath, {
-    setHeaders: (res, p) => {
-      if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
-      if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
-      if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
-      if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-      if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
-    }
-  }));
-  expressApp.use((req, res, next) => {
-    if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
-    const pageDir = path.join(distPath, req.path.split('/')[1] || '', 'index.html');
-    if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
-    next();
-  });
-  
-  const server = expressApp.listen(8003, 'localhost', () => {
-    console.log('[D] Express started');
-    
-    const mainWin = new BrowserWindow({
-      width: 1600, height: 900, show: true,
-      frame: true,
-      webPreferences: { preload: path.join(__dirname, 'preload.js') }
+  // keep track of ready statuses
+  let ready = {
+    svelte: Promise.withResolvers()
+  }
+  // if on windows, get frame to open with from argv
+  if (process.platform === "win32") {
+    onFileOpen(undefined, process.argv[isDev ? 2 : 1])
+  }
+  // start timers 
+  let mintime = new Promise((resolve, reject) => setTimeout(resolve, prefs.params?.showSplash?.val !== "False" ? 1000 : 0));
+  let maxtime = new Promise((resolve, reject) => setTimeout(resolve, 10000));
+  // start the svelte side of things
+  if (isDev) {
+    // use Vite dev server for development
+    logging.log(`Starting Vite dev server at ${svelte.address.host}:${svelte.address.port}`)
+    svelte.process = proc.exec(`vite dev --host=${svelte.address.host} --port=${svelte.address.port}`);
+    svelte.process.stdout.on("data", msg => {
+      let readyMatch = msg.match(
+        /➜  Local:   http:\/\/(?<host>[\w\d]+):(?<port>[\w\d]+)/
+      )
+      if (readyMatch) {
+        svelte.address.host = readyMatch.groups.host
+        svelte.address.port = readyMatch.groups.port
+        ready.svelte.resolve()
+        logging.log(
+          `Started Vite dev server at ${svelte.address.host}:${svelte.address.port}`
+        )
+      }
+    })
+  } else {
+    // use express to serve static files in production
+    logging.log(`Running: ${process.argv.join(" | ")}`)
+    const express = require('express');
+    const app = express();
+
+    app.use(express.static(path.join(__dirname, '../../dist'), {
+      setHeaders: (res, p) => {
+        if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+        if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
+        if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+        if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+        if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+      }
+    }));
+
+    // SPA fallback
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
+      const pageDir = path.join(__dirname, '../../dist', req.path.split('/')[1] || '', 'index.html');
+      if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
+      res.sendFile(path.join(__dirname, '../../dist/index.html'));
     });
-    mainWin.removeMenu();
-    mainWin.loadURL('http://localhost:8003/builder');
-    
-    // Store window for IPC
-    mainWin.webContents.once('did-finish-load', () => {
-      windows[mainWin.webContents.id] = mainWin;
+
+    const server = app.listen(svelte.address.port, svelte.address.host, () => {
+      logging.log(`Started static server at ${svelte.address.host}:${svelte.address.port}`)
+      ready.svelte.resolve();
     });
-    
+
     svelte.process = { kill: () => server.close() };
-  });
-};/**
-   * Open the default starting windows indicated by prefs
-   */
-  function startingWindows() {
+  }
+
+  // show when Svelte has loaded and min time has been reached, or when max time has been reached
+  Promise.any([
+    Promise.all([
+      mintime,
+      ...Object.values(ready).map(val => val.promise)
+    ]),
+    maxtime
+  ]).then(
+    () => {
+      // make sure at least one window is open
+      if (!Object.keys(windows).filter(key => key !== "splash").length) {
+        startingWindows()
+      }
+    }
+  )
+};
+
+function startingWindows() {
     let targets
     try {
       targets = JSON.parse(prefs.params?.defaultView?.val)
@@ -256,69 +315,68 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
 
 
   async function newWindow(target = null, show = true, fullscreen = false) {
-    // create window
-    let win = new BrowserWindow({
-      icon: favicon,
-      width: 1600,
-      height: 900,
-      show: true,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js')
-      }
-    });
-    win.removeMenu();
-    // prevent default key behaviour for CMD+R
-    win.webContents.on("before-input-event", (evt, input) => {
-      if (input.modifiers.includes("meta") && input.key.toLowerCase() === "r") {
-        evt.preventDefault()
-      }
-    })
-    // open new windows in browser unless opened by electron
-    win.webContents.setWindowOpenHandler(
-      ({ url }) => {
-        shell.openExternal(url);
+  // create window
+  let win = new BrowserWindow({
+    icon: favicon,
+    width: 1600,
+    height: 900,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+  win.removeMenu();
+  // prevent default key behaviour for CMD+R
+  win.webContents.on("before-input-event", (evt, input) => {
+    if (input.modifiers.includes("meta") && input.key.toLowerCase() === "r") {
+      evt.preventDefault()
+    }
+  })
+  // open new windows in browser unless opened by electron
+  win.webContents.setWindowOpenHandler(
+    ({ url }) => {
+      shell.openExternal(url);
+      return { action: 'deny' }
+    }
+  )
 
-        return { action: 'deny' }
-      }
-    )
-
-    // load target URL
-    let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
-    logging.log(`Loading ${url}...`)
-    win.loadURL(url);
-    // store handle against id
-    windows[win.webContents.id] = win;
-    // create promise waiting for ready event
-    let ready = Promise.withResolvers()
-    // show when ready (if requested)
+  // load target URL
+  let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
+  logging.log(`Loading ${url}...`)
+  win.loadURL(url);
+  // store handle against id
+  windows[win.webContents.id] = win;
+  // create promise waiting for ready event
+  let ready = Promise.withResolvers()
+  // show when ready (if requested)
+  if (show) {
     win.once("ready-to-show", evt => {
       logging.log(`Loaded ${url}`)
-      ready.resolve(win.webContents.id)
-      if (show) {
-        if (fullscreen) {
-          win.maximize();
-        }
-        win.focus();
-        if (windows.splash && !windows.splash.isDestroyed()) {
-          windows.splash.close()
-        }
-        if (prefs?.params?.debugMode?.val === "True") {
-          win.webContents.openDevTools();
-        }
+      win.show();
+      if (fullscreen) {
+        win.maximize();
+      }
+      win.focus();
+      if (windows.splash && !windows.splash.isDestroyed()) {
+        windows.splash.close()
+      }
+      if (prefs?.params?.debugMode?.val === "True") {
+        win.webContents.openDevTools();
       }
     })
-    // wait until ready
-    return await ready.promise
+    win.webContents.on("ipc-message", (evt, tag) => {
+      if (tag === "ready") {
+        ready.resolve(win.webContents.id)
+      }
+    })
+  } else {
+    win.once("ready-to-show", evt => ready.resolve(win.webContents.id))
   }
+  // wait until ready
+  return await ready.promise
+}
 
-
-  /**
-   * Opens a new BrowserWindow to login to Pavlovia, and waits for it to have a code in the URL
-   * 
-   * @param {string} url Authentication URL to use
-   * @param {string} pattern Regex pattern we expect to be able to use to get the auth code
-   */
-  async function authenticatePavlovia(url) {
+async function authenticatePavlovia(url) {
     // create window
     let win = new BrowserWindow({
       icon: favicon,
