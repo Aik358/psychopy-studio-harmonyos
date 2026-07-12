@@ -23,8 +23,39 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const { UsageReport } = usageModule;
   const { appVersion, isDev } = versionModule;
   // ★ HarmonyOS Python backend — real handlers via harmony-python.js
-  const { registerHarmonyPythonHandlers } = await import("./harmony-python.js");
-  registerHarmonyPythonHandlers();
+  // Wrapped in try-catch so Python backend failure doesn't block Electron UI
+  try {
+    const harmonyMod = await import("./harmony-python.js");
+    harmonyMod.registerHarmonyPythonHandlers();
+    console.log('[D] harmony-python handlers registered');
+  } catch (harmonyErr) {
+    console.error('[!] Failed to load harmony-python.js:', harmonyErr?.message || harmonyErr);
+    // Register minimal stubs so frontend doesn't hang
+    ipcMain.handle("python.liaison.ready", () => false);
+    ipcMain.handle("python.liaison.send", () => { throw new Error("Python backend not available"); });
+    ipcMain.handle("python.liaison.start", () => false);
+    ipcMain.handle("python.liaison.stop", () => true);
+    ipcMain.handle("python.liaison.started", () => false);
+    ipcMain.handle("python.uv.exists", () => false);
+    ipcMain.handle("python.uv.findPython", () => null);
+    ipcMain.handle("python.uv.getEnvironments", () => []);
+    ipcMain.handle("python.venv.executable", () => null);
+    ipcMain.handle("python.venv.setup", () => false);
+    ipcMain.handle("python.venv.getPackages", () => []);
+    ipcMain.handle("python.shell.list", () => []);
+    ipcMain.handle("python.shell.open", () => null);
+    ipcMain.handle("python.shell.send", () => "");
+    ipcMain.handle("python.shell.close", () => true);
+    ipcMain.handle("python.scripts.run", () => null);
+    ipcMain.handle("python.scripts.finished", () => true);
+    ipcMain.handle("python.scripts.stop", () => true);
+    ipcMain.handle("terminal.python.start", () => null);
+    ipcMain.handle("terminal.python.send", () => false);
+    ipcMain.handle("terminal.python.close", () => true);
+    ipcMain.handle("terminal.python.exec", () => "Python backend not available");
+    ipcMain.handle("terminal.python.diagnose", () => JSON.stringify({error: "harmony-python.js failed to load"}));
+    console.log('[D] Stub Python handlers registered (fallback mode)');
+  }
   // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
   // 在当前窗口 loadFile() 加载实验（最稳方案）
   // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
