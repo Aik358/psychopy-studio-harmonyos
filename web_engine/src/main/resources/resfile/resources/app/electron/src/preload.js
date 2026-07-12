@@ -56,7 +56,7 @@ const electron = {
   platform: () => ipcRenderer.invoke("electron.platform").then(resp => resp),
   quit: () => ipcRenderer.invoke("electron.quit")
 };
-contextBridge.exposeInMainWorld('electron', electron)
+try { contextBridge.exposeInMainWorld('electron', electron); } catch(_) {}
 
 // details about Python process
 const python = {
@@ -119,7 +119,7 @@ const python = {
     readConditions: (filePath) => ipcRenderer.invoke("python.psychojs.readConditions", filePath).then(resp => resp),
   }
 }
-contextBridge.exposeInMainWorld('python', python)
+try { contextBridge.exposeInMainWorld('python', python); } catch(_) {}
 
 const git = {
   listen: (lsnr) => ipcRenderer.on("git", lsnr),
@@ -132,7 +132,7 @@ const git = {
   newProject: (details, folder, user) => ipcRenderer.invoke("git.newProject", details, folder, user).then(resp => resp)
 }
 
-contextBridge.exposeInMainWorld('git', git)
+try { contextBridge.exposeInMainWorld('git', git); } catch(_) {}
 
 // ── Terminal API ──────────────────────────────────────────────
 const terminal = {
@@ -144,7 +144,7 @@ const terminal = {
   onStdout: (lsnr) => ipcRenderer.on("stdout", lsnr),
   onStderr: (lsnr) => ipcRenderer.on("stderr", lsnr),
 }
-contextBridge.exposeInMainWorld('terminal', terminal)
+try { contextBridge.exposeInMainWorld('terminal', terminal); } catch(_) {}
 
 // ── Terminal UI Injector ──────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
@@ -236,6 +236,8 @@ function toggleTerminal() {
 }
 ipcRenderer.on('stdout', (evt, data) => { appendOutput(data, '#c9d1d9'); });
 ipcRenderer.on('stderr', (evt, data) => { appendOutput(data, '#f85149'); });
+
+} catch(_) {}
 
 // Fallback: if contextBridge.exposeInMainWorld didn't work (e.g. contextIsolation disabled),
 // attach directly to window so frontend code doesn't get undefined
