@@ -2,19 +2,6 @@ const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
 const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
-// Polyfill: Promise.withResolvers (Node 22+, not available in Electron-OH Node 20.x)
-if (typeof Promise.withResolvers !== 'function') {
-  Promise.withResolvers = function() {
-    let resolve, reject;
-    const promise = new Promise((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-    return { promise, resolve, reject };
-  };
-  console.log('[D] Promise.withResolvers polyfill installed');
-}
-
 
 // make sure psychopy4 folder exists before importing subpackages
 if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
@@ -44,7 +31,6 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   } catch (harmonyErr) {
     console.error('[!] Failed to load harmony-python.js:', harmonyErr?.message || harmonyErr);
     console.error('[!] Stack:', harmonyErr?.stack?.substring(0, 500));
-    dialog.showErrorBox('PsychoPy Debug', 'harmony-python.js load failed: ' + (harmonyErr?.message || harmonyErr) + '\n\n' + (harmonyErr?.stack?.substring(0, 500) || ''));
     // Register ALL stubs matching preload.js API so frontend doesn't crash
     // Liaison
     ipcMain.handle("python.liaison.ready", () => false);
@@ -208,162 +194,131 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
-  console.log('[D] createWindow (minimal mode)');
-  try {
-    // Skip splash entirely - just open the main window
-    let win = new BrowserWindow({
-      width: 1280,
-      height: 800,
-      show: true,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        contextIsolation: false,
-        nodeIntegration: false,
-        sandbox: false
-      }
-    });
+  console.log('[D] createWindow loading builder');
+  started = true;
 
-    // Try loading dist/index.html directly
-    let distPath = path.join(__dirname, '..', 'dist', 'index.html');
-    console.log('[D] loading:', distPath);
-    win.loadFile(distPath).then(() => {
-      console.log('[D] loadFile resolved OK');
-    }).catch(err => {
-      console.error('[D] loadFile error:', err?.message || err);
-      dialog.showErrorBox('PsychoPy Debug', 'loadFile error: ' + (err?.message || err) + '\nPath: ' + distPath);
+  const express = require('express');
+  const expressApp = express();
+  const distPath = path.join(__dirname, '../../dist');
+  expressApp.use(express.static(distPath, {
+    setHeaders: (res, p) => {
+      if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+      if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
+      if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+      if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+      if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
+    }
+  }));
+  expressApp.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
+    const pageDir = path.join(distPath, req.path.split('/')[1] || '', 'index.html');
+    if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
+    next();
+  });
+  
+  const server = expressApp.listen(8003, 'localhost', () => {
+    console.log('[D] Express started');
+    
+    const mainWin = new BrowserWindow({
+      width: 1600, height: 900, show: true,
+      frame: true,
+      webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
-
-    win.webContents.on('did-finish-load', () => {
-      console.log('[D] did-finish-load fired');
+    mainWin.removeMenu();
+    mainWin.loadURL('http://localhost:8003/builder');
+    
+    // Store window for IPC
+    mainWin.webContents.once('did-finish-load', () => {
+      windows[mainWin.webContents.id] = mainWin;
     });
-    win.webContents.on('did-fail-load', (e, code, desc) => {
-      console.error('[D] did-fail-load:', code, desc);
-      dialog.showErrorBox('PsychoPy Debug', 'did-fail-load: ' + code + ' ' + desc);
-    });
-    win.webContents.on('console-message', (e, level, msg, line, source) => {
-      console.log('[D] renderer console:', msg);
-    });
-    win.webContents.on('render-process-gone', (e, details) => {
-      console.error('[D] render-process-gone:', details);
-      dialog.showErrorBox('PsychoPy Debug', 'render-process-gone: ' + JSON.stringify(details));
-    });
-
-    windows.builder = win;
-    console.log('[D] window created, waiting for load...');
-  } catch (err) {
-    console.error('[D] createWindow error:', err?.message || err, err?.stack?.substring(0, 500));
-    try { dialog.showErrorBox('PsychoPy FATAL', 'createWindow: ' + (err?.message || err) + '\n\n' + (err?.stack?.substring(0, 500) || '')); } catch(e) {}
-  }
-};
-
-function startingWindows() {
+    
+    svelte.process = { kill: () => server.close() };
+  });
+};/**
+   * Open the default starting windows indicated by prefs
+   */
+  function startingWindows() {
     let targets
     try {
       targets = JSON.parse(prefs.params?.defaultView?.val)
     } catch {
       targets = ["builder"]
     }
-    console.log('[D] startingWindows targets:', JSON.stringify(targets));
     for (let target of targets) {
-      console.log('[D] calling newWindow(' + target + ')');
       newWindow(target, true, false).then(
-        id => {
-          console.log('[D] newWindow(' + target + ') resolved with id=' + id);
-          windows[id].webContents.send(
-            "showTips", prefs.params?.showStartupTips?.val === "True"
-          )
-        }
-      ).catch(err => {
-        console.error('[D] newWindow(' + target + ') error:', err?.message || err);
-        dialog.showErrorBox('PsychoPy Debug', 'newWindow error: ' + (err?.message || err));
-      });
+        // show tips if requested
+        id => windows[id].webContents.send(
+          "showTips", prefs.params?.showStartupTips?.val === "True"
+        )
+      )
     }
   }
 
 
   async function newWindow(target = null, show = true, fullscreen = false) {
-    console.log('[D] newWindow start, target=' + target);
-    try {
-  // create window
-  let win = new BrowserWindow({
-    icon: favicon,
-    width: 1600,
-    height: 900,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  });
-  win.removeMenu();
-  // prevent default key behaviour for CMD+R
-  win.webContents.on("before-input-event", (evt, input) => {
-    if (input.modifiers.includes("meta") && input.key.toLowerCase() === "r") {
-      evt.preventDefault()
-    }
-  })
-  // open new windows in browser unless opened by electron
-  win.webContents.setWindowOpenHandler(
-    ({ url }) => {
-      shell.openExternal(url);
-      return { action: 'deny' }
-    }
-  )
-
-  // load target URL
-  let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
-  logging.log(`Loading ${url}...`)
-  win.loadURL(url);
-  // store handle against id
-  windows[win.webContents.id] = win;
-  // create promise waiting for ready event
-  let ready = Promise.withResolvers()
-  // show when ready (if requested)
-  if (show) {
-    let shown = false;
-    function showWin() {
-      if (shown) return;
-      shown = true;
-      logging.log(`Loaded ${url}`)
-      win.show();
-      if (fullscreen) {
-        win.maximize();
+    // create window
+    let win = new BrowserWindow({
+      icon: favicon,
+      width: 1600,
+      height: 900,
+      show: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js')
       }
-      win.focus();
-      if (windows.splash && !windows.splash.isDestroyed()) {
-        windows.splash.close()
-      }
-      if (prefs?.params?.debugMode?.val === "True") {
-        win.webContents.openDevTools();
-      }
-    }
-    win.once("ready-to-show", evt => showWin());
-    // fallback: force show after 8 seconds even if ready-to-show didn't fire
-    setTimeout(() => showWin(), 8000);
-    win.webContents.on("ipc-message", (evt, tag) => {
-      if (tag === "ready") {
-        ready.resolve(win.webContents.id)
+    });
+    win.removeMenu();
+    // prevent default key behaviour for CMD+R
+    win.webContents.on("before-input-event", (evt, input) => {
+      if (input.modifiers.includes("meta") && input.key.toLowerCase() === "r") {
+        evt.preventDefault()
       }
     })
-    // fallback: resolve ready after 10 seconds
-    setTimeout(() => {
-      if (ready.promise.state !== 'fulfilled') {
-        ready.resolve(win.webContents.id)
+    // open new windows in browser unless opened by electron
+    win.webContents.setWindowOpenHandler(
+      ({ url }) => {
+        shell.openExternal(url);
+
+        return { action: 'deny' }
       }
-    }, 10000);
-  } else {
-    win.once("ready-to-show", evt => ready.resolve(win.webContents.id))
-  }
-  // wait until ready
-  console.log('[D] newWindow waiting for ready promise');
-  return await ready.promise
-    } catch (nwErr) {
-      console.error('[D] newWindow error:', nwErr?.message || nwErr, nwErr?.stack?.substring(0, 300));
-      dialog.showErrorBox('PsychoPy Debug', 'newWindow crash: ' + (nwErr?.message || nwErr) + '\n\n' + (nwErr?.stack?.substring(0, 500) || ''));
-      throw nwErr;
-    }
+    )
+
+    // load target URL
+    let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
+    logging.log(`Loading ${url}...`)
+    win.loadURL(url);
+    // store handle against id
+    windows[win.webContents.id] = win;
+    // create promise waiting for ready event
+    let ready = Promise.withResolvers()
+    // show when ready (if requested)
+    win.once("ready-to-show", evt => {
+      logging.log(`Loaded ${url}`)
+      ready.resolve(win.webContents.id)
+      if (show) {
+        if (fullscreen) {
+          win.maximize();
+        }
+        win.focus();
+        if (windows.splash && !windows.splash.isDestroyed()) {
+          windows.splash.close()
+        }
+        if (prefs?.params?.debugMode?.val === "True") {
+          win.webContents.openDevTools();
+        }
+      }
+    })
+    // wait until ready
+    return await ready.promise
   }
 
-async function authenticatePavlovia(url) {
+
+  /**
+   * Opens a new BrowserWindow to login to Pavlovia, and waits for it to have a code in the URL
+   * 
+   * @param {string} url Authentication URL to use
+   * @param {string} pattern Regex pattern we expect to be able to use to get the auth code
+   */
+  async function authenticatePavlovia(url) {
     // create window
     let win = new BrowserWindow({
       icon: favicon,
@@ -570,9 +525,4 @@ async function authenticatePavlovia(url) {
       { recursive: true }
     )
   }
-  console.log('[D] IIFE setup complete, app.whenReady will call createWindow');
-  })().catch(err => {
-    console.error('[!] FATAL: IIFE crashed:', err?.message || err);
-    console.error('[!] Stack:', err?.stack?.substring(0, 800));
-    try { dialog.showErrorBox('PsychoPy FATAL', 'IIFE crash: ' + (err?.message || err) + '\n\n' + (err?.stack?.substring(0, 800) || '')); } catch(e) {}
-  });
+})();
