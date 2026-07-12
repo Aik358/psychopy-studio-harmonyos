@@ -2,6 +2,19 @@ const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
 const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
+// Polyfill: Promise.withResolvers (Node 22+, not available in Electron-OH Node 20.x)
+if (typeof Promise.withResolvers !== 'function') {
+  Promise.withResolvers = function() {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+  console.log('[D] Promise.withResolvers polyfill installed');
+}
+
 
 // make sure psychopy4 folder exists before importing subpackages
 if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
