@@ -222,7 +222,12 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     const mainWin = new BrowserWindow({
       width: 1600, height: 900, show: true,
       frame: true,
-      webPreferences: { preload: path.join(__dirname, 'preload.js') }
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false
+      }
     });
     mainWin.removeMenu();
     mainWin.loadURL('http://localhost:8003/builder');
@@ -263,7 +268,10 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       height: 900,
       show: true,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js')
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false
       }
     });
     win.removeMenu();

@@ -236,3 +236,14 @@ function toggleTerminal() {
 }
 ipcRenderer.on('stdout', (evt, data) => { appendOutput(data, '#c9d1d9'); });
 ipcRenderer.on('stderr', (evt, data) => { appendOutput(data, '#f85149'); });
+
+// Fallback: if contextBridge.exposeInMainWorld didn't work (e.g. contextIsolation disabled),
+// attach directly to window so frontend code doesn't get undefined
+try {
+  if (typeof window !== 'undefined') {
+    if (!window.electron) window.electron = electron;
+    if (!window.python) window.python = python;
+    if (!window.git) window.git = git;
+    if (!window.terminal) window.terminal = terminal;
+  }
+} catch(_) {}
