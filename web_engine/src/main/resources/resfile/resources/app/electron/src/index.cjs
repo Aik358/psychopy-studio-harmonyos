@@ -208,127 +208,51 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
+  console.log('[D] createWindow (minimal mode)');
   try {
-    console.log('[D] createWindow started');
-  // if app is already running...
-  if (started) {
-    console.log('[D] already started, calling startingWindows()');
-    startingWindows()
-    return
-  }
-  // mark started
-  started = true
-  console.log('[D] creating splash window');
-  // create splash
-  windows.splash = new BrowserWindow({
-    icon: favicon,
-    title: "PsychoPy Studio",
-    width: 720,
-    height: 400,
-    show: false,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: true
-  });
-  windows.splash.loadFile(path.join(__dirname, 'splash.html'));
-  windows.splash.center();
-  if (prefs.params?.showSplash?.val !== "False") {
-    windows.splash.show();
-    console.log('[D] splash shown');
-  }
-
-  // keep track of ready statuses
-  let ready = {
-    svelte: Promise.withResolvers()
-  }
-  console.log('[D] Promise.withResolvers OK, platform=' + process.platform);
-  // if on windows, get frame to open with from argv
-  if (process.platform === "win32") {
-    onFileOpen(undefined, process.argv[isDev ? 2 : 1])
-  }
-  // start timers 
-  let mintime = new Promise((resolve, reject) => setTimeout(resolve, prefs.params?.showSplash?.val !== "False" ? 1000 : 0));
-  let maxtime = new Promise((resolve, reject) => setTimeout(resolve, 10000));
-  // start the svelte side of things
-  if (isDev) {
-    // use Vite dev server for development
-    logging.log(`Starting Vite dev server at ${svelte.address.host}:${svelte.address.port}`)
-    svelte.process = proc.exec(`vite dev --host=${svelte.address.host} --port=${svelte.address.port}`);
-    svelte.process.stdout.on("data", msg => {
-      let readyMatch = msg.match(
-        /➜  Local:   http:\/\/(?<host>[\w\d]+):(?<port>[\w\d]+)/
-      )
-      if (readyMatch) {
-        svelte.address.host = readyMatch.groups.host
-        svelte.address.port = readyMatch.groups.port
-        ready.svelte.resolve()
-        logging.log(
-          `Started Vite dev server at ${svelte.address.host}:${svelte.address.port}`
-        )
+    // Skip splash entirely - just open the main window
+    let win = new BrowserWindow({
+      width: 1280,
+      height: 800,
+      show: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: false,
+        nodeIntegration: false,
+        sandbox: false
       }
-    })
-  } else {
-    // use express to serve static files in production
-    logging.log(`Running: ${process.argv.join(" | ")}`)
-    const express = require('express');
-    const app = express();
-
-    app.use(express.static(path.join(__dirname, '../../dist'), {
-      setHeaders: (res, p) => {
-        if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
-        if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
-        if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
-        if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-        if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
-      }
-    }));
-
-    // SPA fallback
-    app.use((req, res, next) => {
-      if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
-      const pageDir = path.join(__dirname, '../../dist', req.path.split('/')[1] || '', 'index.html');
-      if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
-      res.sendFile(path.join(__dirname, '../../dist/index.html'));
     });
 
-    const server = app.listen(svelte.address.port, svelte.address.host, () => {
-      logging.log(`Started static server at ${svelte.address.host}:${svelte.address.port}`)
-      ready.svelte.resolve();
+    // Try loading dist/index.html directly
+    let distPath = path.join(__dirname, '..', 'dist', 'index.html');
+    console.log('[D] loading:', distPath);
+    win.loadFile(distPath).then(() => {
+      console.log('[D] loadFile resolved OK');
+    }).catch(err => {
+      console.error('[D] loadFile error:', err?.message || err);
+      dialog.showErrorBox('PsychoPy Debug', 'loadFile error: ' + (err?.message || err) + '\nPath: ' + distPath);
     });
 
-    svelte.process = { kill: () => server.close() };
-  }
+    win.webContents.on('did-finish-load', () => {
+      console.log('[D] did-finish-load fired');
+    });
+    win.webContents.on('did-fail-load', (e, code, desc) => {
+      console.error('[D] did-fail-load:', code, desc);
+      dialog.showErrorBox('PsychoPy Debug', 'did-fail-load: ' + code + ' ' + desc);
+    });
+    win.webContents.on('console-message', (e, level, msg, line, source) => {
+      console.log('[D] renderer console:', msg);
+    });
+    win.webContents.on('render-process-gone', (e, details) => {
+      console.error('[D] render-process-gone:', details);
+      dialog.showErrorBox('PsychoPy Debug', 'render-process-gone: ' + JSON.stringify(details));
+    });
 
-  // show when Svelte has loaded and min time has been reached, or when max time has been reached
-  console.log('[D] setting up Promise.any, isDev=' + isDev);
-  if (!isDev) {
-    console.log('[D] production mode, starting Express on ' + svelte.address.host + ':' + svelte.address.port);
-  }
-  Promise.any([
-    Promise.all([
-      mintime,
-      ...Object.values(ready).map(val => val.promise)
-    ]),
-    maxtime
-  ]).then(
-    () => {
-      console.log('[D] Promise.any resolved, checking windows...');
-      // make sure at least one window is open
-      if (!Object.keys(windows).filter(key => key !== "splash").length) {
-        console.log('[D] no windows open, calling startingWindows()');
-        startingWindows()
-      } else {
-        console.log('[D] windows already open: ' + Object.keys(windows).filter(key => key !== "splash").join(', '));
-      }
-    }
-  ).catch(err => {
-    console.error('[D] Promise.any error:', err);
-    dialog.showErrorBox('PsychoPy Debug', 'Promise.any error: ' + (err?.message || err));
-  });
-  console.log('[D] createWindow setup complete');
-  } catch (cwErr) {
-    console.error('[D] createWindow FATAL:', cwErr?.message || cwErr, cwErr?.stack?.substring(0, 500));
-    try { dialog.showErrorBox('PsychoPy Debug', 'createWindow crash: ' + (cwErr?.message || cwErr) + '\n\n' + (cwErr?.stack?.substring(0, 500) || '')); } catch(e) {}
+    windows.builder = win;
+    console.log('[D] window created, waiting for load...');
+  } catch (err) {
+    console.error('[D] createWindow error:', err?.message || err, err?.stack?.substring(0, 500));
+    try { dialog.showErrorBox('PsychoPy FATAL', 'createWindow: ' + (err?.message || err) + '\n\n' + (err?.stack?.substring(0, 500) || '')); } catch(e) {}
   }
 };
 
