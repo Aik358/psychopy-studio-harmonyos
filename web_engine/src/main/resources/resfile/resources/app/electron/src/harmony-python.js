@@ -280,8 +280,33 @@ function openShell() {
 function sendShell(id, msg) {
   const shell = _shellProcesses.get(id);
   if (!shell) throw new Error(`Shell ${id} not found`);
-  shell.stdin.write(msg + "\n");
-  return "";
+  // Return a promise that resolves with output (matching original PythonShell.send API)
+  return new Promise((resolve) => {
+    let output = "";
+    const onData = (data) => { output += decoder.decode(data); };
+    const onEnd = () => {
+      shell.stdout.removeListener("data", onData);
+      shell.stderr.removeListener("data", onData);
+      // Filter REPL noise and return sanitized output
+      const lines = output.split("\n")
+        .filter(l => !l.startsWith(">>>") && !l.includes("###") && l.trim())
+        .map(l => l.trim());
+      resolve(lines);
+    };
+    shell.stdout.on("data", onData);
+    shell.stderr.on("data", onData);
+    // Send the command with end marker
+    shell.stdin.write(`${msg}\nprint("###END###")\n`);
+    // Wait for end marker, timeout after 2s
+    const checkEnd = (data) => {
+      if (decoder.decode(data).includes("###END###")) {
+        shell.stdout.removeListener("data", checkEnd);
+        onEnd();
+      }
+    };
+    shell.stdout.on("data", checkEnd);
+    setTimeout(onEnd, 5000);
+  });
 }
 
 function closeShell(id) {
@@ -589,6 +614,90 @@ export function registerHarmonyPythonHandlers() {
     diag.pythonpath = pyEnv.PYTHONPATH;
 
     return JSON.stringify(diag, null, 2);
+  });
+
+  // ── PsychoJS server helpers ─────────────────────────────────
+  const _psychojsServers = {};
+
+  async function _startPsychoJS(cwd) {
+    const pythonPath = getPython();
+    let port = 8002;
+    const server = proc.spawn(pythonPath, [
+      "-m", "http.server", String(port), "--directory", cwd || os.tmpdir()
+    ], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: getPythonEnv(),
+    });
+
+    const id = `psychojs-${++_processCounter}`;
+    server.stdout.on("data", (data) => output("psychojs", decoder.decode(data)));
+    server.stderr.on("data", (data) => output("stderr", decoder.decode(data)));
+    server.on("error", (err) => logging.error(`PsychoJS server error: ${err}`));
+    server.on("close", () => {
+      delete _psychojsServers[id];
+      _shellProcesses.delete(id);
+    });
+
+    _psychojsServers[id] = { process: server, address: `localhost:${port}` };
+    _shellProcesses.set(id, server);
+    logging.log(`PsychoJS server ${id} started at localhost:${port}`);
+    return { address: `localhost:${port}`, id };
+  }
+
+  function _stopPsychoJS(address) {
+    for (const [id, srv] of Object.entries(_psychojsServers)) {
+      if (srv.address === address || id === address) {
+        srv.process.kill();
+        _shellProcesses.delete(id);
+        delete _psychojsServers[id];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ── PsychoJS IPC handlers ────────────────────────────────────
+  ipcMain.handle("python.psychojs.run", async (evt, cwd) => _startPsychoJS(cwd));
+
+  ipcMain.handle("python.psychojs.stop", (evt, address) => _stopPsychoJS(address));
+
+  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
+    try {
+      const runDir = path.join(os.tmpdir(), "psychojs_run", expName || "experiment");
+      fs.mkdirSync(runDir, { recursive: true });
+      fs.writeFileSync(path.join(runDir, "index.html"), jsCode || "", "utf8");
+      if (conditionsJSON) fs.writeFileSync(path.join(runDir, "conditions.json"), conditionsJSON, "utf8");
+      if (resourcesJSON) fs.writeFileSync(path.join(runDir, "resources.json"), resourcesJSON, "utf8");
+      return await _startPsychoJS(runDir);
+    } catch (err) {
+      logging.error(`browserRun failed: ${err}`);
+      return { error: String(err) };
+    }
+  });
+
+  ipcMain.handle("python.psychojs.saveLog", async (evt, logData, savePath) => {
+    try {
+      const dir = path.dirname(savePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(savePath, typeof logData === "string" ? logData : JSON.stringify(logData, null, 2), "utf8");
+      return true;
+    } catch (err) {
+      logging.error(`saveLog failed: ${err}`);
+      return false;
+    }
+  });
+
+  ipcMain.handle("python.psychojs.browserStop", (evt, address) => _stopPsychoJS(address));
+
+  ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
+    try {
+      if (!fs.existsSync(filePath)) return null;
+      const content = fs.readFileSync(filePath, "utf8");
+      try { return JSON.parse(content); } catch (_) { return content; }
+    } catch (err) {
+      logging.error(`readConditions failed: ${err}`);
+      return null;
+    }
   });
 
   logging.log("HarmonyOS Python handlers registered");

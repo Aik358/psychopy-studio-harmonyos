@@ -39,7 +39,11 @@ _HARMONY_SITE_PATHS = [
 ]
 for _p in _HARMONY_SITE_PATHS:
     if os.path.isdir(_p) and _p not in sys.path:
-        sys.path.insert(0, _p)
+        # Append bundled lib AFTER stdlib to avoid shadowing (e.g. logging.py → stdlib)
+        if _p.endswith("lib") and "site-packages" not in _p and "dist-packages" not in _p:
+            sys.path.append(_p)
+        else:
+            sys.path.insert(0, _p)
 
 # ── Monkey-patch missing GUI modules ─────────────────────────
 import types
@@ -180,6 +184,11 @@ def _serialize(obj):
     return str(obj)
 
 def _import_target(target_str):
+    # Resolve API version aliases (old frontend name → actual function)
+    if target_str in _API_ALIASES:
+        target_str = _API_ALIASES[target_str]
+        print(f"[liaison-shim] alias resolved: {_API_ALIASES} → {target_str}", flush=True)
+
     if ":" in target_str:
         module_name, attr_name = target_str.split(":", 1)
     elif "." in target_str:
@@ -245,6 +254,13 @@ _SAFE_FALLBACK_TARGETS = {
     "psychopy.experiment:getElementProfiles",
     "psychopy.experiment:getLoopProfiles",
     "psychopy.experiment:getDeviceProfiles",
+}
+
+# API version alias map: old frontend name → actual 2025.2.4 function
+_API_ALIASES = {
+    "psychopy.experiment:getElementProfiles": "psychopy.experiment.getAllComponents",
+    "psychopy.experiment:getLoopProfiles": "psychopy.experiment.getAllStandaloneRoutines",
+    "psychopy.experiment:getDeviceProfiles": "psychopy.experiment.getAllElements",
 }
 
 def cmd_run(args, kwargs):
