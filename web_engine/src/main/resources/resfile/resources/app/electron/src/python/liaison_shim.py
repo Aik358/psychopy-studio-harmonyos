@@ -24,6 +24,17 @@ import traceback
 os.environ['PSYCHOPY_NO_GUI'] = '1'
 os.environ['MPLBACKEND'] = 'Agg'
 
+# ── Add site-packages to sys.path ────────────────────────────
+_HARMONY_SITE_PATHS = [
+    "/data/service/hnp/python.org/python_3.12/lib/python3.12/site-packages",
+    "/data/service/hnp/python.org/python_3.12/lib/python3.12/dist-packages",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"),
+    "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
+]
+for _p in _HARMONY_SITE_PATHS:
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+
 # ── Monkey-patch missing GUI modules ─────────────────────────
 import types
 

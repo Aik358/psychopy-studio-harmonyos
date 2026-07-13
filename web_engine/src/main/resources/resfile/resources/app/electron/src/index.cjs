@@ -508,7 +508,15 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         }),
         navigate: ipcMain.handle("electron.windows.navigate", (evt, target) => {
           let win = windows[evt.sender.id]
-          if (win && win.loadURL) win.loadURL(`http://127.0.0.1:8003/${target}`)
+          if (win && win.loadURL) {
+            win.loadURL(`http://127.0.0.1:8003/${target}`).then(() => {
+              console.log(`[D] Navigated to /${target}`);
+            }).catch((err) => {
+              console.error(`[D] Navigate to /${target} failed:`, err);
+            });
+            return true;
+          }
+          return false;
         }),
       },
       paths: {

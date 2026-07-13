@@ -47,8 +47,11 @@
                 store.builderState.project = current.project
                 store.builderState.saved = true
 
-                store.generatedCode.experimentJSON = current.experiment.toJSON()
-                store.generatedCode.sourceFile = current.experiment.file?.file || null
+                // Only generate code for Coder if a file is actually opened
+                if (current.experiment.file) {
+                    store.generatedCode.experimentJSON = current.experiment.toJSON()
+                    store.generatedCode.sourceFile = current.experiment.file?.file || null
+                }
             }
         }
     })

@@ -28,6 +28,31 @@ const HARMONY_PYTHON_PATHS = [
 // Path to liaison_shim.py
 const SHIM_PATH = path.join(__dirname, "python", "liaison_shim.py");
 
+// ── HarmonyOS Python site-packages paths ────────────────────
+// On HarmonyOS, Python packages may be installed in non-standard paths.
+// We need to set PYTHONPATH to include all possible site-packages locations.
+const HARMONY_SITE_PACKAGES = [
+  "/data/service/hnp/python.org/python_3.12/lib/python3.12/site-packages",
+  "/data/service/hnp/python.org/python_3.12/lib/python3.12/dist-packages",
+  path.join(__dirname, "python", "lib"),
+  "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
+];
+
+function getPythonEnv() {
+  const existingPath = process.env.PYTHONPATH || "";
+  const extraPaths = HARMONY_SITE_PACKAGES.filter(p => {
+    try { return fs.existsSync(p); } catch (_) { return false; }
+  });
+  const pythonpath = [...extraPaths, ...existingPath.split(':').filter(Boolean)].join(':');
+  return {
+    ...process.env,
+    PSYCHOPY_NO_GUI: "1",
+    MPLBACKEND: "Agg",
+    PYTHONUNBUFFERED: "1",
+    PYTHONPATH: pythonpath,
+  };
+}
+
 let _pythonPath = null;
 let _liaisonProcess = null;
 let _liaisonAddress = null;
@@ -93,11 +118,7 @@ async function startLiaison() {
 
   _liaisonProcess = proc.spawn(pythonPath, [SHIM_PATH], {
     stdio: ["pipe", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      PSYCHOPY_NO_GUI: "1",
-      MPLBACKEND: "Agg",
-    },
+    env: getPythonEnv(),
   });
 
   const startPromise = new Promise((resolve, reject) => {
@@ -223,12 +244,7 @@ function openShell() {
 
   const shell = proc.spawn(pythonPath, ["-i", "-u"], {
     stdio: ["pipe", "pipe", "pipe"],
-    env: {
-      ...process.env,
-      PSYCHOPY_NO_GUI: "1",
-      MPLBACKEND: "Agg",
-      PYTHONUNBUFFERED: "1",
-    },
+    env: getPythonEnv(),
   });
 
   _shellProcesses.set(id, shell);
@@ -351,7 +367,7 @@ export function registerHarmonyPythonHandlers() {
     const pythonPath = getPython();
     const script = proc.spawn(pythonPath, [file, ...args], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, PSYCHOPY_NO_GUI: "1", MPLBACKEND: "Agg" },
+      env: getPythonEnv(),
     });
     const id = `script-${++_processCounter}`;
     _shellProcesses.set(id, script);
@@ -386,12 +402,7 @@ export function registerHarmonyPythonHandlers() {
 
     const term = proc.spawn(pythonPath, ["-i", "-u"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        PSYCHOPY_NO_GUI: "1",
-        MPLBACKEND: "Agg",
-        PYTHONUNBUFFERED: "1",
-      },
+      env: getPythonEnv(),
     });
 
     _shellProcesses.set(id, term);
@@ -424,7 +435,7 @@ export function registerHarmonyPythonHandlers() {
         input: code + '\n',
         timeout: 15000,
         encoding: "utf8",
-        env: { ...process.env, PSYCHOPY_NO_GUI: "1", MPLBACKEND: "Agg", PYTHONUNBUFFERED: "1" },
+        env: getPythonEnv(),
       });
       // Filter out Python REPL noise (banner, >>> prompts)
       const lines = result.split('\n').filter(l => 
@@ -469,21 +480,30 @@ export function registerHarmonyPythonHandlers() {
     } catch (_) {}
 
     try {
-      diag.psychopy = proc.execSync(`"${pythonPath}" -c "import psychopy; print(psychopy.__version__)"`, { timeout: 10000, encoding: "utf8" }).trim();
+      diag.psychopy = proc.execSync(`"${pythonPath}" -c "import psychopy; print(psychopy.__version__)"`, { timeout: 10000, encoding: "utf8", env: getPythonEnv() }).trim();
     } catch (e) {
       diag.psychopy = `NOT AVAILABLE: ${e.message?.substring(0, 80) || e}`;
     }
 
-    // Check key packages individually
+    // Check key packages individually with correct PYTHONPATH
     const keyPkgs = ['numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets'];
+    const pyEnv = getPythonEnv();
     for (const pkg of keyPkgs) {
       try {
-        const ver = proc.execSync(`"${pythonPath}" -c "import ${pkg}; print(getattr(${pkg}, '__version__', 'ok'))"`, { timeout: 5000, encoding: "utf8" }).trim();
+        const ver = proc.execSync(`"${pythonPath}" -c "import ${pkg}; print(getattr(${pkg}, '__version__', 'ok'))"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim();
         diag.packages[pkg] = ver;
       } catch (_) {
         diag.packages[pkg] = "MISSING";
       }
     }
+
+    // Show Python sys.path for debugging
+    try {
+      diag.sysPath = proc.execSync(`"${pythonPath}" -c "import sys; print('\\n'.join(sys.path))"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim().split('\n');
+    } catch (_) {
+      diag.sysPath = [];
+    }
+    diag.pythonpath = pyEnv.PYTHONPATH;
 
     return JSON.stringify(diag, null, 2);
   });

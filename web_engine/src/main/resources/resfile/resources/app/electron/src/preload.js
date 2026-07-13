@@ -150,9 +150,18 @@ try { contextBridge.exposeInMainWorld('terminal', terminal); } catch(_) {}
 // Injects a terminal toggle button into the ribbon's Views section
 // and a slide-up panel that uses the page's CSS variables.
 window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(injectTerminalButton, 500);
   setTimeout(injectTerminalButton, 1500);
   setTimeout(injectTerminalButton, 3000);
-  setTimeout(injectTerminalButton, 6000);
+  // Use MutationObserver to detect when ribbon buttons appear
+  const observer = new MutationObserver(() => {
+    if (!document.getElementById('harmony-terminal-btn') && document.querySelector('button')) {
+      injectTerminalButton();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  // Stop observing after 10s to avoid memory leak
+  setTimeout(() => observer.disconnect(), 10000);
 });
 
 function injectTerminalButton() {
