@@ -1,12 +1,27 @@
-import { ipcMain } from "electron";
-import git from "isomorphic-git";
+import { ipcMain, BrowserWindow } from "electron";
 import logging from "./logging.js";
-import http from "isomorphic-git/http/node";
 import fs from "node:fs";
-import { BrowserWindow } from "electron";
+
+// Lazy-load isomorphic-git (may not be available on HarmonyOS)
+let git = null;
+let http = null;
+async function ensureGit() {
+  if (git) return true;
+  try {
+    const mod = await import("isomorphic-git");
+    git = mod.default || mod;
+    const httpMod = await import("isomorphic-git/http/node");
+    http = httpMod.default || httpMod;
+    return true;
+  } catch (e) {
+    console.warn("[git] isomorphic-git not available (stub mode):", e.message);
+    return false;
+  }
+}
 
 
 export async function newProject(details, folder, user) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // initialise local repo
     await git.init({ 
         fs, 
@@ -66,6 +81,7 @@ async function sanitize(folder) {
 
 
 export async function getRemote(folder, user=undefined) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // sanitize remote
     sanitize(folder)
     // get raw remote from config
@@ -91,6 +107,7 @@ export async function getRemote(folder, user=undefined) {
 
 
 export async function getInfo(folder) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // get remote URL
     let remote = new URL(
         await git.getConfig({
@@ -114,6 +131,7 @@ export async function getInfo(folder) {
 
 
 export async function pull(folder, user, force=true) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // log
     output(`Getting changes from online...`)
     // fetch changes
@@ -142,6 +160,7 @@ export async function pull(folder, user, force=true) {
 
 
 export async function stage(folder) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // log
     output(`Scanning for local changes...`)
     // track changed files
@@ -180,6 +199,7 @@ export async function stage(folder) {
 
 
 export async function commit(message, folder, user) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // make commit with message
     let sha = await git.commit({
         fs,
@@ -198,6 +218,7 @@ export async function commit(message, folder, user) {
 
 
 export async function push(folder, user, force=false) {
+    if (!await ensureGit()) throw new Error("Git not available");
     // log
     output(`Sending changes to Pavlovia...`)
     // push
