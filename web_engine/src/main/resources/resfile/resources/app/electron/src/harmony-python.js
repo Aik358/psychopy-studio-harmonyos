@@ -6,6 +6,7 @@
  */
 
 import fs from "fs";
+import os from "os";
 import path from "path";
 import proc from "child_process";
 import { fileURLToPath } from "url";
@@ -50,6 +51,12 @@ function getPythonEnv() {
     MPLBACKEND: "Agg",
     PYTHONUNBUFFERED: "1",
     PYTHONPATH: pythonpath,
+    // Prevent OpenBLAS from spawning threads that trigger SECCOMP violations
+    OPENBLAS_NUM_THREADS: "1",
+    OMP_NUM_THREADS: "1",
+    MKL_NUM_THREADS: "1",
+    NUMEXPR_NUM_THREADS: "1",
+    OPENBLAS_MAIN_FREE: "1",
   };
 }
 
@@ -485,15 +492,61 @@ export function registerHarmonyPythonHandlers() {
       diag.psychopy = `NOT AVAILABLE: ${e.message?.substring(0, 80) || e}`;
     }
 
-    // Check key packages individually with correct PYTHONPATH
+    // Check key packages using a temp script file
+    // Step 1: find_spec (safe, no import, no SECCOMP risk)
+    // Step 2: try import for version (may fail for numpy/scipy due to OpenBLAS SECCOMP)
     const keyPkgs = ['numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets'];
     const pyEnv = getPythonEnv();
-    for (const pkg of keyPkgs) {
+    const checkScript = [
+      'import importlib.util as u',
+      'pkgs = ' + JSON.stringify(keyPkgs),
+      'for pkg in pkgs:',
+      '    spec = u.find_spec(pkg)',
+      '    if spec is None:',
+      '        print(pkg + "=MISSING")',
+      '    else:',
+      '        try:',
+      '            m = __import__(pkg)',
+      '            v = getattr(m, "__version__", "found")',
+      '            print(pkg + "=" + str(v))',
+      '        except Exception as e:',
+      '            print(pkg + "=FOUND(import_err:" + str(e)[:50] + ")")',
+    ].join('\n');
+    const tmpCheck = path.join(os.tmpdir(), '_psychopy_check.py');
+    try { fs.writeFileSync(tmpCheck, checkScript, 'utf8'); } catch (_) {}
+    try {
+      const output = proc.execSync(`"${pythonPath}" "${tmpCheck}"`, { timeout: 15000, encoding: "utf8", env: pyEnv }).trim();
+      for (const line of output.split('\n')) {
+        const idx = line.indexOf('=');
+        if (idx > 0) {
+          const pkg = line.substring(0, idx);
+          const ver = line.substring(idx + 1);
+          if (pkg) diag.packages[pkg] = ver;
+        }
+      }
+    } catch (_) {
+      // If the script itself crashes (e.g. SECCOMP kills the process),
+      // run find_spec only without any import
+      const safeScript = [
+        'import importlib.util as u',
+        'pkgs = ' + JSON.stringify(keyPkgs),
+        'for pkg in pkgs:',
+        '    spec = u.find_spec(pkg)',
+        '    print(pkg + "=" + ("FOUND" if spec else "MISSING"))',
+      ].join('\n');
+      try { fs.writeFileSync(tmpCheck, safeScript, 'utf8'); } catch (_) {}
       try {
-        const ver = proc.execSync(`"${pythonPath}" -c "import ${pkg}; print(getattr(${pkg}, '__version__', 'ok'))"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim();
-        diag.packages[pkg] = ver;
+        const output2 = proc.execSync(`"${pythonPath}" "${tmpCheck}"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim();
+        for (const line of output2.split('\n')) {
+          const idx = line.indexOf('=');
+          if (idx > 0) {
+            const pkg = line.substring(0, idx);
+            const ver = line.substring(idx + 1);
+            if (pkg) diag.packages[pkg] = ver;
+          }
+        }
       } catch (_) {
-        diag.packages[pkg] = "MISSING";
+        for (const pkg of keyPkgs) diag.packages[pkg] = "CHECK_FAILED";
       }
     }
 

@@ -23,6 +23,12 @@ import traceback
 # ── Environment ──────────────────────────────────────────────
 os.environ['PSYCHOPY_NO_GUI'] = '1'
 os.environ['MPLBACKEND'] = 'Agg'
+# Prevent OpenBLAS from spawning threads that trigger SECCOMP violations on HarmonyOS
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_MAIN_FREE'] = '1'
 
 # ── Add site-packages to sys.path ────────────────────────────
 _HARMONY_SITE_PATHS = [
