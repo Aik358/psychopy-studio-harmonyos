@@ -28,6 +28,7 @@ os.environ['MPLBACKEND'] = 'Agg'
 import types
 
 def _mock_module(name, **attrs):
+    """Create a mock module with optional dummy attributes."""
     mod = types.ModuleType(name)
     for k, v in attrs.items():
         setattr(mod, k, v)
@@ -35,6 +36,7 @@ def _mock_module(name, **attrs):
     return mod
 
 def _mock_pyqt6():
+    """Mock PyQt6 and all submodules with dummy classes."""
     for mod_name in [
         "PyQt6", "PyQt6.QtCore", "PyQt6.QtGui", "PyQt6.QtWidgets",
         "PyQt6.QtTest", "PyQt6.QtSvg", "PyQt6.QtPrintSupport",
@@ -43,6 +45,7 @@ def _mock_pyqt6():
         if mod_name not in sys.modules:
             _mock_module(mod_name)
 
+    # Provide dummy QObject, pyqtSignal, etc.
     qtcore = sys.modules.get("PyQt6.QtCore")
     if qtcore and not hasattr(qtcore, 'QObject'):
         class _DummyQObject:
@@ -100,14 +103,17 @@ def _mock_pyqt6():
             }))
 
 def _mock_wx():
+    """Mock wx module (needed by older PsychoPy code paths)."""
     if 'wx' not in sys.modules:
         _mock_module('wx')
 
 def _mock_pyqt5():
+    """Mock PyQt5 if needed."""
     for mod_name in ["PyQt5", "PyQt5.QtCore", "PyQt5.QtGui", "PyQt5.QtWidgets"]:
         if mod_name not in sys.modules:
             _mock_module(mod_name)
 
+# Apply mocks
 _mock_pyqt6()
 _mock_pyqt5()
 _mock_wx()
@@ -126,9 +132,11 @@ except Exception as e:
 # ── Registry ─────────────────────────────────────────────────
 _registry = {}
 
+
 # ── Command handlers ─────────────────────────────────────────
 
 def _resolve(val):
+    """Resolve $-prefixed references to registry objects."""
     if isinstance(val, str) and val.startswith("$"):
         return _registry.get(val[1:], val)
     if isinstance(val, list):
@@ -137,7 +145,9 @@ def _resolve(val):
         return {k: _resolve(v) for k, v in val.items()}
     return val
 
+
 def _serialize(obj):
+    """Serialize Python object to JSON-compatible structure."""
     if obj is None or isinstance(obj, (str, int, float, bool)):
         return obj
     if isinstance(obj, (list, tuple)):
@@ -162,7 +172,10 @@ def _serialize(obj):
         return result
     return str(obj)
 
+
 def _import_target(target_str):
+    """Import 'module:attribute' or 'module.attribute' string."""
+    # Support both module:attr and module.attr formats
     if ":" in target_str:
         module_name, attr_name = target_str.split(":", 1)
     elif "." in target_str:
@@ -179,28 +192,37 @@ def _import_target(target_str):
         return getattr(mod, attr_name)
     return mod
 
+
 def cmd_exists(args, kwargs):
+    """Check if a module:attribute exists."""
+    target = args[0]
     try:
-        _import_target(args[0])
+        _import_target(target)
         return True
     except (ImportError, AttributeError):
         return False
 
+
 def cmd_import(args, kwargs):
+    """Import a module and return whether it succeeded."""
     try:
         importlib.import_module(args[0])
         return True
     except ImportError:
         return False
 
+
 def cmd_register(args, kwargs):
+    """Register an object: register(name, 'module:attribute')."""
     name = args[0]
     target = args[1]
     obj = _import_target(target)
     _registry[name] = obj
     return True
 
+
 def cmd_init(args, kwargs):
+    """Initialize: init(name, 'module:Class', **kwargs)."""
     name = args[0]
     target = args[1]
     cls = _import_target(target)
@@ -209,7 +231,9 @@ def cmd_init(args, kwargs):
     _registry[name] = obj
     return True
 
+
 def cmd_run(args, kwargs):
+    """Execute: run('module:function', *args, **kwargs)."""
     target = args[0]
     call_args = [_resolve(a) for a in args[1:]]
     func = _import_target(target)
@@ -217,14 +241,18 @@ def cmd_run(args, kwargs):
     result = func(*call_args, **resolved_kwargs)
     return _serialize(result)
 
+
 def cmd_try(args, kwargs):
+    """Same as run but catches exceptions."""
     try:
         return cmd_run(args, kwargs)
     except Exception as e:
         print(f"[liaison-shim] try failed (ignored): {e}", flush=True)
         return None
 
+
 def cmd_call(args, kwargs):
+    """Call method on registered object: call('name', 'method', *args)."""
     name = args[0]
     method_name = args[1]
     call_args = [_resolve(a) for a in args[2:]]
@@ -236,14 +264,18 @@ def cmd_call(args, kwargs):
     result = method(*call_args, **resolved_kwargs)
     return _serialize(result)
 
+
 def cmd_get(args, kwargs):
+    """Get attribute from registered object: get('name', 'attr')."""
     name = args[0]
     attr = args[1]
     if name not in _registry:
         raise KeyError(f"Object '{name}' not registered")
     return _serialize(getattr(_registry[name], attr, None))
 
+
 def cmd_set(args, kwargs):
+    """Set attribute on registered object: set('name', 'attr', value)."""
     name = args[0]
     attr = args[1]
     value = _resolve(args[2]) if len(args) > 2 else None
@@ -252,9 +284,13 @@ def cmd_set(args, kwargs):
     setattr(_registry[name], attr, value)
     return True
 
+
 def cmd_ping(args, kwargs):
+    """Health check."""
     return "pong"
 
+
+# Command dispatch table
 _COMMANDS = {
     "ping": cmd_ping,
     "exists": cmd_exists,
@@ -268,22 +304,30 @@ _COMMANDS = {
     "set": cmd_set,
 }
 
+
 def execute_command(command):
+    """Execute a liaison command and return the result."""
     if not isinstance(command, dict):
         return command
+
     cmd_name = command.get("command")
     args = command.get("args", [])
     kwargs = command.get("kwargs", {})
+
     if not cmd_name:
         raise ValueError("No 'command' field in message")
+
     handler = _COMMANDS.get(cmd_name)
     if handler is None:
         raise ValueError(f"Unknown command: {cmd_name}")
+
     return handler(args, kwargs)
+
 
 # ── WebSocket server ─────────────────────────────────────────
 
 async def handle_message(websocket):
+    """Handle a single WebSocket connection."""
     print(f"[liaison-shim] Client connected", flush=True)
     try:
         async for raw_data in websocket:
@@ -319,7 +363,9 @@ async def handle_message(websocket):
     finally:
         print(f"[liaison-shim] Client disconnected", flush=True)
 
+
 def find_free_port(start=8002):
+    """Find a free port starting from `start`."""
     for port in range(start, start + 100):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -329,19 +375,23 @@ def find_free_port(start=8002):
             continue
     raise RuntimeError("No free port found in range")
 
+
 async def main():
     import websockets
 
     port = find_free_port()
     address = f"localhost:{port}"
 
+    # Output start marker (liaison.js waits for this exact line)
     print(f"{START_MARKER}@{address}", flush=True)
     print(f"[liaison-shim] Listening on ws://{address}", flush=True)
     if psychopy_version:
         print(f"[liaison-shim] PsychoPy {psychopy_version} ready", flush=True)
 
+    # Serve forever
     async with websockets.serve(handle_message, "localhost", port):
-        await asyncio.Future()
+        await asyncio.Future()  # run forever
+
 
 if __name__ == "__main__":
     asyncio.run(main())

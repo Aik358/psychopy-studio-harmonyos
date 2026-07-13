@@ -1,0 +1,29 @@
+"""
+Converts static color values in svg icons into dynamic values which will change with the system theme.
+"""
+
+from pathlib import Path
+
+
+# iterate through icons
+for file in Path(__file__).parent.glob("**/*.svg"):
+    # read file
+    content = file.read_text("utf-8")
+    # iterate through theme colors
+    for static, dynamic in [
+        ("rgb(255,255,255)", "var(--base)"),
+        ("rgb(242,242,242)", "var(--mantle)"),
+        ("rgb(228,228,228)", "var(--crust)"),
+        ("rgb(214,214,214)", "var(--overlay)"),
+        ("rgb(102,102,110)", "var(--outline)"),
+        ("rgb(242,84,91)", "var(--red)"),
+        ("rgb(195,190,247)", "var(--purple)"),
+        ("rgb(2,169,234)", "var(--blue)"),
+        ("rgb(108,204,116)", "var(--green)"),
+        ("rgb(241,211,2)", "var(--yellow)"),
+        ("rgb(236,151,3)", "var(--orange)"),
+    ]:
+        # make substitution
+        content = content.replace(static, dynamic)
+    # save file
+    file.write_text(content, "utf-8")

@@ -1,0 +1,155 @@
+{
+  "name": "Psyoh_v0.1.2_HarmonyOS_Local_Build_Test",
+  "description": "",
+  "projectType": "hvigor",
+  "uri": {
+    "$type": 1,
+    "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test"
+  },
+  "buildTask": "",
+  "extendConfigs": {
+    "sourceSet": [],
+    "build": []
+  },
+  "subProjects": [
+    {
+      "name": "web_engine",
+      "description": "",
+      "projectType": "hvigor",
+      "uri": {
+        "$type": 1,
+        "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine"
+      },
+      "buildTask": "",
+      "extendConfigs": {
+        "sourceSet": [],
+        "build": []
+      },
+      "subProjects": [],
+      "sourceSet": {
+        "include": {
+          "sourceFiles": [],
+          "resourceFiles": []
+        },
+        "exclude": {
+          "contentFiles": []
+        }
+      },
+      "dependencyProjects": []
+    },
+    {
+      "name": "electron",
+      "description": "",
+      "projectType": "hvigor",
+      "uri": {
+        "$type": 1,
+        "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron"
+      },
+      "buildTask": "",
+      "extendConfigs": {
+        "sourceSet": [],
+        "build": []
+      },
+      "subProjects": [],
+      "sourceSet": {
+        "include": {
+          "sourceFiles": [],
+          "resourceFiles": []
+        },
+        "exclude": {
+          "contentFiles": []
+        }
+      },
+      "dependencyProjects": []
+    }
+  ],
+  "sourceSet": {
+    "include": {
+      "sourceFiles": [
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine/src/main/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine/src/ohosTest/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron/src/main/ets"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron/src/ohosTest/ets"
+          }
+        }
+      ],
+      "resourceFiles": []
+    },
+    "exclude": {
+      "contentFiles": [
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/.hvigor"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/build"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine/.test"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/web_engine/build"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron/.test"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron/oh_modules"
+          }
+        },
+        {
+          "url": {
+            "$type": 1,
+            "data": "file:///storage/Users/currentUser/Desktop/Psyoh_v0.1.2_HarmonyOS_Local_Build_Test/electron/build"
+          }
+        }
+      ]
+    }
+  }
+}

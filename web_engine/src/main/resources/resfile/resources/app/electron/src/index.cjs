@@ -22,53 +22,15 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const logging = loggingModule.default;
   const { UsageReport } = usageModule;
   const { appVersion, isDev } = versionModule;
-  // ★ HarmonyOS Python backend — real handlers via harmony-python.js
-  // Wrapped in try-catch so Python backend failure doesn't block Electron UI
+
+  // ★ Enable real Python backend (non-blocking, won't prevent window creation)
+  let pythonHandlers = {};
   try {
-    const harmonyMod = await import("./harmony-python.js");
-    harmonyMod.registerHarmonyPythonHandlers();
-    console.log('[D] harmony-python handlers registered');
-  } catch (harmonyErr) {
-    console.error('[!] Failed to load harmony-python.js:', harmonyErr?.message || harmonyErr);
-    console.error('[!] Stack:', harmonyErr?.stack?.substring(0, 500));
-    // Register ALL stubs matching preload.js API so frontend doesn't crash
-    // Liaison
-    ipcMain.handle("python.liaison.ready", () => false);
-    ipcMain.handle("python.liaison.send", () => { throw new Error("Python backend not available"); });
-    ipcMain.handle("python.liaison.start", () => false);
-    ipcMain.handle("python.liaison.stop", () => true);
-    ipcMain.handle("python.liaison.started", () => false);
-    // UV
-    ipcMain.handle("python.uv.exists", () => true);  // say yes so frontend doesn't try to install
-    ipcMain.handle("python.uv.folder", () => "/tmp/harmony-python");
-    ipcMain.handle("python.uv.executable", () => "python3");
-    ipcMain.handle("python.uv.install", () => true);  // pretend install succeeded
-    ipcMain.handle("python.uv.makeExecutable", () => "python3");
-    ipcMain.handle("python.uv.findPython", () => "python3");
-    ipcMain.handle("python.uv.getEnvironments", () => []);
-    // Venv
-    ipcMain.handle("python.venv.setup", () => true);  // pretend setup succeeded
-    ipcMain.handle("python.venv.executable", () => "python3");
-    ipcMain.handle("python.venv.installPackage", () => true);
-    ipcMain.handle("python.venv.uninstallPackage", () => true);
-    ipcMain.handle("python.venv.getPackages", () => []);
-    ipcMain.handle("python.venv.getPackageDetails", () => ({}));
-    // Shell
-    ipcMain.handle("python.shell.list", () => []);
-    ipcMain.handle("python.shell.open", () => null);
-    ipcMain.handle("python.shell.send", () => "");
-    ipcMain.handle("python.shell.close", () => true);
-    // Scripts
-    ipcMain.handle("python.scripts.run", () => null);
-    ipcMain.handle("python.scripts.finished", () => true);
-    ipcMain.handle("python.scripts.stop", () => true);
-    // Terminal
-    ipcMain.handle("terminal.python.start", () => "stub-terminal-0");
-    ipcMain.handle("terminal.python.send", () => true);
-    ipcMain.handle("terminal.python.close", () => true);
-    ipcMain.handle("terminal.python.exec", () => "Python backend not available (stub mode)");
-    ipcMain.handle("terminal.python.diagnose", () => JSON.stringify({error: "harmony-python.js failed to load", stack: harmonyErr?.stack?.substring(0, 300)}, null, 2));
-    console.log('[D] Full stub Python handlers registered (fallback mode)');
+    const pythonModule = await import("./python/index.js");
+    pythonHandlers = pythonModule.handlers;
+    console.log('[D] Python backend loaded OK');
+  } catch (err) {
+    console.error('[D] Python backend FAILED to load:', err);
   }
   // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
   // 在当前窗口 loadFile() 加载实验（最稳方案）
@@ -77,21 +39,230 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
     try {
       var XLSX = require("xlsx");
-      var workbook = XLSX.readFile(filePath);
-      var sheet = workbook.Sheets[workbook.SheetNames[0]];
-      var json = XLSX.utils.sheet_to_json(sheet);
-      return JSON.stringify(json);
+      function read(fp) { var wb = XLSX.readFile(fp); return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])); }
+      try { return read(filePath); }
+      catch (e1) {
+        // EPERM or path issues - try file dialog
+        console.warn("[readConditions] Direct read failed:", e1.message);
+        try {
+          var result = dialog.showOpenDialogSync({
+            title: "Select conditions file",
+            defaultPath: filePath,
+            filters: [{ name: "Conditions", extensions: ["xlsx","csv","xls"] }]
+          });
+          if (result && result.length > 0) return read(result[0]);
+          return "[]";
+        } catch (e2) {
+          // Final fallback: try fs read + manual parse
+          try {
+            var fs = require("fs");
+            var buf = fs.readFileSync(filePath);
+            var wb = XLSX.read(buf, {type: "buffer"});
+            return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+          } catch(e3) {
+            console.error("[readConditions] All methods failed");
+            return "[]";
+          }
+        }
+      }
     } catch (err) {
       console.error("[psychojs-browser] readConditions failed:", err?.message || err);
       return "[]";
     }
   });
 
-  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
-    console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir);
+  // ★ Python-backed PsychoJS code generation
+  // Spawns Python to call psychopy.experiment.writeScript(target='PsychoJS')
+  // Falls back gracefully if Python is not available
+  ipcMain.handle("python.psychojs.generateJS", async (evt, psyexpPath, outputDir) => {
+    const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+    
+    // Try to find a Python executable
+    let pythonExe = null;
+    const candidates = [
+      path.join(__dirname, "..", "..", "python", "python.exe"),  // bundled
+      "D:\\PsychoPy\\python.exe",  // Windows dev
+      "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+      "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+      "/usr/bin/python3",  // Linux
+      "/system/bin/python3",
+    ];
+    for (const c of candidates) {
+      try {
+        if (fs.existsSync(c)) {
+          pythonExe = c;
+          break;
+        }
+      } catch(_) {}
+    }
+    // Also try `which python3`
+    if (!pythonExe) {
+      try {
+        pythonExe = proc.execSync("which python3", { timeout: 3000, encoding: 'utf8' }).trim();
+      } catch(_) {}
+    }
+    
+    if (!pythonExe || !fs.existsSync(pythonExe)) {
+      return { error: "No Python found", status: "no_python" };
+    }
+    
+    console.log("[generateJS] Using Python:", pythonExe);
+    console.log("[generateJS] Worker:", workerScript);
+    console.log("[generateJS] psyexp:", psyexpPath);
+    
+    // Use provided output dir or create a temp one
+    const outDir = outputDir || path.join(app.getPath("temp"), "psychopy-oh-gen-" + Date.now());
+    
+    return new Promise((resolve) => {
+      const args = [workerScript, "generate", psyexpPath, outDir];
+      const child = proc.spawn(pythonExe, args, {
+        cwd: path.dirname(workerScript),
+        env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+        timeout: 30000,
+      });
+      
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on('data', (d) => stdout += d.toString());
+      child.stderr.on('data', (d) => stderr += d.toString());
+      child.on('close', (code) => {
+        console.log(`[generateJS] Python exited code=${code}`);
+        if (stderr) console.log(`[generateJS] stderr: ${stderr.slice(0, 500)}`);
+        try {
+          const result = JSON.parse(stdout.trim().split('\n').pop());
+          if (result.status === 'ok') {
+            console.log(`[generateJS] Generated: ${result.experiment_name}, files:`, Object.keys(result.files));
+            resolve(result);
+          } else {
+            console.error('[generateJS] Error:', result.error);
+            resolve({ error: result.error || 'Unknown error', status: 'gen_failed', stderr });
+          }
+        } catch(e) {
+          console.error('[generateJS] Parse failed:', e.message, 'stdout:', stdout.slice(0, 200));
+          resolve({ error: 'Failed to parse Python output: ' + e.message, status: 'parse_failed', stdout, stderr });
+        }
+      });
+      child.on('error', (e) => {
+        console.error('[generateJS] Spawn error:', e.message);
+        resolve({ error: e.message, status: 'spawn_failed' });
+      });
+    });
+  });
+  
+  // ★ Read conditions via Python (more robust than xlsx npm package)
+  ipcMain.handle("python.psychojs.readConditionsPython", async (evt, filePath) => {
+    const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+    let pythonExe = null;
+    const candidates = [
+      path.join(__dirname, "..", "..", "python", "python.exe"),
+      "D:\\PsychoPy\\python.exe",
+      "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+      "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+      "/usr/bin/python3",
+      "/system/bin/python3",
+    ];
+    for (const c of candidates) {
+      try { if (fs.existsSync(c)) { pythonExe = c; break; } } catch(_) {}
+    }
+    if (!pythonExe) return null;
+    
+    return new Promise((resolve) => {
+      const child = proc.spawn(pythonExe, [workerScript, "conditions", filePath], {
+        env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+        timeout: 10000,
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on('data', (d) => stdout += d.toString());
+      child.stderr.on('data', (d) => stderr += d.toString());
+      child.on('close', () => {
+        try { resolve(JSON.parse(stdout.trim().split('\n').pop())); }
+        catch(_) { resolve(null); }
+      });
+      child.on('error', () => resolve(null));
+    });
+  });
+  
+  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir, psyexpPath) => {
+    console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir, "psyexpPath:", psyexpPath);
     try {
       delete require.cache[require.resolve("./psychojs-browser/index.cjs")];
       const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+      
+      // ★ If we have a .psyexp path, try Python generation first
+      if (psyexpPath && fs.existsSync(psyexpPath)) {
+        console.log("[psychojs-browser] Trying Python generation for:", psyexpPath);
+        const genResult = await new Promise((resolve) => {
+          const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+          
+          // Find Python
+          let pythonExe = null;
+          const pyCandidates = [
+            path.join(__dirname, "..", "..", "python", "python.exe"),
+            "D:\\PsychoPy\\python.exe",
+            "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+            "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+            "/usr/bin/python3",
+            "/system/bin/python3",
+          ];
+          for (const c of pyCandidates) {
+            try { if (fs.existsSync(c)) { pythonExe = c; break; } } catch(_) {}
+          }
+          if (!pythonExe) {
+            try { pythonExe = proc.execSync("which python3", { timeout: 3000, encoding: 'utf8' }).trim(); } catch(_) {}
+          }
+          
+          if (!pythonExe || !fs.existsSync(pythonExe)) {
+            console.log("[psychojs-browser] No Python found, falling back to manual exporter");
+            resolve(null);
+            return;
+          }
+          
+          const outDir = path.join(app.getPath("temp"), "psychopy-oh-gen-" + Date.now());
+          console.log("[psychojs-browser] Spawning Python:", pythonExe, workerScript);
+          
+          const child = proc.spawn(pythonExe, [workerScript, "generate", psyexpPath, outDir], {
+            cwd: path.dirname(workerScript),
+            env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+            timeout: 30000,
+          });
+          
+          let stdout = "";
+          let stderr = "";
+          child.stdout.on('data', (d) => stdout += d.toString());
+          child.stderr.on('data', (d) => { stderr += d.toString(); console.log("[psychojs-browser] Python stderr:", d.toString().trim()); });
+          child.on('close', (code) => {
+            console.log(`[psychojs-browser] Python exited code=${code}`);
+            if (stderr) console.log(`[psychojs-browser] Python stderr: ${stderr.slice(0, 500)}`);
+            try {
+              const result = JSON.parse(stdout.trim().split('\n').pop());
+              if (result.status === 'ok') {
+                console.log(`[psychojs-browser] Python generated: ${result.experiment_name}`);
+                resolve(result);
+              } else {
+                console.error('[psychojs-browser] Python error:', result.error);
+                resolve(null);
+              }
+            } catch(e) {
+              console.error('[psychojs-browser] Parse failed:', e.message);
+              resolve(null);
+            }
+          });
+          child.on('error', (e) => {
+            console.error('[psychojs-browser] Spawn error:', e.message);
+            resolve(null);
+          });
+        });
+        
+        if (genResult && genResult.output_dir) {
+          // ★ Use the Python-generated directory directly
+          const url = await psychoJSBrowser.startServerFromDir(genResult.output_dir);
+          console.log("[psychojs-browser] Opened (Python-generated):", url);
+          return url;
+        }
+      }
+      
+      // Fallback: use the manual JS code path
       const url = await psychoJSBrowser.startServer(
         jsCode || "", expName || "experiment", conditionsJSON || "",
         resourcesJSON || "", expDir || ""
@@ -120,10 +291,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       return false;
     }
   });
-  // 旧路径保留 stub（避免报错）
-  ipcMain.handle("python.psychojs.run", () => Promise.resolve());
-  ipcMain.handle("python.psychojs.stop", () => Promise.resolve(true));
-  const pythonHandlers = {};
+  // psychojs handlers are registered by python/index.js
   const { handlers: gitHandlers } = gitModule;
 
   console.log('[D] esm loaded isDev=' + isDev);
@@ -512,7 +680,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       platform: ipcMain.handle("electron.platform", (evt) => process.platform),
       quit: ipcMain.handle("electron.quit", (evt) => app.quit())
     },
-    // python: pythonHandlers, // TODO: uncomment when Python backend is adapted
+    python: pythonHandlers,
     git: gitHandlers
   };
 

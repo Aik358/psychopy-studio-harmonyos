@@ -1,0 +1,6 @@
+<svg width="10" height="10" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+    <rect id="tl" fill="#F2F2F2" height="5" width="5" x="0" y="0"/>
+    <rect id="tr" fill="#FFFFFF" height="5" width="5" x="5" y="0"/>
+    <rect id="bl" fill="#FFFFFF" height="5" width="5" x="0" y="5"/>
+    <rect id="br" fill="#F2F2F2" height="5" width="5" x="5" y="5"/>
+</svg>

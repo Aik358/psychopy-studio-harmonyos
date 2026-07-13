@@ -1,177 +1,141 @@
-# PsychoPy Studio — HarmonyOS Port
+# PsychoPy Studio - HarmonyOS ARM64 Port v0.1.4
 
-[简体中文](./README-CN.md) | [Project Homepage](https://aik358.github.io/psychopy-studio-harmonyos/)
+[简体中文](./README-CN.md) | [Project Homepage](https://A9iska.gitee.io/psychopy-oh)
 
 ## Overview
 
-**PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
+**PsychoPy Studio** is an open-source experiment builder for psychology and neuroscience. This project ports it to **HarmonyOS (OpenHarmony)** via the Electron-on-HarmonyOS runtime, packaging the PsychoPy Builder, Coder, and Runner as a native HarmonyOS Application Package (HAP).
 
-> **Latest: v0.1.6** — switch to the `v0.1.6` branch. Configure automatic signing in DevEco Studio after download.
+**Key achievement**: First successful build and run of PsychoPy Studio on **HarmonyOS ARM64 (aarch64)** native device, including frontend `dist/` compilation entirely on-device using harmonybrew toolchain.
 
-## What's New in v0.1.6 (2026-07-12)
+> **Latest version: v0.1.4** — switch to the `v0.1.4` branch. After downloading, configure automatic signing in DevEco Studio.
 
-### Python Backend — Activated
+## v0.1.4 Changelog (2026-06-25)
 
-The Python integration layer is now **live** — no longer stubbed. All 30+ IPC handlers (liaison / venv / uv / shell / scripts / psychojs / harmony) are registered and functional.
+### View Switching Rewrite
 
-| Milestone | Status |
-|-----------|--------|
-| System Python 3.12.8 detected (HNP path on Kirin X90a) | ✅ |
-| `psychopy-lib` 2026.2.0 imports successfully (mock PyQt6/wx) | ✅ |
-| `liaison_shim.py` — pure Python WebSocket JSON-RPC server | ✅ |
-| PsychoPy ↔ Electron IPC over WebSocket `localhost:8004` | ✅ |
-| `harmony.js` diagnostic engine (package detection, version check, pip/venv capability) | ✅ |
-| Auto-install missing packages (`pip3 install --user`) | ✅ |
-| Tiered fallback: system Python → venv → harmonybrew → manual | ✅ |
-| Builder/Coder/Runner frontend with Python backend connected | ✅ |
-| PsychoJS browser-based experiment execution (Chromium WebGL) | ⏳ pending HAP deploy |
-| Native pyglet window creation (requires GPU/X11) | ❌ not available on HarmonyOS |
+- **NEW**: `sharedViewStore.svelte.js` — module-level reactive store for cross-view state
+- **FIX**: Switching views no longer destroys Builder/Coder/Runner state
+- **FIX**: `goto()` client-side navigation replaces full page reload
+- **FIX**: Builder experiment auto-saves on view switch, restores on return
+- **FIX**: Coder displays generated experiment code (structured JSON view)
+- **FIX**: Runner runlist preserved across view switches
+- **NEW**: Electron IPC `electron.windows.state.save/load` for cross-window sync
+- **NEW**: `preload.js` exposes `windows.state` bridge
+- **CHANGED**: `showWindow()` falls back to `goto()` navigation (when no existing window)
+- **KNOWN**: HarmonyOS native multi-window not yet implemented (postponed)
 
-### Architecture (v0.1.6)
+### Usage
 
-```
-┌──────────────────────────────────────────────────┐
-│                 HarmonyOS Device                   │
-│  ┌──────────────────────────────────────────────┐ │
-│  │            ArkUI (Ability)                    │ │
-│  │  ┌────────────────────────────────────────┐  │ │
-│  │  │       XComponent (Native)              │  │ │
-│  │  │   ┌──────────────────────────────────┐ │  │ │
-│  │  │   │  libelectron.so (Chromium 132)   │ │  │ │
-│  │  │   │  ┌─────────────────────────────┐ │  │ │
-│  │  │   │  │    Electron Main Process    │ │  │ │
-│  │  │   │  │     index.cjs               │ │  │ │
-│  │  │   │  │     Express :8003           │ │  │ │
-│  │  │   │  │  ┌───────────────────────┐  │ │  │ │
-│  │  │   │  │  │  Python Integration   │  │ │  │ │
-│  │  │   │  │  │  harmony.js (detect)  │  │ │  │ │
-│  │  │   │  │  │  venv.js (manage)     │  │ │  │ │
-│  │  │   │  │  │  liaison.js (IPC)     │  │ │  │ │
-│  │  │   │  │  │  psychojs.js (server) │  │ │  │ │
-│  │  │   │  │  │  ───────────────────  │  │ │  │ │
-│  │  │   │  │  │  liaison_shim.py      │  │ │  │ │
-│  │  │   │  │  │  (WebSocket JSON-RPC) │  │ │  │ │
-│  │  │   │  │  │  psychopy_worker.py   │  │ │  │ │
-│  │  │   │  │  │  (code generation)    │  │ │  │ │
-│  │  │   │  │  └───────────────────────┘  │ │  │ │
-│  │  │   │  └─────────────────────────────┘ │  │ │
-│  │  │   └──────────────────────────────────┘ │  │ │
-│  │  └────────────────────────────────────────┘  │ │
-│  │                                               │ │
-│  │  System Python 3.12.8 (HNP)                   │ │
-│  │  numpy / scipy / matplotlib / Pillow / pyglet │ │
-│  └──────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────┘
+```bash
+# Switch to v0.1.4 branch
+git checkout v0.1.4
+
+# Build frontend
+cd web_engine/src/main/resources/resfile/resources/app
+npm install
+npx vite build
+cd ../../../../../../../..
+
+# Build HAP (configure automatic signing in DevEco Studio first)
+hvigorw --mode module -p module=electron@default assembleHap --no-daemon
 ```
 
-### Python Setup (Tiered)
+## v0.1.2 Features
 
-The app auto-detects the Python environment and guides the user through installation:
-
-1. **System Python** (HNP) — if Python 3.9+ exists with all packages → direct use, zero install
-2. **Auto-install** — `pip3 install --user numpy scipy pillow pyglet websockets esprima psychopy-lib --no-deps`
-3. **venv fallback** — if `--user` is denied: `python3 -m venv ~/.psychopy-venv` + install in isolation
-4. **harmonybrew** — if no system Python: `brew install python@3.12`
-5. **Manual** — HNP install or source compile guidance
-
-### Liaison Communication
-
-`liaison-py` (official) requires `rpds-py` → `maturin` → Rust compiler, which is unavailable on HarmonyOS. Solution: **`liaison_shim.py`** — a pure Python WebSocket JSON-RPC server (397 lines, zero compilation, depends only on `websockets` library). Verified working on HarmonyOS device.
-
-## Version Timeline
-
-| Version | Date | Key Achievement | Branch |
-|---------|------|-----------------|--------|
-| **v0.1.6** ⭐ | 2026-07-12 | Python backend activated, liaison_shim.py, tiered setup | `v0.1.6` |
-| v0.1.5 | 2026-07-11 | PsychoJS browser experiment validation, PIXI.js fix | `v0.1.5` |
-| v0.1.4 | 2026-06-25 | View switching rewrite, state persistence | `v0.1.4` |
-| v0.1.3 | 2026-06-25 | ARM64 native self-build, SVG icons, Components panel | `v0.1.3_OHOS_arm64_dev_1` |
-| v0.1.2 | 2026-06-24 | x86 cross-compile, landing page, i18n | `v0.1.2-HarmonyOS-Device-Dev-Test` |
+- **Full ARM64 native build** — Frontend `vite build` runs on HarmonyOS device itself
+- **PsychoPy Builder** — Graphical experiment editor with drag & drop components
+- **PsychoPy Coder** — Python/JS code editor
+- **PsychoPy Runner** — Experiment execution interface (requires Python backend)
+- **View switching** — In-app navigation between Builder/Coder/Runner tabs
+- **Native window title bar** — Min/max/close buttons via HarmonyOS native frame
+- **SVG Icons** — Fixed CSS variable inheritance via inline SVG rendering
+- **Components panel** — Local fallback profiles, no Python dependency
+- **Electron Express server** — Serves SvelteKit frontend on localhost:8003
 
 ## Build Instructions
 
 ### Prerequisites
 
 - DevEco Studio 5.0+ (HarmonyOS SDK API 15+)
-- Node.js 18.x+ (for frontend build)
 - HarmonyOS device or emulator (ARM64 aarch64)
+- harmonybrew (Node.js v26.3.1, binary-sign-tool)
 
 ### Quick Build
 
 ```bash
-# 1. Switch to v0.1.6 branch
-git checkout v0.1.6
-
-# 2. Install OHPM dependencies
+# 1. Install OHPM dependencies
 ohpm install
 
-# 3. Build frontend
+# 2. Build frontend on standard PC (or see BUILD_ON_ARM64.md for on-device build)
 cd web_engine/src/main/resources/resfile/resources/app
 npm install
 npx vite build
 cd ../../../../../../../..
 
-# 4. Build HAP (configure automatic signing in DevEco Studio first)
+# 3. Build HAP
 hvigorw --mode module -p module=web_engine@default,electron@default -p product=default -p buildMode=debug assembleHar assembleHap --no-daemon
-
-# 5. Install on device
-hdc app install electron/build/default/outputs/default/electron-default-signed.hap
 ```
 
 ### On-Device Frontend Build (HarmonyOS ARM64)
 
-See [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md) for the full guide on building the frontend natively on HarmonyOS.
+See [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md) for the full guide on building the frontend natively on HarmonyOS, including native binding signing and WASM fallbacks.
 
-## Device Verification (Kirin X90a, 2026-07-12)
+## Architecture
 
-| Component | Status |
-|-----------|--------|
-| Python 3.12.8 (HNP) | ✅ `/data/service/hnp/python.org/python_3.12/` |
-| numpy 2.2.1 / scipy 1.14.1 / matplotlib 3.10.0 | ✅ pre-installed |
-| Pillow 11.0.0 / pyglet 1.5.27 | ✅ pre-installed |
-| `pip3 install psychopy-lib --no-deps` | ✅ works (PyQt6/wx mocked) |
-| `pip3 install websockets` | ✅ pure Python, zero compilation |
-| `liaison_shim.py` WebSocket server | ✅ `localhost:8004` verified |
-| psychopy-lib 2026.2.0 import | ✅ all modules load |
-| Native pyglet window | ❌ no GPU/X11 libraries |
-| liaison-py (rpds-py/maturin/Rust) | ❌ cannot compile |
-| Electron-OH HAP deployed | ⏳ pending |
+```
+┌─────────────────────────────────────────┐
+│            HarmonyOS Device              │
+│  ┌───────────────────────────────────┐  │
+│  │         ArkUI (Ability)           │  │
+│  │  ┌─────────────────────────────┐  │  │
+│  │  │   XComponent (Native)       │  │  │
+│  │  │   ┌──────────────────────┐  │  │  │
+│  │  │   │ libelectron.so       │  │  │  │
+│  │  │   │  ┌────────────────┐  │  │  │  │
+│  │  │   │  │ Electron Main  │  │  │  │  │
+│  │  │   │  │  - index.cjs   │  │  │  │  │
+│  │  │   │  │  - Express srv │  │  │  │  │
+│  │  │   │  │  - Python stub │  │  │  │  │
+│  │  │   │  └────────────────┘  │  │  │  │
+│  │  │   └──────────────────────┘  │  │  │
+│  │  └─────────────────────────────┘  │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
 
 ## Known Issues
 
-- **Graphics**: Native pyglet window creation fails (no GPU/X11). Experiment execution uses PsychoJS browser route (Chromium WebGL).
-- **ArkTS warnings**: `arkts-no-classes-as-obj` warnings — non-blocking.
-- **Deprecated APIs**: Multiple (`show`, `getContext`, `getFontByName`, etc.) — need SDK 26 migration.
+- **Python backend**: Experiment execution requires Python/UV runtime not yet ported. Currently stubbed with IPC fallbacks.
+- **ArkTS warnings**: `arkts-no-classes-as-obj` warnings across adapter bindings — non-blocking.
+- **Deprecated API warnings**: Multiple (`show`, `getContext`, `getFontByName`, etc.) — need migration for SDK 26 compliance.
+
+## Development Workflow
+
+1. Edit Svelte source files (`web_engine/.../resources/app/src/`)
+2. Run `npx vite build` (on standard PC or see BUILD_ON_ARM64.md for on-device)
+3. Run `hvigorw --mode module -p module=web_engine@default assembleHar`
+4. Run `hvigorw --mode module -p module=electron@default assembleHap`
 
 ## Project Structure
 
 ```
 AppScope/                         # HarmonyOS app configuration
+├── app.json5                     # App name, icon, bundle info
+├── resources/base/media/         # App icon assets
 electron/                         # Electron module (entry HAP)
 ├── src/main/ets/                 # ArkTS entry abilities
 ├── src/main/resources/           # String resources
 ├── libs/arm64-v8a/               # Native .so libraries (160MB libelectron.so)
 web_engine/                       # Web engine module (HAR)
 ├── src/main/ets/                 # Web ability, adapters, bindings
-├── src/main/resources/
+├── src/main/resources/           # Frontend resources
 │   └── resfile/resources/app/    # SvelteKit frontend source
 │       ├── src/                  # Svelte source code
 │       ├── dist/                 # Compiled frontend (vite build output)
-│       └── electron/src/         # Main process
-│           ├── index.cjs         # Electron entry (Python import + IPC)
-│           ├── preload.js        # Electron preload bridge
-│           └── python/           # Python integration layer
-│               ├── harmony.js    # HarmonyOS detection & diagnostics
-│               ├── venv.js       # Python environment management
-│               ├── liaison.js    # WebSocket IPC to Python
-│               ├── uv.js         # UV package manager
-│               ├── psychojs.js   # PsychoJS experiment server
-│               ├── shell.js      # Python interactive shell
-│               ├── script.js     # Script execution
-│               ├── utils.js      # Output / process management
-│               ├── index.js      # Handler registration (30+ IPC channels)
-│               ├── liaison_shim.py    # Pure Python WebSocket JSON-RPC
-│               └── psychopy_worker.py # PsychoJS code generator
+│       └── electron/src/         # Main process (index.cjs)
+│           ├── python/           # Python backend stubs
+│           └── preload.js        # Electron preload bridge
 chromium/                         # Chromium module
 build-profile.json5               # Hvigor build config
 ```
@@ -180,13 +144,11 @@ build-profile.json5               # Hvigor build config
 
 | Branch | Description |
 |--------|-------------|
-| `v0.1.6` | **Latest** — Python backend activated, liaison_shim.py, tiered setup |
-| `v0.1.5` | PsychoJS browser experiment validation |
-| `v0.1.4` | View switching rewrite + state persistence |
+| `v0.1.4` | **Latest** — View switching rewrite + state persistence |
 | `v0.1.3_OHOS_arm64_dev_1` | ARM64 native build (verified on device) |
+| `v0.1.3_OHOS_x86_dev_1` | x86/Windows dev branch (signing left empty) |
+| `v0.1.2` | Previous features with frontend fixes |
 | `v0.1.2-HarmonyOS-Device-Dev-Test` | ARM64 native build experiments |
-| `test-shim` | Active development branch |
-| `main` | Landing page + documentation |
 
 ## License
 
@@ -195,6 +157,116 @@ build-profile.json5               # Hvigor build config
 
 ---
 
-> **Last updated: 2026-07-12 | v0.1.6**
-> Project homepage: [https://aik358.github.io/psychopy-studio-harmonyos/](https://aik358.github.io/psychopy-studio-harmonyos/)
-> GitCode: [https://gitcode.com/A9iska/psychopy-oh](https://gitcode.com/A9iska/psychopy-oh)
+> **Last updated: 2026-06-25 | v0.1.4**
+> For the complete HarmonyOS ARM64 build guide including troubleshooting, native binding signing, and WASM fallbacks, see [BUILD_ON_ARM64.md](./BUILD_ON_ARM64.md).
+> Project homepage: [https://A9iska.gitee.io/psychopy-oh](https://A9iska.gitee.io/psychopy-oh)
+> For the v0.1.1 debug log, see [README-v011.md](./README-v011.md).
+
+---
+
+## 🚀 v0.1.3_OHOS_arm64_dev_1 (2026-06-25)
+
+### Summary
+First successful self-hosted build of PsychoPy Studio entirely on a **HarmonyOS ARM64 (aarch64)** device. The frontend `dist/` was compiled on-device using harmonybrew toolchain, with native binding signing via `binary-sign-tool`.
+
+### Key Achievements
+| Milestone | Status |
+|-----------|--------|
+| Frontend `vite build` on HarmonyOS ARM64 | ✅ **DONE** — 10.5s, 668 modules |
+| Native addon code signing (`binary-sign-tool`) | ✅ **DONE** — rolldown, lightningcss |
+| WASM fallback for missing libs | ✅ **DONE** — lightningcss-wasm |
+| SVG icons rendered (inline SVG fallback) | ✅ **DONE** — fetch + {@html} |
+| Components panel (local fallback profiles) | ✅ **DONE** — Promise.resolve |
+| Native window title bar (min/max/close) | ✅ **DONE** — hideTitleBar=false |
+| App icon and name (PsychoPy Studio) | ✅ **DONE** |
+| Application opened on device | ✅ **DONE** |
+| Builder editing, save, reopen | ✅ **DONE** |
+| Builder → Coder / Runner code sync | ❌ **BROKEN** — IPC timing, window management |
+| Coder file open from URL parameter | ❌ **BROKEN** — onMount not triggering |
+
+### Build Environment
+| Tool | Version | Path |
+|------|---------|------|
+| Node.js | 26.3.1 | `/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node` |
+| npm CLI | 11.16.0 | (via `node npm-cli.js`) |
+| binary-sign-tool | — | `/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool` |
+| hvigor | 1.0.0 | `/data/app/hvigor.org/hvigor_1.0.0/bin/hvigorw.js` |
+| OS | HarmonyOS | HongMeng Kernel 1.12.0, aarch64 |
+
+### Known Issues (v0.1.3)
+
+1. **Builder → Coder / Runner code sync**: `openIn()` and `showWindow()` in `views.svelte.js` don't properly manage Electron BrowserWindows. IPC `fileOpen` messages may arrive before the target window's listener is registered. URL parameter fallback (`?fileOpen=`) also fails to trigger `onMount`. 
+   - **Workaround**: Manually open files via the Coder's File Explorer panel.
+
+2. **View switching loses state**: `showWindow()` previously had a `window.location.href` redirect that destroyed the current view's state. Now removed, but window management still not working in HarmonyOS Electron.
+
+3. **Runner view**: Not tested — requires `.psyrun` file to execute experiments.
+
+4. **Python backend**: All Python-dependent features are stubbed with placeholder responses. `writeScript()` falls back to saving experiment XML as a `.py` file.
+
+5. **Monaco Editor**: Configured to load from local path (`/monaco/vs`) instead of CDN, but still has loading issues in some scenarios.
+
+### Debug Log (2026-06-25)
+
+#### 09:00 — Node.js __errno_location crash
+- System Node.js (v24.13.0) crashes with `Check failed: 12 == (*__errno_location())`
+- Fixed by using harmonybrew Node.js v26.3.1 (`--dest-os=openharmony --partly-static`)
+
+#### 09:30 — npm EBADPLATFORM
+- npm rejects openharmony platform due to `"os"` field in `package.json`
+- Fixed by deleting `"os"` field
+
+#### 10:00 — dlopen Permission denied
+- Native `.node` addons blocked by HarmonyOS security policy
+- Fixed by signing with `binary-sign-tool sign -selfSign 1`
+
+#### 10:30 — lightningcss libgcc_s.so.1 missing
+- Linux ARM64 binding needs `libgcc_s.so.1` which doesn't exist on HarmonyOS
+- Fixed by replacing with `lightningcss-wasm` (WASM fallback)
+
+#### 11:00 — Vite build with --permission flags
+- Node.js permission model blocks file/worker/child-process access
+- Fixed with:
+  ```
+  --permission --allow-addons --allow-fs-read=* --allow-fs-write=*
+  --allow-child-process --allow-worker
+  ```
+
+#### 11:30 — SVG icons not showing
+- `<use href={url}>` doesn't inherit CSS variables from page context
+- Fixed by `fetch()` + inline `{@html svgContent}` in `Icon.svelte`
+
+#### 12:00 — Components panel stuck "Loading..."
+- `pending.components` initialized with never-resolving Promise
+- `python.liaison.send` threw error instead of rejecting gracefully
+- Fixed by `Promise.resolve()` + `liaison.send` returning placeholder
+
+#### 13:00 — ESM require() in CJS
+- `index.cjs` used `require()` for ES modules (`.js` files with `"type":"module"`)
+- Fixed by async IIFE with `await import()`
+
+#### 14:00 — App icon and name
+- AppScope `string.json` had "Electron" as app name
+- Fixed by changing to "PsychoPy Studio" and updating icons
+
+#### 14:30 — Window title bar
+- `hideTitleBar: true` in `WebBaseAbility.ets` hid native window controls
+- Fixed by changing to `hideTitleBar: false`
+
+#### 15:00 — View switching between Builder/Coder/Runner
+- Custom SPA navigation tabs conflicted with original Electron IPC architecture
+- Reverted to original `showWindow()`/`openIn()` multi-window approach
+- Window management still not working — IPC timing issue
+
+#### 16:00 — Coder/Runner code display
+- `writeScript()` failed due to Python backend absence
+- Added fallback: save experiment XML as `.py` file
+- `onMount()` with `?fileOpen=` URL parameter doesn't trigger
+- Monaco Editor CDN → local path configured
+
+### Next Steps
+- [ ] Fix Builder → Coder IPC sync (send fileOpen after window ready)
+- [ ] Fix Coder onMount with ?fileOpen parameter (or use $effect)
+- [ ] Test Runner view
+- [ ] Integrate Python backend (CPython/UV for HarmonyOS)
+- [ ] Port to main branch landing page
