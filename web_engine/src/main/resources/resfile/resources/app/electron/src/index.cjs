@@ -474,7 +474,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           let win = windows[evt.sender.id];
           if (win && win.loadURL) {
             let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
-            logging.log(`[HarmonyOS] Navigating single window to ${url}`);
+            logging.log(`[HarmonyOS] windows.new: navigating single window to ${url}`);
             await win.loadURL(url);
             return evt.sender.id;
           }
@@ -482,18 +482,14 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           return await newWindow(target);
         }),
         get: ipcMain.handle("electron.windows.get", (evt, target) => {
-          // [HarmonyOS-OH] Always return current window so frontend reuses it instead of creating new
+          // [HarmonyOS-OH] Pure query: only return window if URL already matches
+          // Navigation side-effect belongs in windows.new, not here
           let win = windows[evt.sender.id];
-          if (win && win.webContents) {
+          if (win && win.webContents && !win.isDestroyed()) {
             let url = String(win.webContents.getURL());
             if (url.includes(target)) {
               return [evt.sender.id];
             }
-            // Target not in current URL - navigate current window to target
-            let navUrl = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
-            logging.log(`[HarmonyOS] windows.get: navigating to ${navUrl}`);
-            win.loadURL(navUrl);
-            return [evt.sender.id];
           }
           return [];
         }),

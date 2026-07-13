@@ -218,6 +218,7 @@ def cmd_register(args, kwargs):
     except (ImportError, AttributeError) as e:
         if target.startswith("psychopy."):
             print(f"[liaison-shim] psychopy not available, skipping register: {target}", flush=True)
+            _send_alert("8900", "WARNING", f"PsychoPy not installed — skipping {target}. Use Reinstall Python to install packages.")
             return True
         raise
     _registry[name] = obj
@@ -231,6 +232,7 @@ def cmd_init(args, kwargs):
     except (ImportError, AttributeError) as e:
         if target.startswith("psychopy."):
             print(f"[liaison-shim] psychopy not available, skipping init: {target}", flush=True)
+            _send_alert("8900", "WARNING", f"PsychoPy not installed — cannot initialize {target}. Basic mode active.")
             return True
         raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
@@ -253,6 +255,7 @@ def cmd_run(args, kwargs):
     except (ImportError, AttributeError) as e:
         if target in _SAFE_FALLBACK_TARGETS or target.startswith("psychopy."):
             print(f"[liaison-shim] psychopy not available, returning empty for: {target}", flush=True)
+            _send_alert("8901", "WARNING", f"PsychoPy not installed — using built-in components. Install psychopy for full features.")
             return {}
         raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
@@ -328,7 +331,25 @@ def execute_command(command):
 
 # ── WebSocket server ─────────────────────────────────────────
 
+_active_websocket = None
+
+def _send_alert(code, cat, msg):
+    """Send an alert event to the client via WebSocket."""
+    global _active_websocket
+    if _active_websocket:
+        try:
+            alert = {
+                "evt": {"name": "alert"},
+                "message": {"code": code, "cat": cat, "msg": msg},
+            }
+            asyncio.ensure_future(_active_websocket.send(json.dumps(alert, default=str)))
+        except Exception:
+            pass
+
+
 async def handle_message(websocket):
+    global _active_websocket
+    _active_websocket = websocket
     print(f"[liaison-shim] Client connected", flush=True)
     try:
         async for raw_data in websocket:
@@ -362,6 +383,7 @@ async def handle_message(websocket):
     except Exception as e:
         print(f"[liaison-shim] Connection error: {e}", flush=True)
     finally:
+        _active_websocket = None
         print(f"[liaison-shim] Client disconnected", flush=True)
 
 def find_free_port(start=8002):

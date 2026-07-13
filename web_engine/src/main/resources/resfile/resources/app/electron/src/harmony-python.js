@@ -10,7 +10,7 @@ import os from "os";
 import path from "path";
 import proc from "child_process";
 import { fileURLToPath } from "url";
-import { app, ipcMain } from "electron";
+import { app, ipcMain, BrowserWindow } from "electron";
 import logging from "./logging.js";
 import { output, decoder } from "./python/utils.js";
 
@@ -199,6 +199,17 @@ async function startLiaison() {
         } else {
           reject(msg.error || msg);
         }
+      } else if (msg.evt) {
+        // Forward non-response events to renderer (alerts, notifications, etc.)
+        const evtName = msg.evt.name || String(msg.evt);
+        if (evtName === "alert" && msg.message) {
+          // Send alert in format frontend expects: { message: { code, cat, msg } }
+          for (const win of BrowserWindow.getAllWindows()) {
+            win.webContents.send("alert", { message: msg.message });
+          }
+        } else {
+          output(evtName, JSON.stringify(msg));
+        }
       }
     } catch (_) {}
   });
@@ -341,23 +352,30 @@ export function registerHarmonyPythonHandlers() {
   ipcMain.handle("python.venv.setup", () => Promise.resolve(true));
   ipcMain.handle("python.venv.executable", () => getPython());
   ipcMain.handle("python.venv.installPackage", async (evt, venv, name) => {
+    const pyEnv = getPythonEnv();
+    const cmd = `"${getPython()}" -m pip install ${name} --no-input`;
+    output("stdout", `Installing ${name}...\n`);
     try {
-      proc.execSync(`"${getPython()}" -m pip install --user ${name}`, { timeout: 60000 });
+      const result = proc.execSync(cmd, { timeout: 120000, encoding: "utf8", env: pyEnv });
+      output("stdout", result + "\n");
       return true;
     } catch (err) {
-      logging.error(`pip install ${name} failed: ${err}`);
+      const msg = err.stderr || err.stdout || err.message || String(err);
+      output("stderr", `pip install failed: ${msg}\n`);
       return false;
     }
   });
   ipcMain.handle("python.venv.uninstallPackage", async (evt, venv, name) => {
+    const pyEnv = getPythonEnv();
     try {
-      proc.execSync(`"${getPython()}" -m pip uninstall -y ${name}`, { timeout: 30000 });
+      proc.execSync(`"${getPython()}" -m pip uninstall -y ${name}`, { timeout: 30000, env: pyEnv });
       return true;
     } catch (_) { return false; }
   });
   ipcMain.handle("python.venv.getPackages", () => {
+    const pyEnv = getPythonEnv();
     try {
-      const resp = proc.execSync(`"${getPython()}" -m pip list --format json`, { timeout: 15000, encoding: "utf8" });
+      const resp = proc.execSync(`"${getPython()}" -m pip list --format json`, { timeout: 15000, encoding: "utf8", env: pyEnv });
       return JSON.parse(resp);
     } catch (_) { return []; }
   });
@@ -412,6 +430,16 @@ export function registerHarmonyPythonHandlers() {
       env: getPythonEnv(),
     });
 
+    // Forward stdout/stderr to renderer so terminal shows output
+    term.stdout.on("data", (data) => output("stdout", decoder.decode(data)));
+    term.stderr.on("data", (data) => output("stderr", decoder.decode(data)));
+    term.on("close", (code) => {
+      output("stdout", `\n[Process exited with code ${code}]\n`);
+    });
+    term.on("error", (err) => {
+      output("stderr", `\n[Error: ${err.message}]\n`);
+    });
+
     _shellProcesses.set(id, term);
     logging.log(`Terminal ${id} started with ${pythonPath}`);
 
@@ -421,7 +449,9 @@ export function registerHarmonyPythonHandlers() {
   ipcMain.handle("terminal.python.send", (evt, id, msg) => {
     const term = _shellProcesses.get(id);
     if (!term) throw new Error(`Terminal ${id} not found`);
-    term.stdin.write(msg);
+    // Ensure command ends with newline so Python REPL executes it
+    const input = msg.endsWith("\n") ? msg : msg + "\n";
+    term.stdin.write(input);
     return true;
   });
 
