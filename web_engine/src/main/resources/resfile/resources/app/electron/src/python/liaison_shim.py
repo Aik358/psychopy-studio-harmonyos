@@ -213,23 +213,48 @@ def cmd_import(args, kwargs):
 def cmd_register(args, kwargs):
     name = args[0]
     target = args[1]
-    obj = _import_target(target)
+    try:
+        obj = _import_target(target)
+    except (ImportError, AttributeError) as e:
+        if target.startswith("psychopy."):
+            print(f"[liaison-shim] psychopy not available, skipping register: {target}", flush=True)
+            return True
+        raise
     _registry[name] = obj
     return True
 
 def cmd_init(args, kwargs):
     name = args[0]
     target = args[1]
-    cls = _import_target(target)
+    try:
+        cls = _import_target(target)
+    except (ImportError, AttributeError) as e:
+        if target.startswith("psychopy."):
+            print(f"[liaison-shim] psychopy not available, skipping init: {target}", flush=True)
+            return True
+        raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
     obj = cls(**resolved_kwargs)
     _registry[name] = obj
     return True
 
+# Targets that are safe to return empty dict when psychopy is missing
+_SAFE_FALLBACK_TARGETS = {
+    "psychopy.experiment:getElementProfiles",
+    "psychopy.experiment:getLoopProfiles",
+    "psychopy.experiment:getDeviceProfiles",
+}
+
 def cmd_run(args, kwargs):
     target = args[0]
     call_args = [_resolve(a) for a in args[1:]]
-    func = _import_target(target)
+    try:
+        func = _import_target(target)
+    except (ImportError, AttributeError) as e:
+        if target in _SAFE_FALLBACK_TARGETS or target.startswith("psychopy."):
+            print(f"[liaison-shim] psychopy not available, returning empty for: {target}", flush=True)
+            return {}
+        raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
     result = func(*call_args, **resolved_kwargs)
     return _serialize(result)
@@ -246,7 +271,8 @@ def cmd_call(args, kwargs):
     method_name = args[1]
     call_args = [_resolve(a) for a in args[2:]]
     if name not in _registry:
-        raise KeyError(f"Object '{name}' not registered")
+        print(f"[liaison-shim] Object '{name}' not registered, returning None", flush=True)
+        return None
     obj = _registry[name]
     method = getattr(obj, method_name)
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
@@ -257,7 +283,8 @@ def cmd_get(args, kwargs):
     name = args[0]
     attr = args[1]
     if name not in _registry:
-        raise KeyError(f"Object '{name}' not registered")
+        print(f"[liaison-shim] Object '{name}' not registered, returning None", flush=True)
+        return None
     return _serialize(getattr(_registry[name], attr, None))
 
 def cmd_set(args, kwargs):
@@ -265,7 +292,8 @@ def cmd_set(args, kwargs):
     attr = args[1]
     value = _resolve(args[2]) if len(args) > 2 else None
     if name not in _registry:
-        raise KeyError(f"Object '{name}' not registered")
+        print(f"[liaison-shim] Object '{name}' not registered, ignoring set", flush=True)
+        return True
     setattr(_registry[name], attr, value)
     return True
 
