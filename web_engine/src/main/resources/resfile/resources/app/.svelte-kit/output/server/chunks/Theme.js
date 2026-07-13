@@ -37,15 +37,26 @@ async function openIn(file, target) {
 	}
 }
 /**
-* Show the first of a particular window, or navigate to it
+* Show the first of a particular window, or navigate to it.
+* In single-window mode (Electron-OH), navigate the current window
+* to the target URL rather than trying to focus a separate window.
 */
 async function showWindow(target) {
 	if (electron) {
-		let windows = await electron.windows.get(target);
-		if (windows.length) {
+		let windows;
+		try {
+			windows = await electron.windows.get(target);
+		} catch (_) {
+			windows = [];
+		}
+		if (windows && windows.length) {
 			await electron.windows.focus(windows[0]);
 			return;
 		}
+		try {
+			await electron.windows.navigate(target);
+			return;
+		} catch (_) {}
 	}
 	goto(`/${target}`);
 }
