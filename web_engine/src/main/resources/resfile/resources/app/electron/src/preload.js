@@ -146,30 +146,101 @@ const terminal = {
 }
 try { contextBridge.exposeInMainWorld('terminal', terminal); } catch(_) {}
 
-// ── Terminal UI Injector ──────────────────────────────────────
+// ── Terminal UI (integrated with page theme) ───────────────────
+// Injects a terminal toggle button into the ribbon's Views section
+// and a slide-up panel that uses the page's CSS variables.
 window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(injectTerminalUI, 2000);
-  setTimeout(injectTerminalUI, 5000);
+  setTimeout(injectTerminalButton, 1500);
+  setTimeout(injectTerminalButton, 3000);
+  setTimeout(injectTerminalButton, 6000);
 });
 
-function injectTerminalUI() {
+function injectTerminalButton() {
   if (document.getElementById('harmony-terminal-btn')) return;
-  const nav = document.querySelector('nav') || document.querySelector('[class*="nav"]') || document.querySelector('header');
-  if (!nav) return;
+  // Find the Views ribbon section (last section with btn-builder/btn-coder buttons)
+  const allButtons = document.querySelectorAll('button');
+  let viewsSection = null;
+  let insertAfterBtn = null;
+  for (const btn of allButtons) {
+    const img = btn.querySelector('img');
+    if (img && (img.src.includes('btn-runner') || img.src.includes('btn-coder'))) {
+      insertAfterBtn = btn;
+      viewsSection = btn.parentElement;
+    }
+  }
+  // Fallback: append to any nav/header
+  if (!viewsSection) {
+    viewsSection = document.querySelector('nav') || document.querySelector('header') || document.body;
+  }
+  if (!insertAfterBtn && viewsSection) {
+    insertAfterBtn = viewsSection.lastElementChild;
+  }
+  
+  // Create terminal toggle button matching IconButton style
   const btn = document.createElement('button');
   btn.id = 'harmony-terminal-btn';
-  btn.innerHTML = '\u{1F5A5} Terminal';
-  btn.style.cssText = 'padding:4px 12px;margin:0 4px;border:1px solid var(--color-border,#444);border-radius:6px;background:var(--color-bg-secondary,#1a1a2e);color:var(--color-text,#e0e0e0);cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.2s;';
-  btn.onmouseover = () => btn.style.background = '#2a2a4e';
-  btn.onmouseout = () => btn.style.background = 'var(--color-bg-secondary,#1a1a2e)';
-  btn.onclick = toggleTerminal;
-  nav.appendChild(btn);
+  btn.className = 'harmony-term-toggle';
+  btn.innerHTML = '<svg width="2.25rem" height="2.25rem" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="6" width="24" height="20" rx="2" stroke="var(--text)" stroke-width="1.5" fill="var(--base)"/><path d="M8 12L12 15L8 18" stroke="var(--green, #a6e3a1)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="14" y1="18" x2="20" y2="18" stroke="var(--green, #a6e3a1)" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  btn.title = 'Python Terminal';
+  btn.style.cssText = 'padding:0.25rem;margin:0;border:1px solid transparent;border-radius:0.5rem;background:transparent;cursor:pointer;display:grid;place-items:center;transition:border-color 0.2s, box-shadow 0.2s;';
+  btn.onmouseenter = () => { btn.style.borderColor = 'var(--overlay, #45475a)'; btn.style.boxShadow = 'inset 1px 1px 10px rgba(0,0,0,0.05)'; };
+  btn.onmouseleave = () => { btn.style.borderColor = 'transparent'; btn.style.boxShadow = 'none'; };
+  btn.onclick = (e) => { e.preventDefault(); toggleTerminalPanel(); };
+  
+  if (insertAfterBtn && insertAfterBtn.nextSibling) {
+    viewsSection.insertBefore(btn, insertAfterBtn.nextSibling);
+  } else if (viewsSection) {
+    viewsSection.appendChild(btn);
+  }
+  
+  // Create the terminal panel (hidden by default)
+  if (!document.getElementById('harmony-terminal-panel')) {
+    createTerminalPanel();
+  }
+}
+
+function createTerminalPanel() {
   const panel = document.createElement('div');
   panel.id = 'harmony-terminal-panel';
-  panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:300px;background:#0d1117;border-top:2px solid #30363d;z-index:99999;display:none;flex-direction:column;font-family:\'JetBrains Mono\',\'Cascadia Code\',\'Consolas\',monospace;';
-  panel.innerHTML = '<div style="display:flex;align-items:center;padding:4px 12px;background:#161b22;border-bottom:1px solid #30363d;"><span style="color:#58a6ff;font-weight:600;font-size:13px;">Python Terminal</span><span id="term-status" style="margin-left:12px;color:#8b949e;font-size:12px;">Connecting...</span><div style="flex:1"></div><button id="term-diagnose" style="padding:2px 8px;font-size:11px;border:1px solid #30363d;border-radius:4px;background:#21262d;color:#c9d1d9;cursor:pointer;margin-right:4px;">Diagnose</button><button id="term-clear" style="padding:2px 8px;font-size:11px;border:1px solid #30363d;border-radius:4px;background:#21262d;color:#c9d1d9;cursor:pointer;margin-right:4px;">Clear</button><button id="term-close" style="padding:2px 8px;font-size:11px;border:1px solid #30363d;border-radius:4px;background:#21262d;color:#c9d1d9;cursor:pointer;">\u2715</button></div><div id="term-output" style="flex:1;overflow-y:auto;padding:8px 12px;font-size:13px;color:#c9d1d9;white-space:pre-wrap;line-height:1.4;">Python Terminal for HarmonyOS\nClick "Diagnose" to check Python environment.\n\n</div><div style="display:flex;padding:4px 8px;background:#161b22;border-top:1px solid #30363d;"><span style="color:#3fb950;margin-right:4px;">>>></span><input id="term-input" type="text" placeholder="Type Python code and press Enter..." style="flex:1;background:transparent;border:none;color:#c9d1d9;font-family:inherit;font-size:13px;outline:none;"/></div>';
+  panel.style.cssText = [
+    'position:fixed',
+    'bottom:0',
+    'left:0',
+    'right:0',
+    'height:280px',
+    'background:var(--mantle, #181825)',
+    'border-top:1px solid var(--overlay, #45475a)',
+    'z-index:99999',
+    'display:none',
+    'flex-direction:column',
+    "font-family:'JetBrains Mono','Cascadia Code','Consolas',monospace",
+    'transition:height 0.2s ease'
+  ].join(';');
+  
+  panel.innerHTML = [
+    '<div style="display:flex;align-items:center;padding:4px 12px;background:var(--crust, #11111b);border-bottom:1px solid var(--overlay, #45475a);">',
+    '<svg width="1rem" height="1rem" viewBox="0 0 16 16" fill="none" style="margin-right:6px;"><path d="M3 4L6 7L3 10" stroke="var(--green, #a6e3a1)" stroke-width="1" stroke-linecap="round" fill="none"/></svg>',
+    '<span style="color:var(--blue, #89b4fa);font-weight:600;font-size:12px;">Python Terminal</span>',
+    '<span id="term-status" style="margin-left:8px;color:var(--subtext0, #a6adc8);font-size:11px;">Click to connect</span>',
+    '<div style="flex:1"></div>',
+    '<button id="term-diagnose" class="term-action-btn">Diagnose</button>',
+    '<button id="term-clear" class="term-action-btn">Clear</button>',
+    '<button id="term-close" class="term-action-btn">\u2715</button>',
+    '</div>',
+    '<div id="term-output" style="flex:1;overflow-y:auto;padding:8px 12px;font-size:12px;color:var(--text, #cdd6f4);white-space:pre-wrap;line-height:1.5;background:var(--base, #1e1e2e);">Python Terminal for HarmonyOS\nClick \"Diagnose\" to check Python environment.\n\n</div>',
+    '<div style="display:flex;padding:4px 8px;background:var(--crust, #11111b);border-top:1px solid var(--overlay, #45475a);">',
+    '<span style="color:var(--green, #a6e3a1);margin-right:4px;font-size:12px;">\u203a</span>',
+    '<input id="term-input" type="text" placeholder="Type Python code and press Enter..." style="flex:1;background:transparent;border:none;color:var(--text, #cdd6f4);font-family:inherit;font-size:12px;outline:none;"/>',
+    '</div>'
+  ].join('');
+  
+  // Add style for action buttons
+  const style = document.createElement('style');
+  style.textContent = '.term-action-btn{padding:2px 8px;font-size:11px;border:1px solid var(--overlay, #45475a);border-radius:4px;background:var(--surface0, #313244);color:var(--text, #cdd6f4);cursor:pointer;margin-right:4px;transition:background 0.15s;}.term-action-btn:hover{background:var(--surface1, #45475a);}';
+  document.head.appendChild(style);
+  
   document.body.appendChild(panel);
-  document.getElementById('term-close').onclick = toggleTerminal;
+  document.getElementById('term-close').onclick = toggleTerminalPanel;
   document.getElementById('term-clear').onclick = () => { document.getElementById('term-output').innerHTML = ''; };
   document.getElementById('term-diagnose').onclick = runDiagnose;
   const input = document.getElementById('term-input');
@@ -177,54 +248,60 @@ function injectTerminalUI() {
     if (e.key === 'Enter') {
       const code = input.value;
       if (!code.trim()) return;
-      appendOutput('>>> ' + code + '\n', '#58a6ff');
+      appendTermOutput('\u203a ' + code + '\n', 'var(--blue, #89b4fa)');
       input.value = '';
       execPython(code);
     }
   });
 }
+
 let termId = null;
+let termConnected = false;
 async function ensureTerminal() {
   const status = document.getElementById('term-status');
   if (!termId) {
     try {
       termId = await window.terminal.start();
-      status.textContent = 'Connected (ID: ' + termId + ')';
-      status.style.color = '#3fb950';
-      appendOutput('Terminal started. Python is ready.\n', '#3fb950');
+      termConnected = true;
+      status.textContent = 'Connected';
+      status.style.color = 'var(--green, #a6e3a1)';
+      appendTermOutput('Terminal started. Python is ready.\n', 'var(--green, #a6e3a1)');
+      // Auto-run diagnose on first connect
+      runDiagnose();
     } catch (err) {
-      status.textContent = 'Error: ' + (err.message || err);
-      status.style.color = '#f85149';
+      status.textContent = 'Error: ' + (err.message || err).substring(0, 60);
+      status.style.color = 'var(--red, #f38ba8)';
+      appendTermOutput('Failed to start terminal: ' + (err.message || err) + '\n', 'var(--red, #f38ba8)');
     }
   }
 }
 async function execPython(code) {
   try {
     const result = await window.terminal.exec(code);
-    if (result) appendOutput(result + '\n', '#c9d1d9');
+    if (result) appendTermOutput(result + '\n', 'var(--text, #cdd6f4)');
   } catch (err) {
-    appendOutput('Error: ' + (err.message || err) + '\n', '#f85149');
+    appendTermOutput('Error: ' + (err.message || err) + '\n', 'var(--red, #f38ba8)');
   }
 }
 async function runDiagnose() {
-  appendOutput('\n--- Running diagnostics ---\n', '#d2a8ff');
+  appendTermOutput('\n--- Running diagnostics ---\n', 'var(--mauve, #cba6f7)');
   try {
     const result = await window.terminal.diagnose();
-    appendOutput(result + '\n\n', '#8b949e');
+    appendTermOutput(result + '\n\n', 'var(--subtext0, #a6adc8)');
   } catch (err) {
-    appendOutput('Diagnostic error: ' + (err.message || err) + '\n', '#f85149');
+    appendTermOutput('Diagnostic error: ' + (err.message || err) + '\n', 'var(--red, #f38ba8)');
   }
 }
-function appendOutput(text, color) {
+function appendTermOutput(text, color) {
   const out = document.getElementById('term-output');
   if (!out) return;
   const span = document.createElement('span');
-  span.style.color = color || '#c9d1d9';
+  span.style.color = color || 'var(--text, #cdd6f4)';
   span.textContent = text;
   out.appendChild(span);
   out.scrollTop = out.scrollHeight;
 }
-function toggleTerminal() {
+function toggleTerminalPanel() {
   const panel = document.getElementById('harmony-terminal-panel');
   if (!panel) return;
   if (panel.style.display === 'none' || !panel.style.display) {
@@ -234,8 +311,8 @@ function toggleTerminal() {
     panel.style.display = 'none';
   }
 }
-ipcRenderer.on('stdout', (evt, data) => { appendOutput(data, '#c9d1d9'); });
-ipcRenderer.on('stderr', (evt, data) => { appendOutput(data, '#f85149'); });
+ipcRenderer.on('stdout', (evt, data) => { appendTermOutput(data, 'var(--text, #cdd6f4)'); });
+ipcRenderer.on('stderr', (evt, data) => { appendTermOutput(data, 'var(--red, #f38ba8)'); });
 
 // Fallback: if contextBridge.exposeInMainWorld didn't work (e.g. contextIsolation disabled),
 // attach directly to window so frontend code doesn't get undefined

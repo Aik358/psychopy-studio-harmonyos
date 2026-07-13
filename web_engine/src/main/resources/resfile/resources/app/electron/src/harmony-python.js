@@ -293,7 +293,7 @@ export function registerHarmonyPythonHandlers() {
       try {
         await startLiaison();
       } catch (err) {
-        logging.error(`Auto-start liaison failed: ${err}`);
+        logging.error(`Auto-start liaison failed: ${err?.message || err}`);
         return false;
       }
     }
@@ -419,27 +419,50 @@ export function registerHarmonyPythonHandlers() {
   ipcMain.handle("terminal.python.exec", async (evt, code) => {
     const pythonPath = getPython();
     try {
-      const result = proc.execSync(`"${pythonPath}" -c "${code.replace(/"/g, '\\"')}"`, {
+      // Use stdin pipe instead of -c to avoid quoting issues
+      const result = proc.execSync(`"${pythonPath}" -i -u`, {
+        input: code + '\n',
         timeout: 15000,
         encoding: "utf8",
-        env: { ...process.env, PSYCHOPY_NO_GUI: "1", MPLBACKEND: "Agg" },
+        env: { ...process.env, PSYCHOPY_NO_GUI: "1", MPLBACKEND: "Agg", PYTHONUNBUFFERED: "1" },
       });
-      return result;
+      // Filter out Python REPL noise (banner, >>> prompts)
+      const lines = result.split('\n').filter(l => 
+        !l.startsWith('>>>') && 
+        !l.startsWith('...') && 
+        !l.includes('Python 3.') &&
+        !l.includes('Type "help"') &&
+        !l.includes('>>>')
+      );
+      return lines.join('\n').trim();
     } catch (err) {
+      // execSync returns non-zero exit for some valid Python code (e.g. sys.exit)
+      if (err.stdout) {
+        const lines = err.stdout.split('\n').filter(l => 
+          !l.startsWith('>>>') && !l.startsWith('...') &&
+          !l.includes('Python 3.') && !l.includes('Type "help"')
+        );
+        return lines.join('\n').trim();
+      }
       return err.stderr || err.message || String(err);
     }
   });
 
   ipcMain.handle("terminal.python.diagnose", async () => {
-    const pythonPath = getPython();
+    const pythonPath = findPython();
     const diag = {
-      python: pythonPath,
+      python: pythonPath || "NOT FOUND",
       version: null,
       psychopy: null,
       packages: {},
       liaison: _liaisonReady ? "running" : "not started",
       liaisonAddress: _liaisonAddress,
+      harmonyPaths: HARMONY_PYTHON_PATHS.map(p => ({ path: p, exists: fs.existsSync(p) })),
     };
+
+    if (!pythonPath) {
+      return JSON.stringify(diag, null, 2);
+    }
 
     try {
       diag.version = proc.execSync(`"${pythonPath}" --version`, { timeout: 5000, encoding: "utf8" }).trim();
@@ -448,13 +471,19 @@ export function registerHarmonyPythonHandlers() {
     try {
       diag.psychopy = proc.execSync(`"${pythonPath}" -c "import psychopy; print(psychopy.__version__)"`, { timeout: 10000, encoding: "utf8" }).trim();
     } catch (e) {
-      diag.psychopy = `FAILED: ${e.message}`;
+      diag.psychopy = `NOT AVAILABLE: ${e.message?.substring(0, 80) || e}`;
     }
 
-    try {
-      const resp = proc.execSync(`"${pythonPath}" -c "import json,importlib.metadata; print(json.dumps({d.metadata['Name']: d.version for d in importlib.metadata.distributions()}))"`, { timeout: 15000, encoding: "utf8" }).trim();
-      diag.packages = JSON.parse(resp);
-    } catch (_) {}
+    // Check key packages individually
+    const keyPkgs = ['numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets'];
+    for (const pkg of keyPkgs) {
+      try {
+        const ver = proc.execSync(`"${pythonPath}" -c "import ${pkg}; print(getattr(${pkg}, '__version__', 'ok'))"`, { timeout: 5000, encoding: "utf8" }).trim();
+        diag.packages[pkg] = ver;
+      } catch (_) {
+        diag.packages[pkg] = "MISSING";
+      }
+    }
 
     return JSON.stringify(diag, null, 2);
   });

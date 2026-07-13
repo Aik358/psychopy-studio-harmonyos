@@ -248,6 +248,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
     mainWin.removeMenu();
+    // Register window immediately so showWindow can find it
+    windows[mainWin.webContents.id] = mainWin;
     mainWin.webContents.on('console-message', (evt) => {
       console.log('[RENDERER]', evt.message);
     });
@@ -261,7 +263,6 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       fallbackLoadFile(mainWin);
     });
     mainWin.webContents.once('did-finish-load', () => {
-      windows[mainWin.webContents.id] = mainWin;
       console.log('[D] Window loaded builder UI');
     });
     svelte.process = { kill: () => server.close() };
