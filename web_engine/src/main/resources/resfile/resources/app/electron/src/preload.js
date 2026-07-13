@@ -237,8 +237,6 @@ function toggleTerminal() {
 ipcRenderer.on('stdout', (evt, data) => { appendOutput(data, '#c9d1d9'); });
 ipcRenderer.on('stderr', (evt, data) => { appendOutput(data, '#f85149'); });
 
-} catch(_) {}
-
 // Fallback: if contextBridge.exposeInMainWorld didn't work (e.g. contextIsolation disabled),
 // attach directly to window so frontend code doesn't get undefined
 try {
