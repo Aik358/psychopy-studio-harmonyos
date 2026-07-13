@@ -8,12 +8,12 @@
 import fs from "fs";
 import path from "path";
 import proc from "child_process";
+import { fileURLToPath } from "url";
 import { app, ipcMain } from "electron";
 import logging from "./logging.js";
 import { output, decoder } from "./python/utils.js";
-import { fileURLToPath } from "url";
 
-// ESM polyfill for __dirname
+// ESM polyfill for __dirname (Node 20.x)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

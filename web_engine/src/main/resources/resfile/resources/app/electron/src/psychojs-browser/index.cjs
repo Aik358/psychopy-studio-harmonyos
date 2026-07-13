@@ -190,11 +190,24 @@ async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDi
 
   // Start HTTP server
   var port = 9200 + Object.keys(servers).length;
-  var express = require("express");
-  var app = express();
-  app.use(express.static(d));
+  var mimeTypes = {
+    '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
+    '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json',
+    '.wasm': 'application/wasm'
+  };
   var server = await new Promise(function(r, j) {
-    var s = app.listen(port, "127.0.0.1", function() { r(s); });
+    var s = require('http').createServer(function(req, res) {
+      var f = d + req.url.split('?')[0];
+      if (fs.existsSync(f) && fs.statSync(f).isFile()) {
+        var ext = path.extname(f);
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        res.end(fs.readFileSync(f));
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    s.listen(port, "127.0.0.1", function() { r(s); });
     s.once("error", j);
   });
   var url = "http://127.0.0.1:" + port + "/";
