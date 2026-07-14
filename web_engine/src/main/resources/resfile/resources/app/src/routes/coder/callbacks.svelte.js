@@ -111,8 +111,13 @@ export function togglePiloting() {
     }
 }
 
-export function sendToRunner() {
-    openIn(current.pages[current.tab]?.file?.file, "runner")
+export async function sendToRunner() {
+    // ★ 转接层：把当前文件交给 openIn，由 openIn 统一 flushBeforeNavigate 落 localStorage
+    // ★★ 显式传 source='coder' — consumeCurrentFile('runner') 判 source==='runner' 才是自回环
+    //    传 'coder' 才能让 runner mount 时读到文件（不误判回环）
+    const f = current.pages[current.tab]?.file;
+    if (f) f.source = 'coder';
+    await openIn(f, "runner")
 }
 
 export async function runPython(version) {

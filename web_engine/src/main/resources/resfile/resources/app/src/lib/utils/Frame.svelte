@@ -1,5 +1,5 @@
 <script>
-    import { store } from "$lib/sharedViewStore.svelte.js";
+    import { store, flushBeforeNavigate } from "$lib/sharedViewStore.svelte.js";
     import { electron } from "$lib/globals.svelte";
     import { goto } from "$app/navigation";
     import { newWindow } from "$lib/utils/views.svelte";
@@ -19,6 +19,10 @@
     const views = ["builder", "coder", "runner"];
 
     function switchView(view) {
+        // ★ 切窗口前落 localStorage：保 currentFile + activeView，goto 跳转后 target 视图 mount 从这里恢复
+        // 不走 electron.windows.navigate（避免 HTTP 整页重载让 Ribbon 布局塌缩、Terminal 标识消失）
+        // goto 是 SPA 跳转不重载，Terminal 标识保留；localStorage 落盘后文件也不丢
+        flushBeforeNavigate(view, null);
         currentView = view;
         store.activeView = view;
         goto(`/${view}`);

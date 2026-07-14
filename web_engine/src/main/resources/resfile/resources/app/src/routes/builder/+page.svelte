@@ -19,7 +19,10 @@
     } from "./callbacks.svelte";
     import { python } from "$lib/globals.svelte";
     import TipsDialog from '../../lib/dialogs/tips/TipsDialog.svelte';
-    import { store } from '$lib/sharedViewStore.svelte.js';
+    import { store, consumeCurrentFile, setActiveView } from '$lib/sharedViewStore.svelte.js';
+
+    // ★ 切到 builder：上边栏标记为 builder（HTTP 重载后从 localStorage 恢复时不跳）
+    setActiveView('builder');
 
     // restore saved state on mount
     if (store.builderState.saved && !current.experiment.file?.file) {
@@ -34,6 +37,15 @@
         }
         if (store.builderState.project) {
             current.project = store.builderState.project
+        }
+    }
+
+    // ★ 转接层：从 coder/runner 切回来时，从 localStorage 恢复 currentFile
+    // consumeCurrentFile 已过滤 source===builder（避免自己回环）
+    {
+        const inherited = consumeCurrentFile('builder');
+        if (inherited && !current.experiment.file?.file) {
+            current.experiment.file = inherited.file
         }
     }
 

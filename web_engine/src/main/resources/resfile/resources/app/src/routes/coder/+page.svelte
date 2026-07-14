@@ -14,8 +14,11 @@
     import { electron, python } from "$lib/globals.svelte";
     import SetupPython from "$lib/python/SetupPython.svelte";
     import TipsDialog from '$lib/dialogs/tips/TipsDialog.svelte';
-    import { store } from '$lib/sharedViewStore.svelte.js';
+    import { store, consumeCurrentFile, setActiveView } from '$lib/sharedViewStore.svelte.js';
     import { Script } from "$lib/experiment/script.svelte";
+
+    // ★ 切到 coder：上边栏标记为 coder
+    setActiveView('coder');
 
     // restore saved state on mount
     if (store.coderState.saved && store.coderState.pages) {
@@ -41,7 +44,8 @@
     })()
 
     // if builder generated code (same window), open it
-    if (current.pages.length === 0 && store.generatedCode.experimentJSON) {
+    if (store.generatedCode.experimentJSON && store.generatedCode.sourceFile !== current._lastGeneratedFile) {
+        current._lastGeneratedFile = store.generatedCode.sourceFile
         let label = store.generatedCode.sourceFile
             ? store.generatedCode.sourceFile.replace(/\.psyexp$/, '') + ' (from Builder)'
             : 'Experiment (from Builder)'
@@ -50,6 +54,21 @@
         script.content = content
         current.pages.push(script)
         current.tab = current.pages.length - 1
+    }
+
+    // ★ 转接层：从 builder/runner 切回来时，从 localStorage 恢复 currentFile
+    // consumeCurrentFile 已过滤 source===coder（避免自己回环）
+    {
+        const inherited = consumeCurrentFile('coder');
+        if (inherited && current.pages.length === 0) {
+            let label = inherited.name
+                ? inherited.name.replace(/\.[^.]+$/, '') + ' (from ' + inherited.source + ')'
+                : 'Experiment (from ' + inherited.source + ')'
+            let script = new Script(label)
+            script.file = inherited.file
+            current.pages.push(script)
+            current.tab = current.pages.length - 1
+        }
     }
 
     // save coder state on destroy

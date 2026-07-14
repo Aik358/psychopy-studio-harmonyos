@@ -4,6 +4,7 @@
     import { login, logout, users } from "./pavlovia.svelte";
     import { MenuItem, MenuSeparator, SubMenu } from "$lib/utils/menu";
     import { electron } from "$lib/globals.svelte";
+    import { openExternal } from "$lib/utils/views.svelte";
 
     let current = getContext("current");
 
@@ -36,7 +37,7 @@
     label={current.user ? current.user.profile.name : "No user"}
     onclick={(evt) => {
         if (current.user) {
-            window.open(current.user.profile.web_url);
+            openExternal(current.user.profile.web_url);
         }
     }}
     disabled={!current.user}
@@ -44,7 +45,7 @@
     <MenuItem
         label="Edit user..."
         icon="/icons/btn-edit.svg"
-        onclick={evt => window.open("https://gitlab.pavlovia.org/-/profile", "_blank")}
+        onclick={evt => openExternal("https://gitlab.pavlovia.org/-/profile")}
     />
     <SubMenu label="Switch user...">
         {#each Object.values(users) as user}

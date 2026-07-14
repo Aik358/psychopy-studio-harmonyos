@@ -7,6 +7,7 @@ import { electron } from "$lib/globals.svelte"
 export let current = $state({
     pages: [],
     tab: 0,
+    _lastGeneratedFile: null,  // ★ 跟踪上一次从 Builder 接收的 generatedCode，防重复
     openFile: async file => {
         if (typeof file === "string") {
             file = parsePath(file)

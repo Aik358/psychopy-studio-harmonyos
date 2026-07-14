@@ -2,6 +2,7 @@
     import { Button } from "$lib/utils/buttons";
     import { Icon } from "$lib/utils/icons";
     import { onMount, untrack } from "svelte";
+    import { openExternal } from "$lib/utils/views.svelte";
 
     let {
         id,
@@ -87,7 +88,7 @@
                     <Button 
                         label=Help
                         onclick={() => {
-                            window.open(buttons.HELP, '_blank').focus();
+                            openExternal(buttons.HELP);
                         }} 
                         horizontal
                     ></Button>

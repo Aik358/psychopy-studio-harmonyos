@@ -18,7 +18,10 @@
     import Shortcuts from '$lib/utils/Shortcuts.svelte';
     import { shortcuts } from "./callbacks.svelte";
     import TipsDialog from '$lib/dialogs/tips/TipsDialog.svelte';
-    import { store } from '$lib/sharedViewStore.svelte.js';
+    import { store, consumeCurrentFile, setActiveView } from '$lib/sharedViewStore.svelte.js';
+
+    // ★ 切到 runner：上边栏标记为 runner
+    setActiveView('runner');
 
     // restore saved state on mount
     if (store.runnerState.saved && store.runnerState.runlist) {
@@ -29,6 +32,16 @@
             current.output = store.runnerState.output
         }
     }
+
+    // ★ 转接层：从 builder/coder 切过来时，从 localStorage 恢复 currentFile
+    // consumeCurrentFile 已过滤 source===runner（避免自己回环）
+    // 不清空 currentFile.file — 保留供其他视图读取（切换回去时还能恢复）
+    ;(async () => {
+        const inherited = consumeCurrentFile('runner');
+        if (inherited && current.runlist.length === 0) {
+            await addFile(inherited.file)
+        }
+    })()
 
     // save runner state on destroy
     $effect(() => {

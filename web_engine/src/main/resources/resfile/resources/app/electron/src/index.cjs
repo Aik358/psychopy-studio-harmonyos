@@ -12,6 +12,26 @@ const fs = require("fs");
 const proc = require("child_process");
 const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
 
+// ★ 文件日志 — Electron-OH 的 console.log 不进 hilog，写文件辅助调试白屏根因
+const _logFile = path.join(app.getPath("appData"), "psychopy4", "electron-main.log");
+function _flog(...args) {
+  try {
+    const line = `[${new Date().toISOString()}] ${args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}\n`;
+    fs.appendFileSync(_logFile, line);
+    console.log(line.trim());
+  } catch (_) {}
+}
+_flog('=== Electron main started ===');
+_flog('node version:', process.version);
+_flog('appData:', app.getPath("appData"));
+_flog('__dirname:', __dirname);
+_flog('argv:', process.argv);
+global._flog = _flog;
+
+// ★ 捕获未处理异常 — 白屏根因诊断
+process.on('uncaughtException', (err) => { _flog('!!! uncaughtException:', err && err.stack ? err.stack : err); });
+process.on('unhandledRejection', (reason) => { _flog('!!! unhandledRejection:', reason && reason.stack ? reason.stack : reason); });
+
 // make sure psychopy4 folder exists before importing subpackages
 if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   fs.mkdirSync(
@@ -79,59 +99,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     ipcMain.handle("terminal.python.diagnose", () => JSON.stringify({error: "harmony-python.js failed to load", stack: harmonyErr?.stack?.substring(0, 300)}, null, 2));
     console.log('[D] Full stub Python handlers registered (fallback mode)');
   }
-  // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
-  // 在当前窗口 loadFile() 加载实验（最稳方案）
-  // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
-  // Read and parse XLSX conditions file, return JSON
-  ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
-    try {
-      var XLSX = require("xlsx");
-      var workbook = XLSX.readFile(filePath);
-      var sheet = workbook.Sheets[workbook.SheetNames[0]];
-      var json = XLSX.utils.sheet_to_json(sheet);
-      return JSON.stringify(json);
-    } catch (err) {
-      console.error("[psychojs-browser] readConditions failed:", err?.message || err);
-      return "[]";
-    }
-  });
-
-  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
-    console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir);
-    try {
-      delete require.cache[require.resolve("./psychojs-browser/index.cjs")];
-      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
-      const url = await psychoJSBrowser.startServer(
-        jsCode || "", expName || "experiment", conditionsJSON || "",
-        resourcesJSON || "", expDir || ""
-      );
-      console.log("[psychojs-browser] Opened in system browser:", url);
-      return url;
-    } catch (err) {
-      console.error("[psychojs-browser] Failed:", err?.message || err, err?.stack);
-      throw err;
-    }
-  });
-  // 保存实验 log（暂未启用）
-  ipcMain.handle("python.psychojs.saveLog", async (evt, logData, savePath) => {
-    const psychoJSBrowser = require("./psychojs-browser/index.cjs");
-    return await psychoJSBrowser.saveLog(logData, savePath);
-  });
-  // ★ 停掉浏览器实验 server + 清理
-  ipcMain.handle("python.psychojs.browserStop", async (evt, address) => {
-    console.log("[psychojs-browser] browserStop called, address:", address);
-    try {
-      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
-      await psychoJSBrowser.stopServer(address);
-      return true;
-    } catch (err) {
-      console.error("[psychojs-browser] stop failed:", err?.message || err);
-      return false;
-    }
-  });
-  // 旧路径保留 stub（避免报错）
-  ipcMain.handle("python.psychojs.run", () => Promise.resolve());
-  ipcMain.handle("python.psychojs.stop", () => Promise.resolve(true));
+  // ★ psychojs browser runner IPC 由 harmony-python.js 独家注册（其行 660–692）
+  // 重复注册会抛 second handler 异常让主进程崩、后续 IPC 全废，故此处不注册
   const pythonHandlers = {};
   const { handlers: gitHandlers } = gitModule;
 
@@ -203,6 +172,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
+  _flog('=== createWindow called ===');
   console.log('[D] createWindow loading builder');
   started = true;
 
@@ -235,13 +205,16 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   });
 
   server.on('error', (err) => {
+    _flog('!!! HTTP server error:', err && err.message);
     console.error('[D] Server error:', err);
   });
   server.listen(8003, '127.0.0.1', () => {
+    _flog('HTTP server listening on 127.0.0.1:8003');
     console.log('[D] HTTP server started on 127.0.0.1:8003');
     openMainWindow();  
   });
   function openMainWindow() {
+    _flog('=== openMainWindow called ===');
     const mainWin = new BrowserWindow({
       width: 1600, height: 900, show: true,
       frame: true,
@@ -254,21 +227,27 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       console.log('[RENDERER]', evt.message);
     });
     mainWin.webContents.on('did-fail-load', (evt, code, desc) => {
+      _flog('!!! did-fail-load:', code, desc);
       console.error('[D] Window load failed:', code, desc);
     });
+    _flog('openMainWindow: loadURL http://127.0.0.1:8003/builder');
     mainWin.loadURL('http://127.0.0.1:8003/builder').then(() => {
+      _flog('openMainWindow: loadURL builder OK');
       console.log('[D] loadURL initiated');
     }).catch((err) => {
+      _flog('!!! openMainWindow loadURL error:', err && err.message);
       console.error('[D] loadURL error:', err);
       fallbackLoadFile(mainWin);
     });
     mainWin.webContents.once('did-finish-load', () => {
+      _flog('openMainWindow: did-finish-load builder UI');
       console.log('[D] Window loaded builder UI');
     });
     svelte.process = { kill: () => server.close() };
   }
   function fallbackLoadFile(win) {
     const fallbackPath = path.join(__dirname, '../../.svelte-kit/output/prerendered/pages/builder/index.html');
+    _flog('fallbackLoadFile:', fallbackPath, 'exists:', fs.existsSync(fallbackPath));
     console.log('[D] Fallback loading file:', fallbackPath);
     if (fs.existsSync(fallbackPath)) {
       win.loadURL('file://' + fallbackPath);
@@ -400,6 +379,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(() => {
+    _flog('=== app.whenReady fired ===');
     createWindow();
 
     // On OS X it's common to re-create a window in the app when the
@@ -474,8 +454,9 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           let win = windows[evt.sender.id];
           if (win && win.loadURL) {
             let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
+            _flog('[HarmonyOS] windows.new navigating to:', url);
             logging.log(`[HarmonyOS] windows.new: navigating single window to ${url}`);
-            await win.loadURL(url);
+            await win.loadURL(url).catch(err => _flog('!!! windows.new loadURL error:', err && err.message));
             return evt.sender.id;
           }
           // fallback to original behavior
@@ -527,13 +508,17 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         navigate: ipcMain.handle("electron.windows.navigate", (evt, target) => {
           let win = windows[evt.sender.id]
           if (win && win.loadURL) {
+            _flog('[HarmonyOS] windows.navigate to:', target);
             win.loadURL(`http://127.0.0.1:8003/${target}`).then(() => {
+              _flog('[HarmonyOS] windows.navigate OK:', target);
               console.log(`[D] Navigated to /${target}`);
             }).catch((err) => {
+              _flog('!!! windows.navigate error:', target, err && err.message);
               console.error(`[D] Navigate to /${target} failed:`, err);
             });
             return true;
           }
+          _flog('!!! windows.navigate: no window for sender', evt.sender.id);
           return false;
         }),
       },

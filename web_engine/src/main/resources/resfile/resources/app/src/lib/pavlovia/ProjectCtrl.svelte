@@ -4,6 +4,7 @@
     import { projects, users, findProject } from "./pavlovia.svelte";
     import { MenuItem, MenuSeparator, SubMenu } from "$lib/utils/menu";
     import { electron, git } from "$lib/globals.svelte";
+    import { openExternal } from "$lib/utils/views.svelte";
     import ManageProjectsDlg from "$lib/dialogs/projects/manage/ManageProjectsDlg.svelte";
     import NewProjectDlg from "./NewProjectDlg.svelte";
 
@@ -64,7 +65,7 @@
     label={label}
     onclick={(evt) => {
         if (current.project) {
-            window.open(current.project.web_url.replace("gitlab.pavlovia", "pavlovia"))
+            openExternal(current.project.web_url.replace("gitlab.pavlovia", "pavlovia"))
         }
     }}
     disabled={!current.project}
@@ -78,14 +79,14 @@
     <MenuItem
         label="Edit project"
         icon="/icons/btn-edit.svg"
-        onclick={evt => window.open(`${current.project.web_url}/edit`, "_blank")}
+        onclick={evt => openExternal(`${current.project.web_url}/edit`)}
         disabled={!current.project}
     ></MenuItem>
     <MenuSeparator/>
     <MenuItem
         label="Search projects..."
         icon="/icons/btn-find.svg"
-        onclick={(evt) => window.open("https://pavlovia.org/explore", "_blank")}
+        onclick={(evt) => openExternal("https://pavlovia.org/explore")}
     ></MenuItem>
 </DropdownButton>
 
