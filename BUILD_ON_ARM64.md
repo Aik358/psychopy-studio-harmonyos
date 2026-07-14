@@ -5,7 +5,7 @@
 本指南记录了在 **HarmonyOS ARM64（aarch64）** 设备上成功自构建 PsychoPy Studio 的全流程经验。涵盖从环境搭建、前端编译、代码签名到常见问题解决的完整攻略。
 
 **适用设备**：HarmonyOS 5.0+ / HongMeng Kernel 1.12+，arm64 架构  
-**最后更新**：2026-06-25
+**最后更新**：2026-07-14
 
 ---
 
@@ -18,6 +18,7 @@
 5. [Python 后端暂替方案](#5-python-后端暂替方案)
 6. [常见问题](#6-常见问题)
 7. [TODO：连接后端时需恢复的改动](#7-todo连接后端时需恢复的改动)
+8. [附录：Harmonybrew 绕过 DevEco Node 安全限制](#8-附录harmonybrew-绕过-deveco-node-安全限制)
 
 ---
 
@@ -392,3 +393,200 @@ preferences: Promise.withResolvers().promise
 | HAP 产出 | `electron/build/default/outputs/default/electron-default-signed.hap` |
 | 前端构建产出 | `web_engine/.../resources/app/dist/` |
 | 前端源码 | `web_engine/.../resources/app/src/` |
+
+---
+
+## 8. 附录：Harmonybrew 绕过 DevEco Node 安全限制
+
+### 8.1 问题背景
+
+鸿蒙系统 DevEco Studio 内置的 Node.js（如 `/data/app/node.org/node_22.7.0/bin/node`）与系统 Node.js（`/data/service/hnp/bin/node` v24.13.0）存在严格的安全限制和 native 崩溃问题：
+
+| 问题 | 影响 |
+|------|------|
+| `__errno_location` 断言崩溃 | `npm`、`ohpm` 等工具直接退出 |
+| `--permission` 权限模型默认启用 | `dlopen`、子进程、Worker 等被拒绝 |
+| 未签名 `.node` 加载失败 | `ERR_DLOPEN_FAILED` / `Permission denied` |
+| `libgcc_s.so.1` 缺失 | 依赖 GCC 运行时的原生 binding 无法加载 |
+
+### 8.2 Harmonybrew Node 的优势
+
+Harmonybrew 编译的 Node.js 通过 `--dest-os=openharmony --partly-static` 参数适配 HarmonyOS：
+
+| 版本 | 路径 | 状态 |
+|------|------|------|
+| v26.3.1 | `/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node` | ✅ 推荐（vite 构建用） |
+| v24.17.0 | `/storage/Users/currentUser/.harmonybrew/opt/node@24/bin/node` | ✅ ohpm install 备选 |
+
+### 8.3 推荐环境变量配置
+
+在 `~/.bashrc` 或项目 `.env` 中设置：
+
+```bash
+# Harmonybrew Node（绕过 DevEco 安全限制）
+export HB_NODE="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node"
+export HB_NPM_CLI="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/lib/node_modules/npm/bin/npm-cli.js"
+
+# ohpm 工具（Harmonybrew 提供）
+export HB_OHPM="/storage/Users/currentUser/.harmonybrew/lib/node_modules/ohos-ohpm/bin/pm-cli.js"
+
+# 签名工具
+export HB_SIGN_TOOL="/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool"
+
+# 将 Harmonybrew bin 加入 PATH 优先级
+export PATH="/storage/Users/currentUser/.harmonybrew/opt/node@24/bin:/storage/Users/currentUser/.harmonybrew/bin:$PATH"
+```
+
+### 8.4 使用 Harmonybrew Node 执行关键操作
+
+#### 8.4.1 ohpm install（模块依赖安装）
+
+**问题**：v0.1.6 项目首次构建时，`electron` 模块 `import 'web_engine'` 报 `Cannot find module` 19 处错误，原因是 `ohpm install` 在系统 Node v24.13.0 下崩溃（`Fatal error... Check failed: 12 == (*__errno_location())`），依赖从未被安装。
+
+**解决**：用 Harmonybrew node@24.17.0 运行 ohpm 的 `pm-cli.js`：
+
+```bash
+cd /storage/Users/currentUser/Desktop/psychopy-oh-v0.1.6
+
+# 关键：用 harmonybrew 的 node 而非系统 node
+/storage/Users/currentUser/.harmonybrew/opt/node@24/bin/node \
+  /storage/Users/currentUser/.harmonybrew/lib/node_modules/ohos-ohpm/bin/pm-cli.js \
+  install
+
+# 验证：electron 模块应能链接到 web_engine
+ls -la electron/oh_modules/web_engine
+# 期望输出：lrwxrwxrwx ... web_engine -> .../web_engine
+```
+
+成功标志：`install completed in 0s 461ms`，且 `electron/oh_modules/web_engine` 符号链接存在。
+
+#### 8.4.2 npm install（前端依赖）
+
+```bash
+cd web_engine/src/main/resources/resfile/resources/app
+
+# 移除 os 限制（EBADPLATFORM 问题）
+$HB_NODE -e "
+const pkg = require('./package.json');
+delete pkg.os;
+delete pkg.optionalDependencies;
+require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+"
+
+# 用 harmonybrew node 运行 npm-cli.js（npm 二进制会崩溃）
+$HB_NODE "$HB_NPM_CLI" install
+```
+
+#### 8.4.3 Vite 前端构建
+
+```bash
+$HB_NODE \
+  --permission \
+  --allow-addons \
+  --allow-fs-read=* \
+  --allow-fs-write=* \
+  --allow-child-process \
+  --allow-worker \
+  ./node_modules/.bin/vite build
+```
+
+### 8.5 自签名绕过 Native 加载限制
+
+HarmonyOS 要求动态加载的共享库必须有代码签名。未经签名的 `.node` 文件会报 `ERR_DLOPEN_FAILED`。
+
+#### 8.5.1 签名 rolldown binding
+
+```bash
+$HB_SIGN_TOOL sign \
+  -selfSign 1 \
+  -inFile "node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node" \
+  -outFile "node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed" \
+  -signAlg SHA256withECDSA
+
+# 替换原文件
+mv node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node \
+   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.unsigned
+cp node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed \
+   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
+chmod +x node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
+```
+
+> `-selfSign 1` 使用自签名模式，不需要正式的开发者证书。
+
+#### 8.5.2 lightningcss WASM 回退
+
+`lightningcss` 原生 binding 依赖 `libgcc_s.so.1`，而 HarmonyOS 使用 clang/LLVM 不包含此库。解决方案是替换为 WASM 版本：
+
+```bash
+# 下载 lightningcss-wasm
+$HB_NODE -e "
+const https = require('https'), fs = require('fs');
+https.get('https://registry.npmjs.org/lightningcss-wasm/-/lightningcss-wasm-1.32.0.tgz', (r) => {
+  (r.statusCode === 302 ? https.get(r.headers.location) : r)
+    .pipe(fs.createWriteStream('lightningcss-wasm.tgz'))
+    .on('finish', () => console.log('✅ 下载完成'));
+});
+"
+
+# 解压到 node_modules
+mkdir -p node_modules/lightningcss-wasm
+tar xzf lightningcss-wasm.tgz -C node_modules/lightningcss-wasm --strip-components=1
+
+# 替换 lightningcss 入口为 WASM
+cp node_modules/lightningcss/node/index.js node_modules/lightningcss/node/index.js.bak
+cat > node_modules/lightningcss/node/index.js << 'EOF'
+const wasm = require('lightningcss-wasm');
+module.exports = wasm;
+EOF
+```
+
+### 8.6 故障排查快速参考
+
+| 症状 | 原因 | 解决 |
+|------|------|------|
+| `Check failed: 12 == (*__errno_location())` | 系统 Node 与 HongMeng 内核 errno 不兼容 | 用 Harmonybrew node@24 或 node@26 |
+| `ohpm install` 静默失败 | 默认 node 崩溃 | `$HB_NODE $HB_OHPM install` |
+| `Cannot find module 'web_engine'` | 模块间依赖未安装 | 同上，执行 ohpm install |
+| `ERR_DLOPEN_FAILED` | `.node` 未签名 | `binary-sign-tool sign -selfSign 1` |
+| `libgcc_s.so.1 not found` | HarmonyOS 无 GCC 运行时 | 替换为 WASM 版本 |
+| `EBADPLATFORM openharmony` | npm 检测到不支持的 os | 删除 package.json 的 `os` 字段 |
+
+### 8.7 完整构建流程（Harmonybrew 版）
+
+```bash
+# === 0. 环境变量 ===
+export HB_NODE="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/bin/node"
+export HB_NPM_CLI="/storage/Users/currentUser/.harmonybrew/Cellar/node/26.3.1/lib/node_modules/npm/bin/npm-cli.js"
+export HB_OHPM="/storage/Users/currentUser/.harmonybrew/lib/node_modules/ohos-ohpm/bin/pm-cli.js"
+export HB_SIGN_TOOL="/storage/Users/currentUser/.harmonybrew/bin/binary-sign-tool"
+
+# === 1. 安装模块依赖 ===
+cd /storage/Users/currentUser/Desktop/psychopy-oh-v0.1.6
+/storage/Users/currentUser/.harmonybrew/opt/node@24/bin/node "$HB_OHPM" install
+
+# === 2. 前端构建 ===
+cd web_engine/src/main/resources/resfile/resources/app
+$HB_NODE -e "const p=require('./package.json');delete p.os;delete p.optionalDependencies;require('fs').writeFileSync('package.json',JSON.stringify(p,null,2))"
+$HB_NODE "$HB_NPM_CLI" install
+
+# 签名 rolldown
+$HB_SIGN_TOOL sign -selfSign 1 \
+  -inFile "node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node" \
+  -outFile "node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed" \
+  -signAlg SHA256withECDSA
+mv node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node \
+   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.unsigned
+cp node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node.signed \
+   node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
+chmod +x node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node
+
+# 替换 lightningcss 为 WASM（见 8.5.2）
+
+# 构建
+$HB_NODE --permission --allow-addons --allow-fs-read=* --allow-fs-write=* --allow-child-process --allow-worker ./node_modules/.bin/vite build
+
+# === 3. 构建 HAP（DevEco Studio 或 hvigor）===
+cd /storage/Users/currentUser/Desktop/psychopy-oh-v0.1.6
+hvigorw --mode module -p module=web_engine@default -p product=default -p buildMode=debug assembleHar --no-daemon
+hvigorw --mode module -p module=electron@default -p product=default -p buildMode=debug assembleHap --no-daemon
+```

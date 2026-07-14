@@ -47,3 +47,8 @@ coverage/
 # Python cache
 __pycache__/
 *.pyc
+
+# IDE cache
+.bitfun/
+.codegenie/
+.appanalyzer/
