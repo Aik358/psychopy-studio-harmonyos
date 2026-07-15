@@ -30,6 +30,66 @@ os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_MAIN_FREE'] = '1'
 
+# ── 鸿蒙沙箱可写路径 ────────────────────────────────────────
+# Psychopy preferences.py 用 os.environ['HOME'] + '.psychopy3' 构造 userPrefsDir
+# （不读 PSYCHOPY_HOME），默认 ~ 即 /storage/Users/currentUser 鸿蒙沙箱拒绝写。
+# 把 HOME 重定向到沙箱可写目录，devices.json / userPrefs.cfg 都会落这里。
+# MPLCONFIGDIR 同理 — matplotlib 用 ~ 或该变量构造缓存目录。
+_HARMONY_SANDBOX = "/data/storage/el2/base/cache"
+os.makedirs(os.path.join(_HARMONY_SANDBOX, "home"), exist_ok=True)
+os.environ['HOME'] = os.path.join(_HARMONY_SANDBOX, "home")
+os.makedirs(os.path.join(_HARMONY_SANDBOX, "matplotlib"), exist_ok=True)
+os.environ['MPLCONFIGDIR'] = os.path.join(_HARMONY_SANDBOX, "matplotlib")
+
+# ── platform.system() 鸿蒙补丁 ───────────────────────────────
+# psychopy preferences.py 行 161 用 platform.system() + '.spec' 找 spec 文件
+# 鸿蒙返回 'HarmonyOS' 但 preferences 目录只有 Darwin/FreeBSD/Linux/Windows.spec
+# → 找不到 HarmonyOS.spec → prefsSpec 空 → validate 无默认 → cfg['general'] KeyError
+# 鸿蒙 POSIX 兼容，Linux.spec 内容适用，打补丁让 platform.system() 返回 'Linux'
+import platform as _platform
+_platform.system = lambda *a, **kw: 'Linux'
+# 同时改 platform 平台名（某些库用 sys.platform=='linux' 判定，鸿蒙本来就是）
+# ── 预置最小 userPrefs.cfg ────────────────────────────────────
+# preferences.loadUserPrefs() 加载 userPrefs.cfg 时若文件不存在/空 cfg 没 section
+# → loadAll 行 309 self.userPrefsCfg['general'] 抛 KeyError → import psychopy 失败
+# 预置含全部 8 个必需 section 的最小 cfg 到沙箱可写目录，让首次启动也能 import
+_HARMONY_HOME = os.environ['HOME']
+_HARMONY_PREFS_DIR = os.path.join(_HARMONY_HOME, '.psychopy3')
+os.makedirs(_HARMONY_PREFS_DIR, exist_ok=True)
+_HARMONY_PREFS_FILE = os.path.join(_HARMONY_PREFS_DIR, 'userPrefs.cfg')
+if not os.path.isfile(_HARMONY_PREFS_FILE):
+    _DEFAULT_PREFS = """[general]
+units = norm
+fullscr = True
+allowGUI = True
+quitKey = escape
+
+[app]
+resetPrefs = False
+showWarnings = True
+theme = light
+
+[coder]
+defaultView = Coder
+
+[builder]
+defaultView = Builder
+
+[hardware]
+audioLib = ptb
+
+[piloting]
+
+[connections]
+
+[keyBindings]
+"""
+    try:
+        with open(_HARMONY_PREFS_FILE, 'w', encoding='utf-8') as f:
+            f.write(_DEFAULT_PREFS)
+    except Exception as _e:
+        print(f"[liaison-shim] WARNING: Failed to write default userPrefs.cfg: {_e}", flush=True)
+
 # ── Add site-packages to sys.path ────────────────────────────
 _HARMONY_SITE_PATHS = [
     "/data/service/hnp/python.org/python_3.12/lib/python3.12/site-packages",
@@ -121,8 +181,44 @@ def _mock_pyqt6():
             }))
 
 def _mock_wx():
+    """Mock wx 属性补全 — psychopy.localization._localization 行 52 调 wx.Locale()，
+    原 mock 只建空模块没 Locale 类 → AttributeError → localization import 失败
+    → data → experiment 整个链断 → liaison 调 getElementProfiles/writeScript 报
+    'logging is not defined'（实际是 _experiment.py 没加载成功）"""
     if 'wx' not in sys.modules:
-        _mock_module('wx')
+        wx_mod = types.ModuleType('wx')
+        # localization._localization 行 35-155 用到的 API：wx.Locale() / wx.LANGUAGE_DEFAULT
+        # 用 stub 而非 mock 真行为 — psychopy 只用它读 locale 元数据，鸿蒙后端不需要真 wx
+        wx_mod.LANGUAGE_DEFAULT = 0
+        class _LangInfo:
+            def __init__(self, desc, canon): self.Description = desc; self.CanonicalName = canon
+        class _Locale:
+            def __init__(self, *a, **kw): pass
+            def GetLocale(self): return 'en_US'
+            def GetCanonicalName(self): return 'en_US'
+            def GetSystemLanguage(self): return wx_mod.LANGUAGE_DEFAULT
+            def GetLanguageInfo(self, i): return _LangInfo('English (U.S.)', 'en_US') if i == 0 else None
+            def IsAvailable(self, i): return i == wx_mod.LANGUAGE_DEFAULT
+        wx_mod.Locale = _Locale
+        wx_mod.GetTranslation = lambda s: s
+        wx_mod.__version__ = '4.2.0'  # wizard.py:22 检 wx.__version__
+        sys.modules['wx'] = wx_mod
+    else:
+        wx_mod = sys.modules['wx']
+        if not hasattr(wx_mod, 'LANGUAGE_DEFAULT'): wx_mod.LANGUAGE_DEFAULT = 0
+        if not hasattr(wx_mod, '__version__'): wx_mod.__version__ = '4.2.0'
+        if not hasattr(wx_mod, 'GetTranslation'): wx_mod.GetTranslation = lambda s: s
+        if not hasattr(wx_mod, 'Locale'):
+            class _LangInfo:
+                def __init__(self, desc, canon): self.Description = desc; self.CanonicalName = canon
+            class _Locale:
+                def __init__(self, *a, **kw): pass
+                def GetLocale(self): return 'en_US'
+                def GetCanonicalName(self): return 'en_US'
+                def GetSystemLanguage(self): return wx_mod.LANGUAGE_DEFAULT
+                def GetLanguageInfo(self, i): return _LangInfo('English (U.S.)', 'en_US') if i == 0 else None
+                def IsAvailable(self, i): return i == wx_mod.LANGUAGE_DEFAULT
+            wx_mod.Locale = _Locale
 
 def _mock_pyqt5():
     for mod_name in ["PyQt5", "PyQt5.QtCore", "PyQt5.QtGui", "PyQt5.QtWidgets"]:
@@ -132,6 +228,17 @@ def _mock_pyqt5():
 _mock_pyqt6()
 _mock_pyqt5()
 _mock_wx()
+
+# ── libsndfile 真库（HarmonyBrew Cellar）──────────────────────
+# psychopy.tools.audiotools 行 107 `import soundfile as sf`，鸿蒙系统 Python 缺 libsndfile.so
+# → OSError → microphone/camera 组件 import 失败 → getAllComponents 报错
+# HarmonyBrew 已装 libsndfile 1.2.2_1，用 LD_LIBRARY_PATH 让 ctypes ffi.dlopen 找到真 .so
+# （实测：设此变量后鸿蒙系统 Python soundfile 0.14.0 真加载成功，available_formats 正常）
+_HB_LIBSNDFILE = os.path.expanduser("~/.harmonybrew/Cellar/libsndfile/1.2.2_1/lib")
+_HB_LIB = os.path.expanduser("~/.harmonybrew/lib")
+if os.path.isdir(_HB_LIBSNDFILE):
+    _ld = os.environ.get("LD_LIBRARY_PATH", "")
+    os.environ["LD_LIBRARY_PATH"] = ":".join([p for p in [_HB_LIBSNDFILE, _HB_LIB, _ld] if p])
 
 # ── Import PsychoPy ──────────────────────────────────────────
 START_MARKER = "LIAISON_START"

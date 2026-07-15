@@ -1,7 +1,7 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, m as html, n as attr_style, o as derived, s as ensure_array_like, t as attr_class, v as getContext } from "../../../chunks/server.js";
-import { A as IconButton, B as Icon, D as profiles, E as pending, F as CompactButton, H as openIn, I as PanelButton, J as projects, K as electron, L as ToggleButton, M as Dialog, P as Menu, R as Button, S as Component$1, T as Param, U as showDevTools, V as newWindow, W as showWindow, Y as python, _ as FlowLoop, a as PythonErrors, b as Routine$1, d as Version, f as browseFileOpen, h as parsePath, j as MessageDialog, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as git, t as Theme, u as setupPython, v as LoopInitiator, w as HasParams, x as StandaloneRoutine, y as LoopTerminator, z as Tooltip } from "../../../chunks/Theme.js";
-import { C as Pane_resizer, D as store, E as Frame, O as Panel$3, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, c as Notebook_1$1, d as NewProjectDlg, f as UserCtrl, g as Listbook, h as Page, i as Ribbon, l as ParamCtrl, m as ButtonTab, n as Gap, o as PrefsDialog, p as Dialog_1$1, r as Section$1, s as ParamsDialog, t as TipsDialog, u as ProjectCtrl, v as SubMenu, w as Pane, x as current, y as Separator } from "../../../chunks/TipsDialog.js";
+import { $ as python, A as IconButton, B as Icon, D as profiles, E as pending, F as CompactButton, G as showWindow, H as openExternal, I as PanelButton, J as store, K as consumeCurrentFile, L as ToggleButton, M as Dialog, P as Menu, Q as projects, R as Button, S as Component$1, T as Param, U as openIn, V as newWindow, W as showDevTools, X as electron, Z as git, _ as FlowLoop, a as PythonErrors, b as Routine$1, d as Version, f as browseFileOpen, h as parsePath, j as MessageDialog, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as setActiveView, t as Theme, u as setupPython, v as LoopInitiator, w as HasParams, x as StandaloneRoutine, y as LoopTerminator, z as Tooltip } from "../../../chunks/Theme.js";
+import { C as Pane_resizer, D as Panel$3, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, c as Notebook_1$1, d as NewProjectDlg, f as UserCtrl, g as Listbook, h as Page, i as Ribbon, l as ParamCtrl, m as ButtonTab, n as Gap, o as PrefsDialog, p as Dialog_1$1, r as Section$1, s as ParamsDialog, t as TipsDialog, u as ProjectCtrl, v as SubMenu, w as Pane, x as current, y as Separator } from "../../../chunks/TipsDialog.js";
 import { t as Dialog_1$2 } from "../../../chunks/pluginManager.js";
 import path from "path-browserify";
 import { marked } from "marked";
@@ -103,7 +103,9 @@ function togglePiloting() {
 	current.experiment.settings.params["runMode"].val = !current.experiment.settings.params["runMode"].val;
 }
 async function sendToRunner() {
-	await openIn(current.experiment.file.file, "runner");
+	const f = current.experiment.file;
+	if (f) f.source = "builder";
+	await openIn(f, "runner");
 }
 async function compilePython() {
 	if (current.experiment.file === void 0) {
@@ -144,7 +146,7 @@ async function runJS() {
 	if (!python) return;
 	await compileJS();
 	if (current.experiment.pilotMode) await current.experiment.runJS(true);
-	else await window.open(`https://run.pavlovia.org/${current.project.namespace?.path}/${current.project.path}`);
+	else await openExternal(`https://run.pavlovia.org/${current.project.namespace?.path}/${current.project.path}`);
 }
 var shortcuts = {
 	new: file_new,
@@ -2352,10 +2354,22 @@ function Panel$2($$renderer, $$props) {
 		* Get Components again from PsychoPy
 		*/
 		async function refreshProfiles() {
-			if (await python?.ready) pending.components = python.liaison.send("app", {
-				command: "run",
-				args: ["psychopy.experiment:getElementProfiles"]
-			}, 1e5).then((data) => Object.assign(profiles.components, data));
+			let ready = false;
+			try {
+				ready = await python?.liaison?.ready?.("app");
+			} catch (_) {}
+			if (!ready) {
+				console.warn("[refreshProfiles] liaison not ready, keeping existing profiles");
+				return;
+			}
+			try {
+				pending.components = await python.liaison.send("app", {
+					command: "run",
+					args: ["psychopy.experiment:getElementProfiles"]
+				}, 1e5).then((data) => Object.assign(profiles.components, data));
+			} catch (err) {
+				console.error("[refreshProfiles] liaison.send failed:", err);
+			}
 		}
 		let showFilterDlg = false;
 		let showPluginMgr = false;
@@ -3102,11 +3116,16 @@ function ReadMe($$renderer, $$props) {
 //#region src/routes/builder/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
+		setActiveView("builder");
 		if (store.builderState.saved && !current.experiment.file?.file) {
 			if (store.builderState.experimentJSON) current.experiment.fromJSON(store.builderState.experimentJSON);
 			if (store.builderState.routineName && current.experiment.routines[store.builderState.routineName]) current.routine = current.experiment.routines[store.builderState.routineName];
 			if (store.builderState.file) current.experiment.file = store.builderState.file;
 			if (store.builderState.project) current.project = store.builderState.project;
+		}
+		{
+			const inherited = consumeCurrentFile("builder");
+			if (inherited && !current.experiment.file?.file) current.experiment.file = inherited.file;
 		}
 		let params = new URLSearchParams(location.search);
 		if (params.get("fileOpen")) openFile(params.get("fileOpen"));

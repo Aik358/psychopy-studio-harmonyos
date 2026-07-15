@@ -1,0 +1,13 @@
+/* base styling for a param ctrl */
+
+.param-value {
+    grid-column-start: 0;
+    grid-column-end: span 3;
+    grid-row-start: ctrl;
+    grid-column-start: label;
+    grid-column-end: end;
+
+    display: grid;
+    gap: .5rem;
+    grid-template-columns: auto;
+}

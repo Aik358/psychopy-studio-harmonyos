@@ -1,7 +1,7 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, n as attr_style, s as ensure_array_like, v as getContext } from "../../../chunks/server.js";
-import { A as IconButton, B as Icon, F as CompactButton, H as openIn, K as electron, O as RadioButton, P as Menu, R as Button, U as showDevTools, W as showWindow, Y as python, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, i as Experiment, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as git, r as Script, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
-import { C as Pane_resizer, D as store, E as Frame, O as Panel$1, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
+import { $ as python, A as IconButton, B as Icon, F as CompactButton, G as showWindow, J as store, K as consumeCurrentFile, O as RadioButton, P as Menu, R as Button, U as openIn, W as showDevTools, X as electron, Z as git, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, i as Experiment, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as setActiveView, r as Script, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
+import { C as Pane_resizer, D as Panel$1, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
 import path from "path-browserify";
 //#region src/routes/runner/outputs/AlertsOutput.svelte
 function AlertsOutput($$renderer, $$props) {
@@ -787,12 +787,17 @@ function Ribbon_1($$renderer, $$props) {
 //#region src/routes/runner/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
+		setActiveView("runner");
 		if (store.runnerState.saved && store.runnerState.runlist) {
 			current.runlist = store.runnerState.runlist;
 			current.selection = store.runnerState.selection;
 			current.tab = store.runnerState.tab;
 			if (store.runnerState.output) current.output = store.runnerState.output;
 		}
+		(async () => {
+			const inherited = consumeCurrentFile("runner");
+			if (inherited && current.runlist.length === 0) await addFile(inherited.file);
+		})();
 		setContext("current", current);
 		let params = new URLSearchParams(location.search);
 		if (params.get("fileOpen")) addFile(params.get("fileOpen"));

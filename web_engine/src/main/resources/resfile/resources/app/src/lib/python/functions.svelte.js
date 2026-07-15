@@ -148,8 +148,13 @@ export async function setupPython(version=undefined, forceReinstall=false) {
     }
     // mark python global as ready once Liaison has started
     python.liaison.ready(version).then(
-        evt => {
-            python.ready = true
+        ready => {
+            // liaison 未连时 ready===false，不置 python.ready=true 避免后续功能误发命令
+            if (ready) {
+                python.ready = true
+            } else {
+                console.warn("[setupPython] liaison not ready, python.ready stays false")
+            }
         }
     )
 

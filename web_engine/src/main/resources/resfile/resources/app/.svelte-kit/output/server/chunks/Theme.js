@@ -15,26 +15,137 @@ var python = window.python;
 var devices = {};
 var projects = {};
 //#endregion
+//#region src/lib/sharedViewStore.svelte.js
+var PERSIST_KEY = "psychopy.currentFile.v1";
+var ACTIVE_VIEW_KEY = "psychopy.activeView.v1";
+function _readPersist() {
+	if (typeof localStorage === "undefined") return null;
+	try {
+		const raw = localStorage.getItem(PERSIST_KEY);
+		return raw ? JSON.parse(raw) : null;
+	} catch (_) {
+		return null;
+	}
+}
+var _restored = _readPersist() || {};
+var currentFile = {
+	file: _restored.file ?? null,
+	name: _restored.name ?? null,
+	ext: _restored.ext ?? null,
+	source: _restored.source ?? null
+};
+var _restoredView = typeof localStorage !== "undefined" && localStorage.getItem(ACTIVE_VIEW_KEY) || "builder";
+function setActiveView(v) {
+	if (typeof localStorage !== "undefined") try {
+		localStorage.setItem(ACTIVE_VIEW_KEY, v);
+	} catch (_) {}
+}
+function flushBeforeNavigate(targetView, fileObj) {
+	if (fileObj) {
+		currentFile.file = fileObj.file ?? null;
+		currentFile.name = fileObj.name ?? null;
+		currentFile.ext = fileObj.ext ?? null;
+		currentFile.source = fileObj.source ?? currentFile.source ?? null;
+	}
+	if (targetView) setActiveView(targetView);
+}
+function consumeCurrentFile(forView) {
+	if (!currentFile.file) return null;
+	if (currentFile.source === forView) return null;
+	return {
+		file: currentFile.file,
+		name: currentFile.name,
+		ext: currentFile.ext,
+		source: currentFile.source
+	};
+}
+var store = {
+	activeView: _restoredView,
+	builderState: {
+		saved: false,
+		experimentJSON: null,
+		file: null,
+		routineName: null,
+		readmeShown: false,
+		project: null
+	},
+	coderState: {
+		saved: false,
+		pages: null,
+		tab: 0
+	},
+	runnerState: {
+		saved: false,
+		runlist: null,
+		selection: null,
+		tab: "alerts",
+		output: null
+	},
+	generatedCode: {
+		python: null,
+		js: null,
+		experimentJSON: null,
+		sourceFile: null
+	}
+};
+//#endregion
 //#region src/lib/utils/views.svelte.js
+async function openExternal(url, fallbackTarget) {
+	if (electron && typeof electron.files?.openExternal === "function") try {
+		await electron.files.openExternal(url);
+		return;
+	} catch (_) {}
+	if (typeof window !== "undefined" && typeof window.open === "function") window.open(url, "_blank");
+	else if (fallbackTarget) goto(`/${fallbackTarget}`);
+}
+/**
+* Open a new window (or a new tab in browser mode)
+* 
+* @param {string} target URL to target for this window (will be appended to the root URL)
+*/
 function newWindow(target) {
 	if (electron) return electron.windows.new(target);
 	else return window.open(resolve(`/${target}`));
 }
 /**
 * Open a given file in a window matching the target URL (only available in electron)
-* 
+*
+* In Electron-OH single-window mode, `electron.windows.get(target)` returns
+* the current window itself, so `send("fileOpen")` would IPC back to us —
+* pointless. Instead, set `currentFile` (the cross-view import layer) and
+* navigate via SvelteKit `goto()`. The target view's mount hook reads
+* `currentFile` and loads the file itself.
+*
 * @param {string} file File to open
 * @param {string} target Window to open in
 */
 async function openIn(file, target) {
+	flushBeforeNavigate(target, typeof file === "string" ? {
+		file,
+		name: null,
+		ext: null,
+		source: null
+	} : {
+		file: file?.file ?? null,
+		name: file?.name ?? null,
+		ext: file?.ext ?? null,
+		source: file?.source ?? null
+	});
 	if (electron) {
-		let windows = await electron.windows.get(target);
-		let id;
-		if (windows.length) id = windows[0];
-		else id = await electron.windows.new(target);
-		await electron.windows.send(id, "fileOpen", snapshot(file));
-		await electron.windows.focus(id);
-	}
+		try {
+			await goto(`/${target}`);
+			return;
+		} catch (_) {}
+		try {
+			await electron.windows.navigate(target);
+			return;
+		} catch (_) {}
+		try {
+			await electron.windows.new(target);
+			return;
+		} catch (_) {}
+		if (typeof window !== "undefined" && typeof window.open === "function") window.open(resolve(`/${target}`));
+	} else window.open(resolve(`/${target}`));
 }
 /**
 * Show the first of a particular window, or navigate to it.
@@ -42,6 +153,7 @@ async function openIn(file, target) {
 * to the target URL rather than trying to focus a separate window.
 */
 async function showWindow(target) {
+	flushBeforeNavigate(target, null);
 	if (electron) {
 		let windows;
 		try {
@@ -53,6 +165,10 @@ async function showWindow(target) {
 			await electron.windows.focus(windows[0]);
 			return;
 		}
+		try {
+			await goto(`/${target}`);
+			return;
+		} catch (_) {}
 		try {
 			await electron.windows.navigate(target);
 			return;
@@ -498,7 +614,7 @@ function Dialog($$renderer, $$props) {
 				Button($$renderer, {
 					label: "Help",
 					onclick: () => {
-						window.open(buttons.HELP, "_blank").focus();
+						openExternal(buttons.HELP);
 					},
 					horizontal: true
 				});
@@ -6738,7 +6854,11 @@ var pending = {
 	devices: Promise.resolve(),
 	preferences: Promise.resolve()
 };
-if (python) python.liaison.ready("app").then(() => {
+if (python) python.liaison.ready("app").then((ready) => {
+	if (!ready) {
+		console.warn("[profiles] liaison not ready, keeping fallback profiles");
+		return;
+	}
 	pending.components = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getElementProfiles"]
@@ -8016,8 +8136,9 @@ async function setupPython(version = void 0, forceReinstall = false) {
 		status.message = "Successfully started Python";
 		status.ready.resolve(true);
 	}
-	python.liaison.ready(version).then((evt) => {
-		python.ready = true;
+	python.liaison.ready(version).then((ready) => {
+		if (ready) python.ready = true;
+		else console.warn("[setupPython] liaison not ready, python.ready stays false");
 	});
 	return python;
 }
@@ -9128,4 +9249,4 @@ function Theme($$renderer, $$props) {
 	});
 }
 //#endregion
-export { IconButton as A, Icon as B, Device as C, profiles as D, pending as E, CompactButton as F, devices as G, openIn as H, PanelButton as I, projects as J, electron as K, ToggleButton as L, Dialog as M, DropdownButton as N, RadioButton as O, Menu as P, Button as R, Component as S, Param as T, showDevTools as U, newWindow as V, showWindow as W, python as Y, FlowLoop as _, PythonErrors as a, Routine as b, CodeOutput as c, Version as d, browseFileOpen as f, writeFile as g, parsePath as h, Experiment as i, MessageDialog as j, SwitchButton as k, CodeEditor as l, mime as m, prefs as n, SetupPython as o, browseFileSave as p, git as q, Script as r, CodeInput as s, Theme as t, setupPython as u, LoopInitiator as v, HasParams as w, StandaloneRoutine as x, LoopTerminator as y, Tooltip as z };
+export { python as $, IconButton as A, Icon as B, Device as C, profiles as D, pending as E, CompactButton as F, showWindow as G, openExternal as H, PanelButton as I, store as J, consumeCurrentFile as K, ToggleButton as L, Dialog as M, DropdownButton as N, RadioButton as O, Menu as P, projects as Q, Button as R, Component as S, Param as T, openIn as U, newWindow as V, showDevTools as W, electron as X, devices as Y, git as Z, FlowLoop as _, PythonErrors as a, Routine as b, CodeOutput as c, Version as d, browseFileOpen as f, writeFile as g, parsePath as h, Experiment as i, MessageDialog as j, SwitchButton as k, CodeEditor as l, mime as m, prefs as n, SetupPython as o, browseFileSave as p, setActiveView as q, Script as r, CodeInput as s, Theme as t, setupPython as u, LoopInitiator as v, HasParams as w, StandaloneRoutine as x, LoopTerminator as y, Tooltip as z };

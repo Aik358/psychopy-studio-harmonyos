@@ -1,6 +1,6 @@
 import "./internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, f as stringify, i as await_block, m as html, o as derived, s as ensure_array_like, t as attr_class, v as getContext } from "./server.js";
-import { K as electron, M as Dialog, R as Button, Y as python$1, c as CodeOutput, j as MessageDialog } from "./Theme.js";
+import { $ as python$1, M as Dialog, R as Button, X as electron, c as CodeOutput, j as MessageDialog } from "./Theme.js";
 import { _ as Notebook, h as Page } from "./TipsDialog.js";
 import { marked } from "marked";
 //#region src/lib/dialogs/pluginManager/ProgressDlg.svelte

@@ -1,13 +1,14 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, s as ensure_array_like, t as attr_class, v as getContext } from "../../../chunks/server.js";
-import { A as IconButton, B as Icon, F as CompactButton, H as openIn, K as electron$1, P as Menu, U as showDevTools, W as showWindow, Y as python, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, k as SwitchButton, l as CodeEditor, m as mime, n as prefs, o as SetupPython, p as browseFileSave, r as Script, s as CodeInput, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
-import { C as Pane_resizer, D as store, E as Frame, O as Panel, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, m as ButtonTab, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
+import { $ as python, A as IconButton, B as Icon, F as CompactButton, G as showWindow, J as store, K as consumeCurrentFile, P as Menu, U as openIn, W as showDevTools, X as electron$1, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, k as SwitchButton, l as CodeEditor, m as mime, n as prefs, o as SetupPython, p as browseFileSave, q as setActiveView, r as Script, s as CodeInput, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
+import { C as Pane_resizer, D as Panel, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, m as ButtonTab, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
 import { t as Dialog_1 } from "../../../chunks/pluginManager.js";
 import path from "path-browserify";
 //#region src/routes/coder/globals.svelte.js
 var current = {
 	pages: [],
 	tab: 0,
+	_lastGeneratedFile: null,
 	openFile: async (file) => {
 		if (typeof file === "string") file = parsePath(file);
 		if (file.ext === ".psyexp") {
@@ -110,8 +111,10 @@ function find() {
 function togglePiloting() {
 	if (current.pages[current.tab]) current.pages[current.tab].pilotMode = !current.pages[current.tab].pilotMode;
 }
-function sendToRunner() {
-	openIn(current.pages[current.tab]?.file?.file, "runner");
+async function sendToRunner() {
+	const f = current.pages[current.tab]?.file;
+	if (f) f.source = "coder";
+	await openIn(f, "runner");
 }
 async function runPython(version) {
 	if (!python) return;
@@ -1178,6 +1181,7 @@ function FileExplorer($$renderer, $$props) {
 //#region src/routes/coder/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
+		setActiveView("coder");
 		if (store.coderState.saved && store.coderState.pages) {
 			current.pages = store.coderState.pages;
 			current.tab = store.coderState.tab;
@@ -1195,13 +1199,23 @@ function _page($$renderer, $$props) {
 				}
 			}
 		})();
-		if (current.pages.length === 0 && store.generatedCode.experimentJSON) {
+		if (store.generatedCode.experimentJSON && store.generatedCode.sourceFile !== current._lastGeneratedFile) {
+			current._lastGeneratedFile = store.generatedCode.sourceFile;
 			let label = store.generatedCode.sourceFile ? store.generatedCode.sourceFile.replace(/\.psyexp$/, "") + " (from Builder)" : "Experiment (from Builder)";
 			let content = JSON.stringify(store.generatedCode.experimentJSON, null, 2);
 			let script = new Script(label);
 			script.content = content;
 			current.pages.push(script);
 			current.tab = current.pages.length - 1;
+		}
+		{
+			const inherited = consumeCurrentFile("coder");
+			if (inherited && current.pages.length === 0) {
+				let script = new Script(inherited.name ? inherited.name.replace(/\.[^.]+$/, "") + " (from " + inherited.source + ")" : "Experiment (from " + inherited.source + ")");
+				script.file = inherited.file;
+				current.pages.push(script);
+				current.tab = current.pages.length - 1;
+			}
 		}
 		setContext("current", current);
 		let params = new URLSearchParams(location.search);
