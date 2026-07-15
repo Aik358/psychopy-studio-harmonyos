@@ -393,3 +393,32 @@ Documents/ohos_electron_hap-main_Psychopy_v0.1.6/：web_engine、electron/build�
 - vcpkg-ohos 给鸿蒙编译 C/C++ 三方库：https://www.qt.io/zh-cn/blog/building-libraries-for-harmonyos-with-vcpkg
 
 ---
+
+## [2026-07-15 23:22] — 按钮消失 + 切换丢文件两 regression 修
+
+### 根因
+1. **刷新 Components / Run in Python 按钮消失**（全是无 Python 默认界面）：
+   - `functions.svelte.js:137` `if (await python.liaison.started(version))` 走"已连"分支行 140 `status.ready.resolve(true)` **但不设 `python.ready=true`**
+   - 行 150 `python.liaison.ready().then(ready => if(ready) python.ready=true)` 是异步，设上前按钮 `{#if python?.ready}` 不渲染
+   - 已连时 `liaison.ready` 必返 true，直接设 `python.ready=true` 不等异步
+2. **切换不保留打开内容**：
+   - `sharedViewStore.svelte.js:64` `flushBeforeNavigate` 只设 `currentFile` $state，靠 `$effect.root` 异步落 localStorage
+   - HTTP 整页重载（windows.navigate/goto）触发重载时 $effect 可能没落盘 → localStorage 空 → 重载后 consumeCurrentFile 读 null → 文件丢
+
+### 改动
+**`src/lib/python/functions.svelte.js`**（vite build 进 bundle）：
+- 行 137 "已连"分支加 `python.ready = true`，不等行 150 `.then` 异步设
+
+**`src/lib/sharedViewStore.svelte.js`**（vite build 进 bundle）：
+- `flushBeforeNavigate` 加同步 `_writePersist(...)` 落 localStorage，不等 `$effect` 异步
+- `activeView` 也同步落 localStorage（`ACTIVE_VIEW_KEY`），重载后从 localStorage 恢复
+
+### 验证
+- ✅ node --check 两文件通过
+- ✅ vite build 成功
+
+### 备注
+- 本轮是 [20:53] 的补 regression — 上轮改 `.then(ready => if(ready))` 检查返回值，但漏了"已连"分支直接设 `python.ready` 的同步路径
+- 部署后预期：按钮真显示（不再全是无 Python 默认界面）、切换 builder/coder/runner 保留打开文件不丢
+
+---

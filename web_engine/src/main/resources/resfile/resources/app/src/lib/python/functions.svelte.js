@@ -138,6 +138,9 @@ export async function setupPython(version=undefined, forceReinstall=false) {
         // mark as connected
         status.message = "Connected Python"
         status.ready.resolve(true)
+        // ★ 已连分支也要设 python.ready=true，否则按钮 {#if python?.ready} 不渲染
+        // 行 150 的 .then 是异步，设上前按钮不显示 — 已连时 ready 必 true，直接设
+        python.ready = true
     } else {
         // start python
         status.message = "Starting Python..."

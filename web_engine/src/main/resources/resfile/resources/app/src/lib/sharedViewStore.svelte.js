@@ -69,7 +69,21 @@ export function flushBeforeNavigate(targetView, fileObj) {
     // source 用 fileObj.source（调用方传的来源视图），没传则保留现值，不默认设成 targetView
     currentFile.source = fileObj.source ?? currentFile.source ?? null;
   }
-  if (targetView) setActiveView(targetView);
+  // ★ 同步落 localStorage — 不等 $effect 异步落盘，避免 HTTP 整页重载竞态丢文件
+  // $effect.root 块是异步触发的，goto/windows.navigate 重载前可能没落盘 → 切换丢文件
+  _writePersist({
+    file: currentFile.file,
+    name: currentFile.name,
+    ext: currentFile.ext,
+    source: currentFile.source
+  });
+  if (targetView) {
+    setActiveView(targetView);
+    // activeView 也同步落盘，重载后从 localStorage 恢复
+    if (typeof localStorage !== 'undefined') {
+      try { localStorage.setItem(ACTIVE_VIEW_KEY, targetView); } catch (_) {}
+    }
+  }
 }
 
 // ★ target 视图 mount 时调用：读出 currentFile 并按需清 source（避免回环）

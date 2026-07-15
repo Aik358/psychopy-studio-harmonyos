@@ -27,6 +27,12 @@ function _readPersist() {
 		return null;
 	}
 }
+function _writePersist(obj) {
+	if (typeof localStorage === "undefined") return;
+	try {
+		localStorage.setItem(PERSIST_KEY, JSON.stringify(obj));
+	} catch (_) {}
+}
 var _restored = _readPersist() || {};
 var currentFile = {
 	file: _restored.file ?? null,
@@ -47,7 +53,18 @@ function flushBeforeNavigate(targetView, fileObj) {
 		currentFile.ext = fileObj.ext ?? null;
 		currentFile.source = fileObj.source ?? currentFile.source ?? null;
 	}
-	if (targetView) setActiveView(targetView);
+	_writePersist({
+		file: currentFile.file,
+		name: currentFile.name,
+		ext: currentFile.ext,
+		source: currentFile.source
+	});
+	if (targetView) {
+		setActiveView(targetView);
+		if (typeof localStorage !== "undefined") try {
+			localStorage.setItem(ACTIVE_VIEW_KEY, targetView);
+		} catch (_) {}
+	}
 }
 function consumeCurrentFile(forView) {
 	if (!currentFile.file) return null;
@@ -8130,6 +8147,7 @@ async function setupPython(version = void 0, forceReinstall = false) {
 	if (await python.liaison.started(version)) {
 		status.message = "Connected Python";
 		status.ready.resolve(true);
+		python.ready = true;
 	} else {
 		status.message = "Starting Python...";
 		await python.liaison.start(version).catch(handleError);
