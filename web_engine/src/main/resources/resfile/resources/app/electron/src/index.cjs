@@ -12,6 +12,52 @@ const fs = require("fs");
 const proc = require("child_process");
 const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
 
+// ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
+function openExternalHarmony(url) {
+  // 1) Try Electron's built-in shell.openExternal
+  try {
+    const result = shell.openExternal(url);
+    _flog('[openExternal] shell.openExternal succeeded:', result);
+    return result;
+  } catch (e) {
+    _flog('[openExternal] shell.openExternal failed:', e && e.message);
+  }
+
+  // 2) Try NAPI binding (registered by ExternalProtocolAdapterBind.ets)
+  try {
+    if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
+      globalThis.ExternalProtocolAdapter.OpenExternal(url);
+      _flog('[openExternal] NAPI ExternalProtocolAdapter.OpenExternal called');
+      return true;
+    }
+  } catch (e) {
+    _flog('[openExternal] NAPI failed:', e && e.message);
+  }
+
+  // 3) Try FileManagerAdapter.OpenUrlInDefaultBrowser NAPI binding
+  try {
+    if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
+      globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
+      _flog('[openExternal] NAPI FileManagerAdapter.OpenUrlInDefaultBrowser called');
+      return true;
+    }
+  } catch (e) {
+    _flog('[openExternal] NAPI FileManagerAdapter failed:', e && e.message);
+  }
+
+  // 4) Fallback: aa start with --ps uri <url> (best effort)
+  try {
+    proc.execSync(`aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "${url}"`, { timeout: 5000 });
+    _flog('[openExternal] aa start browser succeeded');
+    return true;
+  } catch (e) {
+    _flog('[openExternal] aa start failed:', e && e.message);
+  }
+
+  _flog('[openExternal] ALL methods failed for URL:', url);
+  return false;
+}
+
 // ★ 文件日志 — Electron-OH 的 console.log 不进 hilog，写文件辅助调试白屏根因
 const _logFile = path.join(app.getPath("appData"), "psychopy4", "electron-main.log");
 function _flog(...args) {
@@ -295,13 +341,9 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     // open new windows in browser unless opened by electron
     win.webContents.setWindowOpenHandler(
       ({ url }) => {
-        // ★ HarmonyOS: shell.openExternal may fail silently if no browser intent handler
-        try {
-          _flog('[openExternal] setWindowOpenHandler url:', url);
-          shell.openExternal(url);
-        } catch (e) {
-          _flog('[openExternal] setWindowOpenHandler FAILED:', e && e.message);
-        }
+        // ★ HarmonyOS: multi-fallback openExternal
+        _flog('[openExternal] setWindowOpenHandler url:', url);
+        openExternalHarmony(url);
         return { action: 'deny' }
       }
     )
@@ -558,15 +600,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         showItemInFolder: ipcMain.handle("electron.files.showItemInFolder", (evt, folder) => shell.showItemInFolder(folder)),
         openPath: ipcMain.handle("electron.files.openPath", (evt, path) => shell.openPath(path)),
         openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => {
-          try {
-            _flog('[openExternal] IPC openExternal url:', url);
-            const result = shell.openExternal(url);
-            _flog('[openExternal] IPC openExternal result:', result);
-            return result;
-          } catch (e) {
-            _flog('[openExternal] IPC openExternal FAILED:', e && e.message);
-            throw e;
-          }
+          _flog('[openExternal] IPC openExternal url:', url);
+          return openExternalHarmony(url);
         })
       },
       clipboard: {
