@@ -111,9 +111,12 @@ async function openExternal(url, fallbackTarget) {
 	if (electron && typeof electron.files?.openExternal === "function") try {
 		await electron.files.openExternal(url);
 		return;
-	} catch (_) {}
-	if (typeof window !== "undefined" && typeof window.open === "function") window.open(url, "_blank");
+	} catch (e) {
+		console.warn("[openExternal] IPC failed, falling back:", e);
+	}
+	if (!electron && typeof window !== "undefined" && typeof window.open === "function") window.open(url, "_blank");
 	else if (fallbackTarget) goto(`/${fallbackTarget}`);
+	else console.warn("[openExternal] Cannot open URL externally:", url);
 }
 /**
 * Open a new window (or a new tab in browser mode)

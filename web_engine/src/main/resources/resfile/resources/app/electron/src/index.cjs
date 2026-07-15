@@ -295,8 +295,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     // open new windows in browser unless opened by electron
     win.webContents.setWindowOpenHandler(
       ({ url }) => {
-        shell.openExternal(url);
-
+        // ★ HarmonyOS: shell.openExternal may fail silently if no browser intent handler
+        try {
+          _flog('[openExternal] setWindowOpenHandler url:', url);
+          shell.openExternal(url);
+        } catch (e) {
+          _flog('[openExternal] setWindowOpenHandler FAILED:', e && e.message);
+        }
         return { action: 'deny' }
       }
     )
@@ -552,7 +557,17 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         )),
         showItemInFolder: ipcMain.handle("electron.files.showItemInFolder", (evt, folder) => shell.showItemInFolder(folder)),
         openPath: ipcMain.handle("electron.files.openPath", (evt, path) => shell.openPath(path)),
-        openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => shell.openExternal(url))
+        openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => {
+          try {
+            _flog('[openExternal] IPC openExternal url:', url);
+            const result = shell.openExternal(url);
+            _flog('[openExternal] IPC openExternal result:', result);
+            return result;
+          } catch (e) {
+            _flog('[openExternal] IPC openExternal FAILED:', e && e.message);
+            throw e;
+          }
+        })
       },
       clipboard: {
         get: ipcMain.handle("electron.clipboard.get", (evt) => clipboard),

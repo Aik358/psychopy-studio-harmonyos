@@ -17,15 +17,21 @@ export async function openExternal(url, fallbackTarget) {
         try {
             await electron.files.openExternal(url)
             return
-        } catch (_) {
-            // openExternal failed, fall through to window.open
+        } catch (e) {
+            // Electron-OH: shell.openExternal failed (no browser intent handler?)
+            console.warn('[openExternal] IPC failed, falling back:', e)
         }
     }
-    // fallback: window.open (browser/dev mode)
-    if (typeof window !== "undefined" && typeof window.open === "function") {
+    // In Electron-OH single-window mode, window.open is intercepted by
+    // setWindowOpenHandler which calls shell.openExternal again — avoid loop.
+    // Only use window.open in pure browser/dev mode (no electron).
+    if (!electron && typeof window !== "undefined" && typeof window.open === "function") {
         window.open(url, "_blank")
     } else if (fallbackTarget) {
         goto(`/${fallbackTarget}`)
+    } else {
+        // Last resort: log and show URL in console for manual copy
+        console.warn('[openExternal] Cannot open URL externally:', url)
     }
 }
 
