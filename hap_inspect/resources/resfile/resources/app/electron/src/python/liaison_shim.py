@@ -63,6 +63,8 @@ units = norm
 fullscr = True
 allowGUI = True
 quitKey = escape
+paths = list()
+# ↑ psychopy/__init__.py:124 读 prefs.general['paths'] 循环添加 site 路径，缺此键抛 KeyError
 
 [app]
 resetPrefs = False
