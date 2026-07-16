@@ -592,7 +592,15 @@ export function registerHarmonyPythonHandlers() {
   });
 
   ipcMain.handle("python.liaison.send", async (evt, venv, message, timeout) => {
-    return await sendLiaison(message, timeout);
+    logging.log(`[python.liaison.send] sending command: ${JSON.stringify(message).substring(0, 200)}`);
+    try {
+      const result = await sendLiaison(message, timeout);
+      logging.log(`[python.liaison.send] response: ${JSON.stringify(result).substring(0, 200)}`);
+      return result;
+    } catch (err) {
+      logging.error(`[python.liaison.send] error: ${err.message || err}`);
+      throw err;
+    }
   });
 
   ipcMain.handle("python.liaison.started", () => _liaisonProcess !== null);
