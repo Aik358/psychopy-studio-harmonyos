@@ -138,6 +138,9 @@ _HARMONY_SITE_PATHS = [
     "/data/service/hnp/python.org/python_3.12/lib/python3.12/dist-packages",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"),
     "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
+    # json_tricks 等用户 pip 安装的包在 .local 下
+    os.path.expanduser("~/.local/lib/python3.12/site-packages"),
+    os.path.expanduser("~/.local/lib/python3.12/dist-packages"),
 ]
 for _p in _HARMONY_SITE_PATHS:
     if os.path.isdir(_p) and _p not in sys.path:
