@@ -152,6 +152,11 @@ for _p in _HARMONY_SITE_PATHS:
             sys.path.append(_p)
         else:
             sys.path.insert(0, _p)
+    elif os.path.isdir(_p) and _p in sys.path:
+        pass  # already in path
+    else:
+        print(f"[liaison-shim] DEBUG _HARMONY_SITE_PATHS skip: {_p} exists={os.path.isdir(_p)} in_path={_p in sys.path}", flush=True)
+print(f"[liaison-shim] DEBUG sys.path[0:5]={sys.path[:5]}", flush=True)
 
 # ── Monkey-patch missing GUI modules ─────────────────────────
 import types
