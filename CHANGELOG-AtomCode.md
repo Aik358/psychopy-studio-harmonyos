@@ -455,3 +455,43 @@ Documents/ohos_electron_hap-main_Psychopy_v0.1.6/：web_engine、electron/build�
 拉取 -> 打包 HAP -> 部署 -> 验证 Components 刷新 / Write script / Run in browser
 
 ---
+
+## [2026-07-16 17:05] — hap_inspect 副本缺 json_tricks（d4be095 漏改）补齐
+
+### 症状（设备端 PsychoPy Terminal 打开即报）
+- `[liaison-shim] cmd_run _import_target failed: No module named 'json_tricks'`
+- `ModuleNotFoundError: No module named 'json_tricks'` at `psychopy/data/base.py:13`
+- `psychopy not available, returning empty for: psychopy.experiment:getElementProfiles`（及 getLoopProfiles/getDeviceProfiles）
+- UI 操作报 `Error in 'Write experiment as a .js file'` / `logging is not defined`
+- Run in browser / Run .py / Run .js 全转半天空白
+
+### 根因链（一个缺失引发所有症状）
+```
+json_tricks 缺失
+  → psychopy/data/base.py:13 import 失败
+  → psychopy.data 无法加载
+  → psychopy/experiment/params.py:25 `from psychopy import data, logging` 失败
+  → 'logging is not defined'（writeScript/getElementProfiles 都报这个）
+  → psychopy.experiment 整个 import 链断
+  → getAllComponents / getAllStandaloneRoutines / getAllElements 全空
+  → Write/Run .js、Run in browser、Run .py 全失效（底层都依赖 getElementProfiles）
+```
+
+### 修复
+上游 `d4be095`（2026-07-16 16:30）把 json_tricks 9 个文件打包进项目 `electron/src/python/lib/json_tricks/`，但**只加到了 `web_engine/` 副本**，漏了 `hap_inspect/` 副本。设备运行时 liaison_shim.py 的 sys.path 走 `electron/src/python/lib`（对应 hap_inspect 那份），所以拿不到 json_tricks。
+
+本轮把 web_engine 副本里的 json_tricks 9 个文件复制到 hap_inspect 对应 lib 目录，两份副本一致。
+
+**验证**：两副本 json_tricks 均含 9 个文件（`__init__.py`, `_version.py`, `comment.py`, `decoders.py`, `encoders.py`, `nonp.py`, `np.py`, `np_utils.py`, `utils.py`），共 1474 行新增。
+
+**部署提示**：改源码不够，需要**重新打包 HAP**（hvigor 构建）并重装到设备，让含 json_tricks 的新 lib 目录随包烧进去。
+
+**提交**：`ceb92e1`
+
+### 副本一致性陷阱（记录给后续）
+项目里 `liaison_shim.py` 有 3 份副本、`electron/src/python/lib/` 有 2 份副本（hap_inspect 和 web_engine），任何往 lib 里加包必须**两份都加**，否则设备端报 ModuleNotFoundError。
+
+### 旁路：XCollie "Failed to open file: /sys/power/last_sr" 日志
+设备 hilog 持续每 ~3 秒报此错，是 HarmonyOS 内核层 XCollie 系统看门狗轮询电源状态时读不到 `/sys/power/last_sr` sysfs 节点。纯系统日志，与 psychopy-oh / Electron 应用代码无关（全项目 12,107 文件搜索无任何引用），无害，无法从应用层修复，**直接忽略**。
+
+---
