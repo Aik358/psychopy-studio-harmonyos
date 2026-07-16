@@ -415,16 +415,26 @@ _API_ALIASES = {
 def cmd_run(args, kwargs):
     target = args[0]
     call_args = [_resolve(a) for a in args[1:]]
+    print(f"[liaison-shim] cmd_run target={target!r} args={call_args!r} kwargs={kwargs!r}", flush=True)
     try:
         func = _import_target(target)
+        print(f"[liaison-shim] cmd_run resolved func={func!r}", flush=True)
     except (ImportError, AttributeError) as e:
+        print(f"[liaison-shim] cmd_run _import_target failed: {e}", flush=True)
+        traceback.print_exc()
         if target in _SAFE_FALLBACK_TARGETS or target.startswith("psychopy."):
             print(f"[liaison-shim] psychopy not available, returning empty for: {target}", flush=True)
             _send_alert("8901", "WARNING", f"PsychoPy not installed — using built-in components. Install psychopy for full features.")
             return {}
         raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
-    result = func(*call_args, **resolved_kwargs)
+    try:
+        result = func(*call_args, **resolved_kwargs)
+        print(f"[liaison-shim] cmd_run result type={type(result).__name__}", flush=True)
+    except Exception as e:
+        print(f"[liaison-shim] cmd_run func call failed: {e}", flush=True)
+        traceback.print_exc()
+        raise
     return _serialize(result)
 
 def cmd_try(args, kwargs):
