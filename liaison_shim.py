@@ -138,9 +138,12 @@ _HARMONY_SITE_PATHS = [
     "/data/service/hnp/python.org/python_3.12/lib/python3.12/dist-packages",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"),
     "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
-    # json_tricks 等用户 pip 安装的包在 .local 下
-    os.path.expanduser("~/.local/lib/python3.12/site-packages"),
-    os.path.expanduser("~/.local/lib/python3.12/dist-packages"),
+    # json_tricks 等用户 pip 安装的包在 ~/.local 下
+    # ★ 不能用 os.path.expanduser("~") — 前面 HOME 已重定向到沙箱
+    # ~ 会展开到 /data/storage/el2/base/cache/home 而非用户真 home
+    # 真路径是 /storage/Users/currentUser/.local/lib/python3.12/site-packages
+    "/storage/Users/currentUser/.local/lib/python3.12/site-packages",
+    "/storage/Users/currentUser/.local/lib/python3.12/dist-packages",
 ]
 for _p in _HARMONY_SITE_PATHS:
     if os.path.isdir(_p) and _p not in sys.path:

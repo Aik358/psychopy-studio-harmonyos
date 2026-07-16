@@ -422,3 +422,36 @@ Documents/ohos_electron_hap-main_Psychopy_v0.1.6/：web_engine、electron/build�
 - 部署后预期：按钮真显示（不再全是无 Python 默认界面）、切换 builder/coder/runner 保留打开文件不丢
 
 ---
+
+## [2026-07-16 22:30] — 三个根因修复：ECONNREFUSED + json_tricks + 全量缺失包检查
+
+### 修复 1 — LIAISON_START@ 打印顺序导致 ECONNREFUSED
+**根因**：`main()` 在 `websockets.serve()` 启动监听之前就打印了 `LIAISON_START@{port}`。`startLiaison` 检测到后立即创建 WebSocket 连接，但服务器还没开始监听 → `ECONNREFUSED` → `_liaisonReady` 保持 false → 所有 `sendLiaison` 抛 `"Liaison not connected"` → 前端所有命令失败。
+**修复**：把 `LIAISON_START@` / `Listening on ws://` / `PsychoPy ready` 三个 print 移到 `async with websockets.serve(...)` 块内，服务器启动后再打印。
+**文件**：`liaison_shim.py` 的 `main()` 函数
+**提交**：`da07955`
+
+### 修复 2 — json_tricks 找不到
+**根因**：`psychopy/data/base.py:13` import `json_tricks`。`pip install json_tricks` 装在 `~/.local/lib/python3.12/site-packages`，但 `_HARMONY_SITE_PATHS` 不包含该路径 → `ModuleNotFoundError` → `psychopy.data` 加载失败 → `from psychopy import data, logging` 在 `params.py:25` 失败 → `logging is not defined`。
+**修复**：`_HARMONY_SITE_PATHS` 加 `os.path.expanduser("~/.local/lib/python3.12/site-packages")` 和 dist-packages。
+**文件**：`liaison_shim.py` 的 `_HARMONY_SITE_PATHS` 列表
+**提交**：`ac1d520`
+
+### 修复 3 — 全量缺失包检查
+**方法**：遍历 psychopy 源码所有 import，过滤 stdlib + 平台特有 + 已 mock + 已装包，精筛真正缺失的第三方包。
+**结果**：`json_tricks` 是唯一阻塞关键路径的包。`jsonschema` 依赖 `rpds-py` 需编译 C 扩展（系统 pip 卡住），但不阻塞 `writeScript`/`getAllComponents` 关键路径。
+**提交**：`ac1d520`
+
+### 当前完整修复清单
+| 修复 | 提交 | 根因 |
+|------|------|------|
+| userPrefs.cfg 缺 `paths` 键 → 预置 + 已存在时补写 | 之前 | `prefs.general['paths']` KeyError |
+| `LD_LIBRARY_PATH` 在父进程 spawn 时设好 | 之前 | libsndfile.so 找不到 |
+| 删 UV/venv/getPackageDetails stub 改真行为 | 之前 | 逃避行为 |
+| LIAISON_START@ 打印移到 serve 启动后 | `da07955` | 服务器未监听就连接 ECONNREFUSED |
+| _HARMONY_SITE_PATHS 加 .local | `ac1d520` | json_tricks 找不到 |
+
+### 下一步
+拉取 -> 打包 HAP -> 部署 -> 验证 Components 刷新 / Write script / Run in browser
+
+---
