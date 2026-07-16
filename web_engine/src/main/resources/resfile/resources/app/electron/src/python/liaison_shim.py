@@ -57,8 +57,7 @@ _HARMONY_HOME = os.environ['HOME']
 _HARMONY_PREFS_DIR = os.path.join(_HARMONY_HOME, '.psychopy3')
 os.makedirs(_HARMONY_PREFS_DIR, exist_ok=True)
 _HARMONY_PREFS_FILE = os.path.join(_HARMONY_PREFS_DIR, 'userPrefs.cfg')
-if not os.path.isfile(_HARMONY_PREFS_FILE):
-    _DEFAULT_PREFS = """[general]
+_DEFAULT_PREFS = """[general]
 units = norm
 fullscr = True
 allowGUI = True
@@ -86,11 +85,52 @@ audioLib = ptb
 
 [keyBindings]
 """
-    try:
+# 写或更新 userPrefs.cfg — 确保 [general] 段有 paths 键
+# 旧 HAP 创建的文件缺 paths 键，file exists 跳过导致修复不生效
+try:
+    if os.path.isfile(_HARMONY_PREFS_FILE):
+        # 读现有文件，补缺键
+        with open(_HARMONY_PREFS_FILE, 'r', encoding='utf-8') as f:
+            _lines = f.readlines()
+        _needs_paths = True
+        _in_general = False
+        for _line in _lines:
+            if _line.strip() == '[general]':
+                _in_general = True
+            elif _line.startswith('['):
+                _in_general = False
+            elif _in_general and _line.strip().startswith('paths'):
+                _needs_paths = False
+                break
+        if _needs_paths:
+            # 在 [general] 段末尾加 paths = list()
+            _new_lines = []
+            _in_general = False
+            _general_done = False
+            for _line in _lines:
+                if _line.strip() == '[general]':
+                    _in_general = True
+                    _new_lines.append(_line)
+                elif _line.startswith('[') and _in_general and not _general_done:
+                    _new_lines.append('paths = list()\n')
+                    _new_lines.append(_line)
+                    _in_general = False
+                    _general_done = True
+                elif _line.startswith('['):
+                    _in_general = False
+                    _new_lines.append(_line)
+                elif _in_general and not _general_done:
+                    _new_lines.append(_line)
+                else:
+                    _new_lines.append(_line)
+            with open(_HARMONY_PREFS_FILE, 'w', encoding='utf-8') as f:
+                f.writelines(_new_lines)
+            print(f"[liaison-shim] Added 'paths' key to userPrefs.cfg [general]", flush=True)
+    else:
         with open(_HARMONY_PREFS_FILE, 'w', encoding='utf-8') as f:
             f.write(_DEFAULT_PREFS)
-    except Exception as _e:
-        print(f"[liaison-shim] WARNING: Failed to write default userPrefs.cfg: {_e}", flush=True)
+except Exception as _e:
+    print(f"[liaison-shim] WARNING: Failed to write/update userPrefs.cfg: {_e}", flush=True)
 
 # ── Add site-packages to sys.path ────────────────────────────
 _HARMONY_SITE_PATHS = [
