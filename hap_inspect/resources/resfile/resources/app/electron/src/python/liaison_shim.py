@@ -539,6 +539,7 @@ async def handle_message(websocket):
                     "evt": {"id": msgid}
                 }
                 print(f"[liaison-shim] Error for {msgid}: {e}", flush=True)
+                traceback.print_exc()  # ★ 打完整 traceback 到 terminal 好 debug
 
             try:
                 await websocket.send(json.dumps(reply, default=str))
