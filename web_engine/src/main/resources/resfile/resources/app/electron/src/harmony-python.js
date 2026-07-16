@@ -329,9 +329,11 @@ function wsOn(ws, eventName, handler) {
  * Start the liaison shim process and connect via WebSocket.
  */
 async function startLiaison() {
+  // ★ 每次启动先杀旧进程，确保新 HAP 的代码生效
+  // 旧 liaison 进程不会随 HAP 更新自动退出，用户手动 kill 不可靠
   if (_liaisonProcess) {
-    logging.log("Liaison already running");
-    return _liaisonAddress;
+    logging.log("Liaison already running, restarting...");
+    await stopLiaison();
   }
 
   const pythonPath = getPython();
