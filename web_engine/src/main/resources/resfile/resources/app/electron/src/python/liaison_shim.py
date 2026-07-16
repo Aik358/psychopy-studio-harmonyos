@@ -578,12 +578,15 @@ async def main():
     port = find_free_port()
     address = f"localhost:{port}"
 
-    print(f"{START_MARKER}@{address}", flush=True)
-    print(f"[liaison-shim] Listening on ws://{address}", flush=True)
-    if psychopy_version:
-        print(f"[liaison-shim] PsychoPy {psychopy_version} ready", flush=True)
-
+    # ★ 把 LIAISON_START@ 和 Listening on ws:// 移到 async with 块内
+    # 旧代码在 websockets.serve() 启动之前就打印了 LIAISON_START@
+    # → startLiaison 检测到后立即连 WebSocket，但服务器还没开始监听
+    # → ECONNREFUSED → liaison 启动失败 → sendLiaison 抛 "Liaison not connected"
     async with websockets.serve(handle_message, "localhost", port):
+        print(f"{START_MARKER}@{address}", flush=True)
+        print(f"[liaison-shim] Listening on ws://{address}", flush=True)
+        if psychopy_version:
+            print(f"[liaison-shim] PsychoPy {psychopy_version} ready", flush=True)
         await asyncio.Future()
 
 if __name__ == "__main__":
