@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2023-2025 Haitai FangYuan Co., Ltd.
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -130,21 +130,48 @@ class WindowNodeController extends NodeController {
   }
 
   private buildArgs(): string[] {
-    // NOTE: resfile/ 子目录包含了 Electron app 的 resources/app/ 结构
+    // NOTE: resfile/ 瀛愮洰褰曞寘鍚簡 Electron app 鐨?resources/app/ 缁撴瀯
     let resDir = '--bundle-installation-dir=' + getContext().resourceDir + '/resfile';
     let vec_args = [resDir];
-    // ★ HarmonyOS hmdfs 上 HAP 内 icudtl.dat 的文件描述符无效（zip 归档内不可直接访问）
-    // 改用系统 ICU 数据文件 /system/usr/icu/icudt74l.dat（与 icudtl.dat 同版本 74 小端序）
-    try {
-      let sysIcu = '/system/usr/icu/icudt74l.dat';
-      let dst = getContext().cacheDir + '/icudtl.dat';
-      if (!fs.accessSync(dst)) {
-        fs.copyFileSync(sysIcu, dst);
-        LogUtil.info('WebWindow', 'Copied icudt74l.dat from system to cache');
+    // 鈽?HarmonyOS hmdfs 涓?HAP 鍐?icudtl.dat 鐨勬枃浠舵弿杩扮鏃犳晥锛坺ip 褰掓。鍐呬笉鍙洿鎺ヨ闂級
+    // 澶氱骇 fallback: (1) 绯荤粺ICU 鈫?(2) HAP resfile ICU 鈫?(3) 涓嶄紶鍙傛暟璁〤hromium榛樿鎼滅储
+    let dst = getContext().cacheDir + '/icudtl.dat';
+    let icuCopied = false;
+    // (1) 灏濊瘯绯荤粺 ICU 鏁版嵁鏂囦欢
+    const sysIcuPaths = [
+      '/system/usr/icu/icudt74l.dat',
+      '/system/usr/icu/icudt71l.dat',
+      '/system/usr/icu/icudtl.dat'
+    ];
+    for (let sysIcu of sysIcuPaths) {
+      try {
+        if (!fs.accessSync(dst)) {
+          fs.copyFileSync(sysIcu, dst);
+          LogUtil.info('WebWindow', 'Copied ICU from ' + sysIcu + ' to cache');
+        }
+        icuCopied = true;
+        break;
+      } catch (e) {
+        LogUtil.info('WebWindow', 'System ICU not available at ' + sysIcu + ': ' + JSON.stringify(e));
       }
+    }
+    // (2) 灏濊瘯浠?HAP resfile 澶嶅埗锛坮esfile 鍦ㄥ畨瑁呭悗鍙€氳繃 resourceDir 璁块棶锛?
+    if (!icuCopied) {
+      try {
+        let hapIcu = getContext().resourceDir + '/resfile/icudtl.dat';
+        if (fs.accessSync(hapIcu)) {
+          fs.copyFileSync(hapIcu, dst);
+          LogUtil.info('WebWindow', 'Copied ICU from HAP resfile to cache');
+          icuCopied = true;
+        }
+      } catch (e) {
+        LogUtil.error('WebWindow', 'Failed to copy ICU from HAP resfile: ' + JSON.stringify(e));
+      }
+    }
+    if (icuCopied) {
       vec_args.push('--icu-data-dir=' + getContext().cacheDir);
-    } catch (e) {
-      LogUtil.error('WebWindow', 'Failed to copy system icudt74l.dat: ' + JSON.stringify(e));
+    } else {
+      LogUtil.error('WebWindow', 'All ICU fallback paths failed; Chromium may crash');
     }
     this.config.electronRelaunchArgs.forEach((arg: string) => {
       vec_args.push(arg);
