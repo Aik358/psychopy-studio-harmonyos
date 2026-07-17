@@ -173,6 +173,12 @@ class WindowNodeController extends NodeController {
     } else {
       LogUtil.error('WebWindow', 'All ICU fallback paths failed; Chromium may crash');
     }
+    // GPU disable: libhvgr_v210.so SIGTRAP on MatePad Edge
+    vec_args.push('--disable-gpu');
+    vec_args.push('--disable-software-rasterizer');
+    vec_args.push('--disable-gpu-compositing');
+    vec_args.push('--disable-accelerated-2d-canvas');
+    vec_args.push('--disable-accelerated-video-decode');
     this.config.electronRelaunchArgs.forEach((arg: string) => {
       vec_args.push(arg);
     });
