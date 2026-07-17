@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2023-2025 Haitai FangYuan Co., Ltd.
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
@@ -130,55 +130,78 @@ class WindowNodeController extends NodeController {
   }
 
   private buildArgs(): string[] {
-    // NOTE: resfile/ 瀛愮洰褰曞寘鍚簡 Electron app 鐨?resources/app/ 缁撴瀯
-    let resDir = '--bundle-installation-dir=' + getContext().resourceDir + '/resfile';
+    // NOTE: resourceDir already points to .../resfile/
+    let resDir = '--bundle-installation-dir=' + getContext().resourceDir;
     let vec_args = [resDir];
     // 鈽?HarmonyOS hmdfs 涓?HAP 鍐?icudtl.dat 鐨勬枃浠舵弿杩扮鏃犳晥锛坺ip 褰掓。鍐呬笉鍙洿鎺ヨ闂級
     // 澶氱骇 fallback: (1) 绯荤粺ICU 鈫?(2) HAP resfile ICU 鈫?(3) 涓嶄紶鍙傛暟璁〤hromium榛樿鎼滅储
-    let dst = getContext().cacheDir + '/icudtl.dat';
-    let icuCopied = false;
-    // (1) 灏濊瘯绯荤粺 ICU 鏁版嵁鏂囦欢
-    const sysIcuPaths = [
-      '/system/usr/icu/icudt74l.dat',
-      '/system/usr/icu/icudt71l.dat',
-      '/system/usr/icu/icudtl.dat'
-    ];
-    for (let sysIcu of sysIcuPaths) {
-      try {
-        if (!fs.accessSync(dst)) {
+    // NOTE: resourceDir already points to .../resfile on device
+    let icuFile = getContext().resourceDir + '/icudtl.dat';
+    let icuFound = false;
+    LogUtil.info('WebWindow', 'resourceDir=' + getContext().resourceDir);
+    LogUtil.info('WebWindow', 'cacheDir=' + getContext().cacheDir);
+    // 方案1: 直接从 HAP resfile 复制 icudtl.dat 到 cache
+    try {
+      fs.copyFileSync(icuFile, getContext().cacheDir + '/icudtl.dat');
+      let stat = fs.statSync(getContext().cacheDir + '/icudtl.dat');
+      LogUtil.info('WebWindow', 'Copied icudtl.dat from HAP resfile, size=' + stat.size);
+      if (stat.size > 0) {
+        let icuF = fs.openSync(getContext().cacheDir + '/icudtl.dat', 0o0);
+        let icuFd: number = icuF.fd;
+        LogUtil.info('WebWindow', 'Using HAP ICU data fd=' + icuFd);
+        vec_args.push('--icu-data-dir=' + getContext().cacheDir);
+        vec_args.push('--icu-data-fd=' + icuFd);
+        icuFound = true;
+      }
+    } catch (e) {
+      LogUtil.error('WebWindow', 'HAP resfile ICU copy failed: ' + JSON.stringify(e) + ', path=' + icuFile);
+    }
+    // 方案2: 复制系统 ICU 到 cacheDir + 打开 FD 传给 Chromium 子线程
+    if (!icuFound) {
+      let cacheDir = getContext().cacheDir;
+      let dst = cacheDir + '/icudtl.dat';
+      const sysIcuPaths = [
+        '/system/usr/icu/icudt74l.dat',
+        '/system/usr/icu/icudt71l.dat',
+        '/system/usr/icu/icudtl.dat'
+      ];
+      for (let sysIcu of sysIcuPaths) {
+        try {
           fs.copyFileSync(sysIcu, dst);
-          LogUtil.info('WebWindow', 'Copied ICU from ' + sysIcu + ' to cache');
+          let stat = fs.statSync(dst);
+          LogUtil.info('WebWindow', 'Copied ICU from ' + sysIcu + ' to ' + dst + ' size=' + stat.size);
+          if (stat.size > 0) {
+            vec_args.push('--icu-data-dir=' + cacheDir);
+            // Open icudtl.dat and pass its fd number via --icu-data-fd
+            // This lets Chromium child threads (which use InitializeICUWithFileDescriptor) 
+            // access ICU data through a valid file descriptor instead of crashing
+            let icuFile = fs.openSync(dst, 0o0);
+            let icuFd: number = icuFile.fd;
+            LogUtil.info('WebWindow', 'Opened ICU data fd=' + icuFd);
+            vec_args.push('--icu-data-fd=' + icuFd);
+            icuFound = true;
+          }
+          break;
+        } catch (e) {
+          LogUtil.info('WebWindow', 'System ICU not available at ' + sysIcu + ': ' + JSON.stringify(e));
         }
-        icuCopied = true;
-        break;
-      } catch (e) {
-        LogUtil.info('WebWindow', 'System ICU not available at ' + sysIcu + ': ' + JSON.stringify(e));
       }
     }
-    // (2) 灏濊瘯浠?HAP resfile 澶嶅埗锛坮esfile 鍦ㄥ畨瑁呭悗鍙€氳繃 resourceDir 璁块棶锛?
-    if (!icuCopied) {
-      try {
-        let hapIcu = getContext().resourceDir + '/resfile/icudtl.dat';
-        if (fs.accessSync(hapIcu)) {
-          fs.copyFileSync(hapIcu, dst);
-          LogUtil.info('WebWindow', 'Copied ICU from HAP resfile to cache');
-          icuCopied = true;
-        }
-      } catch (e) {
-        LogUtil.error('WebWindow', 'Failed to copy ICU from HAP resfile: ' + JSON.stringify(e));
-      }
+    // 方案3: 直接用系统 ICU 目录
+    if (!icuFound) {
+      // nothing needed here
+      LogUtil.info('WebWindow', 'Using system ICU directory directly');
     }
-    if (icuCopied) {
-      vec_args.push('--icu-data-dir=' + getContext().cacheDir);
-    } else {
-      LogUtil.error('WebWindow', 'All ICU fallback paths failed; Chromium may crash');
-    }
+    if (!icuFound) {
+      LogUtil.error('WebWindow', 'All ICU fallback paths failed; Chromium may crash');}
     // GPU disable: libhvgr_v210.so SIGTRAP on MatePad Edge
     vec_args.push('--disable-gpu');
     vec_args.push('--disable-software-rasterizer');
     vec_args.push('--disable-gpu-compositing');
     vec_args.push('--disable-accelerated-2d-canvas');
     vec_args.push('--disable-accelerated-video-decode');
+
+
     this.config.electronRelaunchArgs.forEach((arg: string) => {
       vec_args.push(arg);
     });

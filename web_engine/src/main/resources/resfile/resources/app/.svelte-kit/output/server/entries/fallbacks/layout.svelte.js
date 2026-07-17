@@ -1,9 +1,9 @@
-import "clsx";
+import "../../chunks/server.js";
+//#region node_modules/@sveltejs/kit/src/runtime/components/svelte-5/layout.svelte
 function Layout($$renderer, $$props) {
-  let { children } = $$props;
-  children($$renderer);
-  $$renderer.push(`<!---->`);
+	let { children } = $$props;
+	children($$renderer);
+	$$renderer.push(`<!---->`);
 }
-export {
-  Layout as default
-};
+//#endregion
+export { Layout as default };
