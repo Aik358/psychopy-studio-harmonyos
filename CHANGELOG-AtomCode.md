@@ -495,3 +495,31 @@ json_tricks 缺失
 设备 hilog 持续每 ~3 秒报此错，是 HarmonyOS 内核层 XCollie 系统看门狗轮询电源状态时读不到 `/sys/power/last_sr` sysfs 节点。纯系统日志，与 psychopy-oh / Electron 应用代码无关（全项目 12,107 文件搜索无任何引用），无害，无法从应用层修复，**直接忽略**。
 
 ---
+
+## [2026-07-17 08:57] — astunparse 缺失补齐（json_tricks 修复后的下一环）
+
+### 症状
+json_tricks 补齐后 import 链往前走一步，断在：
+- `ModuleNotFoundError: No module named 'astunparse'` at `psychopy/experiment/py2js.py:15`
+- 同链引发 `psychopy.experiment getAllComponents / getAllStandaloneRoutines / getAllElements` 全空
+- Write/Run .js、Run in browser、Run .py 仍失效
+
+### 根因
+`psychopy/experiment/params.py:27` `from . import py2js` → `py2js.py:15` `import astunparse`。astunparse 是纯 Python 包（4 个 .py 文件：`__init__.py`/`__main__.py`/`printer.py`/`unparser.py`），依赖 six（设备已有）和 wheel（stdlib 类），但设备 site-packages 和项目 lib 均无。
+
+### 修复
+从 `~/.local/lib/python3.12/site-packages/astunparse/`（本机 pip 装好的 v1.6.3）复制到项目 lib 两份副本：
+- `hap_inspect/.../electron/src/python/lib/astunparse/`（4 文件，设备运行时用这份）
+- `web_engine/.../electron/src/python/lib/astunparse/`（4 文件，与 hap_inspect 一致）
+
+清理 `__pycache__`，避免打包进 HAP。本地模拟验证：加 wx mock + soundfile mock + 预置 userPrefs.cfg 后，import 链已穿过 `py2js`/`experiment`（断点挪到 preferences 配置，liaison_shim.py 在设备端会处理）。
+
+### 全量缺包扫描结论
+遍历 `psychopy/{experiment,data,logging,tools,version}` 链上所有 .py 的 import，对照设备 site-packages + 项目 lib + liaison_shim.py mock 列表：
+- **关键链唯一缺**：`astunparse`（本轮补）
+- 其他 MISS 包均在非关键路径：`soundfile`（audiotools，liaison_shim.py 用 HarmonyBrew libsndfile 加载）、`h5py`/`tables`（ioHub hdf5，disabled）、`questplus`/`psychtoolbox`/`psychxr`/`moviepy`/`meshpy`/`metapensiero`/`Image`（freetype）/`cPickle`（platform-specific 或可选，不阻塞 getAllComponents/writeScript）
+
+### 部署提示
+改源码不够，需**重新打包 HAP**（hvigor 构建）并重装到设备，让含 astunparse 的新 lib 目录随包烧进去。
+
+---
