@@ -8,6 +8,6 @@ export const universal = {
   "trailingSlash": "always"
 };
 export const universal_id = "src/routes/+layout.js";
-export const imports = ["_app/immutable/nodes/0.BlHoV_5V.js","_app/immutable/chunks/VBTKkVOz.js","_app/immutable/chunks/xihTtKlq.js"];
+export const imports = ["_app/immutable/nodes/0.BmSAo8X8.js","_app/immutable/chunks/BsGUQzUw.js","_app/immutable/chunks/Chh-ymVZ.js","_app/immutable/chunks/CxdyAWQ7.js","_app/immutable/chunks/ChJubC20.js"];
 export const stylesheets = [];
 export const fonts = [];

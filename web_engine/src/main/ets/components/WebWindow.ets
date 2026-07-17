@@ -42,6 +42,7 @@ import { CommandType } from '../common/Constants';
 import { IMessageBoxParams } from '../adapter/DialogAdapter';
 import { MessageBox } from '../components/MessageBox';
 import { typeNode as TypedNode, NodeController, FrameNode } from '@ohos.arkui.node';
+import fs from '@ohos.file.fs';
 
 const TAG: string = 'WindowXComponentController';
 
@@ -129,8 +130,22 @@ class WindowNodeController extends NodeController {
   }
 
   private buildArgs(): string[] {
-    let resDir = '--bundle-installation-dir=' + getContext().resourceDir;
+    // NOTE: resfile/ 子目录包含了 Electron app 的 resources/app/ 结构
+    let resDir = '--bundle-installation-dir=' + getContext().resourceDir + '/resfile';
     let vec_args = [resDir];
+    // ★ HarmonyOS hmdfs 上 HAP 内 icudtl.dat 的文件描述符无效（zip 归档内不可直接访问）
+    // 改用系统 ICU 数据文件 /system/usr/icu/icudt74l.dat（与 icudtl.dat 同版本 74 小端序）
+    try {
+      let sysIcu = '/system/usr/icu/icudt74l.dat';
+      let dst = getContext().cacheDir + '/icudtl.dat';
+      if (!fs.accessSync(dst)) {
+        fs.copyFileSync(sysIcu, dst);
+        LogUtil.info('WebWindow', 'Copied icudt74l.dat from system to cache');
+      }
+      vec_args.push('--icu-data-dir=' + getContext().cacheDir);
+    } catch (e) {
+      LogUtil.error('WebWindow', 'Failed to copy system icudt74l.dat: ' + JSON.stringify(e));
+    }
     this.config.electronRelaunchArgs.forEach((arg: string) => {
       vec_args.push(arg);
     });

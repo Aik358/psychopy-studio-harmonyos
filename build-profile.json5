@@ -26,13 +26,13 @@
       {
         "name": "default",
         "material": {
-          "storePassword": "00000020F6CE9A972B07EF6FEFE37CCE8FB3F9AE9A3144DD6F9AED964FFE2834DAFBE1EF6A2F63277FED36833F144691",
-          "certpath": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Test6Juya5I1HhvGQRufq0HocJldRWWtmiLGp5QWg0KSyZQ.cer",
+          "storePassword": "000000207FE1BFE906AE31DD330013BA04F5C278800D86C631991576579B965BE3CF88C081A88F5334558F0BFDAD12AB",
+          "certpath": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "00000020F6CE9A972B07EF6FEFE37CCE8FB3F9AE9A3144DD6F9AED964FFE2834DAFBE1EF6A2F63277FED36833F144691",
-          "profile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Test6Juya5I1HhvGQRufq0HocJldRWWtmiLGp5QWg0KSyZQ.p7b",
+          "keyPassword": "000000207FE1BFE906AE31DD330013BA04F5C278800D86C631991576579B965BE3CF88C081A88F5334558F0BFDAD12AB",
+          "profile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_Test6Juya5I1HhvGQRufq0HocJldRWWtmiLGp5QWg0KSyZQ.p12"
+          "storeFile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.p12"
         },
         "type": "HarmonyOS"
       }

@@ -1,49 +1,136 @@
-//#region node_modules/@sveltejs/kit/src/runtime/app/paths/internal/server.js
-var base = "";
-var assets = base;
-var app_dir = "_app";
-var initial = {
-	base,
-	assets
-};
-/**
-* `base` could be overridden during rendering to be relative;
-* this one's the original non-relative base path
-*/
-var initial_base = initial.base;
-/**
-* @param {{ base: string, assets: string }} paths
-*/
-function override(paths) {
-	base = paths.base;
-	assets = paths.assets;
+import { r as root } from "./root.js";
+import "./internal.js";
+import "./server.js";
+let read_implementation = null;
+function set_read_implementation(fn) {
+  read_implementation = fn;
 }
-function reset() {
-	base = initial.base;
-	assets = initial.assets;
+function set_manifest(_) {
 }
-/** @param {string} path */
-function set_assets(path) {
-	assets = initial.assets = path;
+let public_env = {};
+function set_private_env(environment) {
 }
-/**
-* `$env/dynamic/public`
-* @type {Record<string, string>}
-*/
-var public_env = {};
-/** @type {(environment: Record<string, string>) => void} */
-function set_private_env(environment) {}
-/** @type {(environment: Record<string, string>) => void} */
 function set_public_env(environment) {
-	public_env = environment;
+  public_env = environment;
 }
-//#endregion
-//#region node_modules/@sveltejs/kit/src/runtime/app/env/internal.js
-var version = "1784184366720";
-var prerendering = false;
-function set_building() {}
-function set_prerendering() {
-	prerendering = true;
+const error = ({ status, message }) => '<!doctype html>\n<html lang="en">\n	<head>\n		<meta charset="utf-8" />\n		<title>' + message + `</title>
+
+		<style>
+			body {
+				--bg: white;
+				--fg: #222;
+				--divider: #ccc;
+				background: var(--bg);
+				color: var(--fg);
+				font-family:
+					system-ui,
+					-apple-system,
+					BlinkMacSystemFont,
+					'Segoe UI',
+					Roboto,
+					Oxygen,
+					Ubuntu,
+					Cantarell,
+					'Open Sans',
+					'Helvetica Neue',
+					sans-serif;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				height: 100vh;
+				margin: 0;
+			}
+
+			.error {
+				display: flex;
+				align-items: center;
+				max-width: 32rem;
+				margin: 0 1rem;
+			}
+
+			.status {
+				font-weight: 200;
+				font-size: 3rem;
+				line-height: 1;
+				position: relative;
+				top: -0.05rem;
+			}
+
+			.message {
+				border-left: 1px solid var(--divider);
+				padding: 0 0 0 1rem;
+				margin: 0 0 0 1rem;
+				min-height: 2.5rem;
+				display: flex;
+				align-items: center;
+			}
+
+			.message h1 {
+				font-weight: 400;
+				font-size: 1em;
+				margin: 0;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				body {
+					--bg: #222;
+					--fg: #ddd;
+					--divider: #666;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="error">
+			<span class="status">` + status + '</span>\n			<div class="message">\n				<h1>' + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n";
+const options = {
+  app_template_contains_nonce: false,
+  async: false,
+  csp: { "mode": "auto", "directives": { "upgrade-insecure-requests": false, "block-all-mixed-content": false }, "reportOnly": { "upgrade-insecure-requests": false, "block-all-mixed-content": false } },
+  csrf_check_origin: true,
+  csrf_trusted_origins: [],
+  embedded: false,
+  env_public_prefix: "PUBLIC_",
+  env_private_prefix: "",
+  hash_routing: false,
+  hooks: null,
+  // added lazily, via `get_hooks`
+  preload_strategy: "modulepreload",
+  root,
+  service_worker: false,
+  service_worker_options: void 0,
+  server_error_boundaries: false,
+  templates: {
+    app: ({ head, body, assets, nonce, env }) => '<!doctype html>\r\n<html lang="en">\r\n	<head>\r\n		<meta charset="utf-8" />\r\n		<link rel="preload" as="style" href="' + assets + '/fonts/Nunito.css" />\r\n		<link rel="preload" as="style" href="' + assets + '/fonts/Noto.css" />\r\n		<link rel="preload" as="style" href="' + assets + '/fonts/JetBrainsMono.css" />\r\n		<link rel="icon" type="image/x-icon" href="' + assets + '/branding/favicon.svg" />\r\n		<link rel="stylesheet" href="' + assets + '/style.css" />\r\n		<meta name="viewport" content="width=device-width, initial-scale=1" />\r\n		<base target="_blank">\r\n		' + head + '\r\n	</head>\r\n	<body data-sveltekit-preload-data="hover">\r\n		<div style="display: contents">\r\n			' + body + "\r\n		</div>\r\n	</body>\r\n</html>\r\n",
+    error
+  },
+  version_hash: "y7ytiv"
+};
+async function get_hooks() {
+  let handle;
+  let handleFetch;
+  let handleError;
+  let handleValidationError;
+  let init;
+  let reroute;
+  let transport;
+  return {
+    handle,
+    handleFetch,
+    handleError,
+    handleValidationError,
+    init,
+    reroute,
+    transport
+  };
 }
-//#endregion
-export { public_env as a, app_dir as c, initial_base as d, override as f, version as i, assets as l, set_assets as m, set_building as n, set_private_env as o, reset as p, set_prerendering as r, set_public_env as s, prerendering as t, base as u };
+export {
+  set_public_env as a,
+  set_read_implementation as b,
+  set_manifest as c,
+  get_hooks as g,
+  options as o,
+  public_env as p,
+  read_implementation as r,
+  set_private_env as s
+};

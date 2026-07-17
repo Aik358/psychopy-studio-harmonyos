@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-44,-40)">
+        <g id="light-rbn-experiment" serif:id="light/rbn-experiment" transform="matrix(0.225778,0,0,0.225778,44,40)">
+            <rect x="0" y="0" width="70.872" height="70.866" style="fill:none;"/>
+            <g transform="matrix(4.42913,0,0,4.42913,-194.882,-491.634)">
+                <path d="M51.671,126.502L45.67,123.036C45.465,122.918 45.339,122.699 45.339,122.463L45.339,115.535C45.339,115.298 45.465,115.08 45.67,114.962L51.671,111.498C51.876,111.38 52.128,111.38 52.333,111.498L58.332,114.962C58.536,115.08 58.662,115.298 58.662,115.535L58.662,122.463C58.662,122.699 58.536,122.917 58.332,123.036L52.333,126.502C52.128,126.62 51.876,126.62 51.671,126.502ZM46.662,116.681L46.662,122.081L51.34,124.783L51.34,119.381L46.662,116.681ZM47.324,115.535L52.002,118.235L56.677,115.535C56.677,115.535 52.002,112.835 52.002,112.835C52.002,112.835 47.324,115.535 47.324,115.535ZM57.339,116.681L52.664,119.381C52.664,120.281 52.664,123.882 52.664,124.782L57.339,122.081L57.339,116.681Z" style="fill:var(--outline);"/>
+            </g>
+        </g>
+    </g>
+</svg>
