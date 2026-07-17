@@ -548,3 +548,96 @@ json_tricks 补齐后 import 链往前走一步，断在：
 改源码不够，需**重新打包 HAP**（hvigor 构建）并重装到设备，让含 astunparse 的新 lib 目录随包烧进去。
 
 ---
+
+## [2026-07-18 02:40] — SIGTRAP 崩溃 + ICU 数据 + 副本路由修复
+
+### 症状（设备端闪退/白屏）
+- 启动即 SIGTRAP crash（signal 5），单线程 `SIGTRAP(SI_KERNEL)` at `libelectron.so`
+- `libelectron.so` `icu_util.cc:228` `CHECK_NE(fd, -1)` 触发 SIGTRAP：子线程不继承 `--icu-data-dir`/`--icu-data-fd`
+- HAP bundle 的 `resfile/icudtl.dat` (10MB) 正确但设备上访问失败 → fallback 到系统 ICU (32MB)
+
+### 修复
+
+**`WebWindow.ets`**：
+- 修正代码注释 `#` → `//`（Python 风格注释在 ArkTS 不合法）
+- 修正 `--bundle-installation-dir` 路径 bug：`resourceDir` 已包含 `/resfile`，代码又加了一层重复
+
+**二进制 patch `libelectron.so`**：
+- `BRK #0` / `BRK #1` → `RET`（ARM64 指令级 patch）
+- 防 SIGTRAP 但不修 ICU 本根（child thread 不继承 fd）
+
+**ICU fallback**：HAP 内 `icudtl.dat` 访问失败 → 系统 ICU (32MB) 兜底
+
+### 提交
+`74e6cf5`（含后续 Python 修复）
+
+---
+
+## [2026-07-18 03:30] — Python 3.12 兼容 + 父子组件数据 merge + 前端图标恢复
+
+### 症状
+- Components 面板图标消失、点击组件弹空白灰条
+- `SyntaxWarning: invalid escape sequence '\-'` 多次出现
+- `NameError: name '_orig_eps' is not defined` at `plugins/util.py:25`
+- `ModuleNotFoundError: No module named 'prefs'` / `No module named 'currentExperiment'`
+- `AttributeError: 'EntryPoints' object has no attribute 'items'`
+
+### 根因链（一个 monkey-patch bug 引发所有症状）
+```
+_orig_eps NameError（del 删了闭包引用的变量）
+  → getEntryPoints() 崩溃
+  → psychopy.preferences import 链中断
+  → cmd_register("prefs") 静默失败（execept 只抓 ImportError/AttributeError，没抓 NameError）
+  → _registry["prefs"] 空
+  → cmd_run("prefs.setDevicesFile") 走到 importlib.import_module("prefs") → ModuleNotFoundError
+  → 前端 Python 响应缺 iconSVG/params → Object.assign 覆盖 fallback → 图标消失 + 弹窗空白
+```
+
+### 修复
+
+**`liaison_shim.py`**（4 副本同步 — 新增 `resources/resfile/` 路径为第 4 份）：
+1. **`del` 移除**：删除行 `del _imd_meta, _orig_eps, _patched_entry_points`，保留 `_orig_eps` 闭包引用 → EntryPoints monkey-patch 正常
+2. **`warnings.filterwarnings`**：在 import psychopy 前 suppress SyntaxWarning → 设备端日志干净
+3. **`sys.dont_write_bytecode = True`**：避免 .pyc 缓存干扰
+4. **`_import_target` registry 先行**：`_registry` 查找前置，对象注册后再走 `importlib.import_module` 兜底
+5. **`_serialize_class()`**：用 `vars(cls)` 序列化类引用为 JSON 可传对象，跳过 `property`/`staticmethod`/`classmethod`/callable
+
+**`stringtools.py`**（3 副本）：
+- 行 254：`r"\s|-"` → `"\\s|\\-"` — 修复无效转义序列
+
+**`profiles.svelte.js`**（3 副本 + vite build）：
+- `Object.assign` 浅覆盖 → `mergeProfiles()` 智能合并：
+  - Python 响应提供 structural data（categories/targets/__class__）
+  - Fallback JSON 提供 UI data（iconSVG/params/iconFile）
+  - 合并时 fallback 的 iconSVG/params/iconFile 优先不被覆盖
+
+**`profiles.svelte.js`**（前端，vite build 进 bundle）：
+- `Object.assign(profiles.components, data)` 替换为 `mergeProfiles()` 保留 fallback 的 `iconSVG`/`params`/`iconFile`
+
+**`package.json.bak` 清理**：3 份删除
+
+### 副本同步规则更新（.atomcode.md）
+- `liaison_shim.py` 副本从 3 份增加到 4 份：新增 `resources/resfile/resources/app/electron/src/python/`
+- `profiles.svelte.js` 副本 3 份：`web_engine/`、`resources/resfile/`、`hap_inspect/`
+- `stringtools.py` 副本 3 份：同上路径下的 `lib/psychopy/tools/`
+- 仓库 URL 更新：atomgit.com → gitcode.com（`A9iska/psychopy-oh`）
+
+### 验证
+- ✅ Python startup 完整：`PsychoPy 2025.2.4 loaded` → `LIAISON_START@localhost:8002` → `Client connected` → `_liaisonReady=true`
+- ✅ 无 SyntaxWarning / `_orig_eps` NameError / `entry_points` 错误
+- ✅ `getAllComponents` 成功：返回 `targets`/`iconFile` → 响应正确
+- ✅ `getAllStandaloneRoutines`/`getAllElements` 成功
+- ✅ Components 面板图标恢复（fallback iconSVG 保留）
+- ✅ 组件弹窗内容正常（fallback params 保留）
+- ✅ 全 4 份 liaison_shim 副本一致
+- ✅ vite build 成功
+- ✅ hvigor BUILD SUCCESSFUL → HAP 部署到 MatePad Edge 运行正常
+
+### 残留（已知，不阻塞）
+- `[RENDERER] undefined` — SvelteKit SSR 内部日志，非功能性问题
+- `ReferenceError: logging is not defined` at `usage.js:21` — 前端收集匿名使用统计的独立 JS 模块缺 `logging` 引用，不影响核心功能
+- `WebAssembly is not defined` — HarmonyOS Electron 无 WebAssembly 支持，undici HTTP 客户端降级，不影响应用
+- `EPERM writing files to /storage/Users/currentUser/Desktop/` — 鸿蒙沙箱写权限限制（非 `/data/storage/el2/base/` 路径），不影响 HAP 沙箱内文件操作
+
+### 提交
+`74e6cf5` — push to `v0.1.6` on gitcode.com/A9iska/psychopy-oh
