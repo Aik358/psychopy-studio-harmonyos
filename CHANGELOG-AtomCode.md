@@ -491,6 +491,17 @@ json_tricks 缺失
 ### 副本一致性陷阱（记录给后续）
 项目里 `liaison_shim.py` 有 3 份副本、`electron/src/python/lib/` 有 2 份副本（hap_inspect 和 web_engine），任何往 lib 里加包必须**两份都加**，否则设备端报 ModuleNotFoundError。
 
+### 审核发现：HAP 漏打包 json_tricks 和 astunparse 目录（2026-07-17 增）
+本轮用 `unzip -l electron-default-unsigned.hap` 验证原 HAP 内容，发现 HAP 构建系统**漏打包 `json_tricks/` 和 `astunparse/` 两个包目录**（0 files），但其他包目录（websockets/openpyxl/esprima/jedi/psychopy 等）都正常打包。根因不在副本不够，在构建系统对 `resources/resfile/` 下包目录有选择性打包。之前几轮往 lib 目录复制文件全是白干，设备端始终报 ModuleNotFoundError。
+
+**最终修复**：嵌入两个包的完整源码到 `liaison_shim.py` 作为运行时 fallback（`liaison_shim.py` 是设备端 Python 入口，HAP 不跳单个 `.py` 文件，是唯一 100% 可靠的注入点）：
+- `astunparse` v1.6.3：3 文件 ~290KB 内联，commit `c15fead`
+- `json_tricks` v3.17.3：9 文件 53KB → lzma 13.7KB → base64 18.3KB，commit `79cab6b`
+- 机制：`try: import X` → `except ImportError: exec() 注入 sys.modules`
+- 运行时验证：astunparse.unparse(ast.parse('x=1+2')) 成功；json_tricks dumps/loads roundtrip 成功
+
+三份 `liaison_shim.py` 副本同步（root / web_engine / resources，各 1343 行）。需重新打包 HAP 并重装到设备。
+
 ### 旁路：XCollie "Failed to open file: /sys/power/last_sr" 日志
 设备 hilog 持续每 ~3 秒报此错，是 HarmonyOS 内核层 XCollie 系统看门狗轮询电源状态时读不到 `/sys/power/last_sr` sysfs 节点。纯系统日志，与 psychopy-oh / Electron 应用代码无关（全项目 12,107 文件搜索无任何引用），无害，无法从应用层修复，**直接忽略**。
 
