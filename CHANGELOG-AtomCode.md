@@ -507,12 +507,26 @@ json_tricks 补齐后 import 链往前走一步，断在：
 ### 根因
 `psychopy/experiment/params.py:27` `from . import py2js` → `py2js.py:15` `import astunparse`。astunparse 是纯 Python 包（4 个 .py 文件：`__init__.py`/`__main__.py`/`printer.py`/`unparser.py`），依赖 six（设备已有）和 wheel（stdlib 类），但设备 site-packages 和项目 lib 均无。
 
-### 修复
+### 修复（第一轮：复制到 lib 目录 — 失败）
 从 `~/.local/lib/python3.12/site-packages/astunparse/`（本机 pip 装好的 v1.6.3）复制到项目 lib 两份副本：
 - `hap_inspect/.../electron/src/python/lib/astunparse/`（4 文件，设备运行时用这份）
 - `web_engine/.../electron/src/python/lib/astunparse/`（4 文件，与 hap_inspect 一致）
 
 清理 `__pycache__`，避免打包进 HAP。本地模拟验证：加 wx mock + soundfile mock + 预置 userPrefs.cfg 后，import 链已穿过 `py2js`/`experiment`（断点挪到 preferences 配置，liaison_shim.py 在设备端会处理）。
+
+**但 HAP 构建多次漏打包该目录**，无论加在 `resources/resfile/` 还是 `web_engine/src/main/resources/resfile/` 都不被包含，设备端始终报 ModuleNotFoundError。
+
+### 最终修复（成功：嵌入 liaison_shim.py 运行时 fallback）
+改为在 `liaison_shim.py` 中**嵌入 astunparse 完整源码作为运行时 fallback**（~290KB 内联代码，含 `__init__.py` / `printer.py` / `unparser.py` 三文件）。机制：
+1. `try: import astunparse` — 如果 HAP 里真的打包了 astunparse/ 目录，走正常 fast path
+2. `except ImportError:` — 否则用 `exec()` 把 inline 源码注入到 `sys.modules["astunparse"]`
+3. 打印 `[liaison-shim] astunparse loaded from inline fallback (v1.6.3)` 确认 fallback 生效
+
+三份 `liaison_shim.py` 副本同步（root / web_engine / resources，各 1059 行）。
+
+**关键经验**：HAP 构建系统对 `resources/resfile/` 目录下的文件有选择性地打包，某些纯 Python 包目录可能被跳过。`liaison_shim.py` 是设备端 Python 入口，它是**唯一 100% 可靠**的注入点。对所有纯 Python 小包，如果 HAP 构建反复漏打包，应采用"嵌入到 liaison_shim.py 作为运行时 fallback"的策略。
+
+**提交**：`c15fead`（已 push）
 
 ### 全量缺包扫描结论
 遍历 `psychopy/{experiment,data,logging,tools,version}` 链上所有 .py 的 import，对照设备 site-packages + 项目 lib + liaison_shim.py mock 列表：

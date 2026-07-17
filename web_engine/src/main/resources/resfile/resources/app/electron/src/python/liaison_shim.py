@@ -218,7 +218,7 @@ _ASTUNPARSE_SOURCE = {
             self.write(nodeend)
             if len(children) > 1: self.indentation -= 1
     """),
-    "unparser.py": textwrap.dedent('''\
+    "unparser.py": textwrap.dedent("""\
     from __future__ import print_function, unicode_literals
     import six, sys, ast, os, tokenize
     from six import StringIO
@@ -400,8 +400,8 @@ _ASTUNPARSE_SOURCE = {
         def _JoinedStr(self, t):
             self.write("f"); string = StringIO(); self._fstring_JoinedStr(t, string.write)
             v = string.getvalue()
-            if "\\n" in v or "\\r" in v: quote_types = ["'''", '"""']
-            else: quote_types = ["'", '"', '"""', "'''"]
+            if "\\n" in v or "\\r" in v: quote_types = ["'''", '\"\"\"']
+            else: quote_types = ["'", '"', '\"\"\"', "'''"]
             for quote_type in quote_types:
                 if quote_type not in v: v = "{quote_type}{v}{quote_type}".format(quote_type=quote_type, v=v); break
             else: v = repr(v)
@@ -595,7 +595,7 @@ _ASTUNPARSE_SOURCE = {
         def _withitem(self, t):
             self.dispatch(t.context_expr)
             if t.optional_vars: self.write(" as "); self.dispatch(t.optional_vars)
-    '''),
+    """),
 }
 try:
     import astunparse
