@@ -1,6 +1,6 @@
 ﻿#!/usr/bin/env python3
 """
-Liaison Shim 鈥?Pure Python WebSocket liaison replacement for HarmonyOS.
+Liaison Shim — Pure Python WebSocket liaison replacement for HarmonyOS.
 Does NOT depend on rpds-py / maturin / Rust.
 
 Protocol compatible with PsychoPy's liaison.js:
@@ -12,10 +12,30 @@ Usage:
     python3 liaison_shim.py
 """
 
-import os
-import sys
+import os, sys
+
+# Prevent stale .pyc bytecode on HAP's read-only filesystem
+sys.dont_write_bytecode = True
+
+# Suppress SyntaxWarning noise from psychopy lib (stringtools r"\s|-", etc.)
+# Must be done BEFORE any import that triggers the warning
+import warnings
+warnings.filterwarnings("ignore", message=r"invalid escape sequence")
+# Monkey-patch psychopy's util.py for Python 3.12 compatibility
+import importlib.metadata as _imd_meta
+_orig_eps = _imd_meta.entry_points
+def _patched_entry_points(**kw):
+    eps = _orig_eps(**kw)
+    if hasattr(eps, 'items'):
+        return eps
+    class _CompatDict(dict):
+        def __init__(self):
+            for ep in eps:
+                self.setdefault(ep.group, []).append(ep)
+    return _CompatDict()
+_imd_meta.entry_points = _patched_entry_points
+
 import json
-import importlib
 import importlib
 import asyncio
 import socket
@@ -1067,6 +1087,8 @@ def _serialize(obj):
         return {str(k): _serialize(v) for k, v in obj.items()}
     if isinstance(obj, set):
         return [_serialize(item) for item in obj]
+    if isinstance(obj, type):  # Python class reference
+        return _serialize_class(obj)
     if hasattr(obj, 'to_dict') and callable(obj.to_dict):
         try:
             return obj.to_dict()
@@ -1083,12 +1105,34 @@ def _serialize(obj):
         return result
     return str(obj)
 
+def _serialize_class(cls):
+    """Serialize a Python class as a dict of its public attributes."""
+    result = {
+        '__class__': f'{cls.__module__}:{cls.__qualname__}',
+        '__name__': cls.__qualname__,
+    }
+    for name, v in vars(cls).items():
+        if name.startswith('_'):
+            continue
+        try:
+            if isinstance(v, (type, classmethod, staticmethod, property)):
+                continue
+            if callable(v):
+                continue
+            result[name] = _serialize(v)
+        except Exception:
+            pass
+    return result
+
 def _import_target(target_str):
-    # Resolve API version aliases (old frontend name 鈫?actual function)
+    import importlib
+    # Resolve API version aliases
+    original = target_str
     if target_str in _API_ALIASES:
         target_str = _API_ALIASES[target_str]
-        print(f"[liaison-shim] alias resolved: {_API_ALIASES} 鈫?{target_str}", flush=True)
+        print(f"[liaison-shim] alias: {original} -> {target_str}", flush=True)
 
+    # Parse module_name.attr_name
     if ":" in target_str:
         module_name, attr_name = target_str.split(":", 1)
     elif "." in target_str:
@@ -1100,6 +1144,14 @@ def _import_target(target_str):
     else:
         module_name, attr_name = target_str, None
 
+    # Check _registry first (objects registered via cmd_init)
+    if module_name in _registry:
+        obj = _registry[module_name]
+        if attr_name:
+            return getattr(obj, attr_name)
+        return obj
+
+    # Try to import as Python module
     mod = importlib.import_module(module_name)
     if attr_name:
         return getattr(mod, attr_name)

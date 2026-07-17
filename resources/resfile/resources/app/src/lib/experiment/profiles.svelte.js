@@ -13,16 +13,30 @@ export var profiles = $state({
 })
 
 export var pending = $state({
-    components: Promise.resolve(),  // TODO: revert to Promise.withResolvers().promise when Python backend is ready
+    components: Promise.resolve(),
     loops: Promise.resolve(),
     devices: Promise.resolve(),
     preferences: Promise.resolve()
 })
 
-// populate on Liaison starting (if it ever does)
+function mergeProfiles(fallback, pyData) {
+    for (const [key, obj] of Object.entries(pyData)) {
+        const fb = fallback[key] || {}
+        const merged = { ...fb, ...obj }
+        if (fb.iconSVG) merged.iconSVG = fb.iconSVG
+        if (fb.iconFile) merged.iconFile = fb.iconFile
+        if (fb.params) merged.params = fb.params
+        fallback[key] = merged
+    }
+}
+
 if ( python ) {
     python.liaison.ready("app").then(
-        () => {
+        (ready) => {
+            if (!ready) {
+                console.warn("[profiles] liaison not ready, keeping fallback profiles")
+                return
+            }
             // get components
             pending.components = python.liaison.send("app", {
                 command: "run",
@@ -30,7 +44,7 @@ if ( python ) {
                     "psychopy.experiment:getElementProfiles"
                 ]
             }).then(
-                data => Object.assign(profiles.components, data)
+                data => mergeProfiles(profiles.components, data)
             )
             // get loops
             pending.loops = python.liaison.send("app", {
@@ -39,7 +53,7 @@ if ( python ) {
                     "psychopy.experiment:getLoopProfiles"
                 ]
             }).then(
-                data => Object.assign(profiles.loops, data)
+                data => mergeProfiles(profiles.loops, data)
             )
             // get devices
             pending.devices = python.liaison.send("app", {
@@ -48,9 +62,8 @@ if ( python ) {
                     "psychopy.experiment:getDeviceProfiles"
                 ]
             }).then(
-                resp => Object.assign(profiles.devices, resp)
+                resp => mergeProfiles(profiles.devices, resp)
             )
-            // todo: get prefs
         }
     )
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(1,0,0,1,-66,-40)">
+        <g id="light-rbn-desktop" serif:id="light/rbn-desktop" transform="matrix(0.225778,0,0,0.225778,66,40)">
+            <rect x="0" y="0" width="70.872" height="70.866" style="fill:none;"/>
+            <g transform="matrix(4.42913,0,0,4.42913,-292.323,-491.635)">
+                <path d="M72.372,122.725L68.663,122.725C67.748,122.725 67.001,121.981 67.001,121.06L67.001,115.099C67.001,114.179 67.748,113.435 68.663,113.435L79.336,113.435C80.256,113.435 81.001,114.18 81.001,115.099L81.001,121.06C81.001,121.98 80.256,122.725 79.336,122.725L75.629,122.725C76.044,123.355 76.522,123.953 77.074,124.512C77.252,124.694 77.123,125 76.869,125L71.132,125C70.878,125 70.75,124.694 70.928,124.512C71.479,123.953 71.957,123.355 72.372,122.725ZM68.663,121.425L79.336,121.425C79.538,121.425 79.701,121.262 79.701,121.06L79.701,115.099C79.701,114.898 79.538,114.735 79.336,114.735L68.663,114.735C68.463,114.735 68.301,114.898 68.301,115.099L68.301,121.06C68.301,121.261 68.463,121.425 68.663,121.425Z" style="fill:var(--outline);"/>
+            </g>
+        </g>
+    </g>
+</svg>
