@@ -641,3 +641,20 @@ _orig_eps NameError（del 删了闭包引用的变量）
 
 ### 提交
 `74e6cf5` — push to `v0.1.6` on gitcode.com/A9iska/psychopy-oh
+
+---
+
+## 待解决 Issues（2026-07-18）
+
+### 1. Plugin 无法选择本机 Python 环境
+- **症状**：`Failed to get plugins` + `SyntaxError: Failed to execute 'json' on 'Response': Unexpected end of JSON input`
+- **可能根因**：plugin 请求返回空 body 或截断响应，JSON.parse 失败。可能涉及 `pip list --format json` 或 plugin 接口在鸿蒙 Python 3.12 返回格式不兼容
+
+### 2. Write as .js/.py 报 `logging is not defined`
+- **症状**：点击 Write .js/.py 文件时报错，但 Python 后端 `writeScript` 在 liaison 内已验证可跑通（17KB 脚本正常生成）
+- **可能根因**：前端 `callbacks.svelte.js` 或 `harmony-python.js` 的 `electron.files.save` 写入路径无权限（`EPERM: operation not permitted`），报 `logging is not defined` 是上游调用链中 psychopy experiment 模块抛的幽灵错误而非真根因
+
+### 3. 所有打开外部软件功能无效
+- **涉及功能**：Run in browser（调系统浏览器）、See readme（打开 README）、其他 shell.openExternal 路径
+- **根因**：鸿蒙沙箱内无 `xdg-open`/`open`/`start` 等系统打开工具，`shell.openPath`/`openExternal` 是 Electron-OH 原生 API 但鸿蒙没有对应的系统 URI handler。需走鸿蒙 Ability 机制（`startAbility`）但沙箱权限受限
+- **待探索路径**：`aa startAbility` + URI scheme 打开系统浏览器 / 文件管理器
