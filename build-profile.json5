@@ -25,16 +25,16 @@
     "signingConfigs": [
       {
         "name": "default",
+        "type": "HarmonyOS",
         "material": {
-          "storePassword": "000000207FE1BFE906AE31DD330013BA04F5C278800D86C631991576579B965BE3CF88C081A88F5334558F0BFDAD12AB",
-          "certpath": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.cer",
+          "certpath": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "000000207FE1BFE906AE31DD330013BA04F5C278800D86C631991576579B965BE3CF88C081A88F5334558F0BFDAD12AB",
-          "profile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.p7b",
+          "keyPassword": "0000001B701F90232FE238684F038977219741BD86BF146B854C4D2897C67BAD0F551FD4562CC75DCE3214",
+          "profile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/storage/Users/currentUser/Documents/ohos/config/default_Psyoh_v0.1.2_HarmonyOS_Local_Build_TestwVlK8Zn-f31bAXT1JAWxylZcDH-GS5CCOF0ajO6SxjY.p12"
-        },
-        "type": "HarmonyOS"
+          "storeFile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p12",
+          "storePassword": "0000001B23981B2E34BAC39996539ED758596960C04CFB04AA907A7D9570479F49C1509BB9FAB51BEC9EB3"
+        }
       }
     ]
   },

@@ -22,7 +22,12 @@ export var pending = $state({
 // populate on Liaison starting (if it ever does)
 if ( python ) {
     python.liaison.ready("app").then(
-        () => {
+        (ready) => {
+            // liaison 未连时 ready===false，不发命令避免静默失败让刷新按钮看似没反应
+            if (!ready) {
+                console.warn("[profiles] liaison not ready, keeping fallback profiles")
+                return
+            }
             // get components
             pending.components = python.liaison.send("app", {
                 command: "run",
