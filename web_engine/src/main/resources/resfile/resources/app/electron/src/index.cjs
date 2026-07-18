@@ -10,10 +10,12 @@ if (!Promise.withResolvers) {
 const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
-const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, dialog, BrowserWindow, ipcMain, shell, clipboard } = require('electron');
 
 // ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
 function openExternalHarmony(url) {
+  _flog('[openExternal] Attempting to open:', url);
+
   // 1) Try Electron's built-in shell.openExternal
   try {
     const result = shell.openExternal(url);
@@ -52,6 +54,18 @@ function openExternalHarmony(url) {
     return true;
   } catch (e) {
     _flog('[openExternal] aa start failed:', e && e.message);
+  }
+
+  // 5) Last resort: copy to clipboard and notify renderer
+  try {
+    clipboard.writeText(url);
+    _flog('[openExternal] URL copied to clipboard as last resort');
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('stderr', `[openExternal] Cannot open URL automatically. URL copied to clipboard: ${url}`);
+    }
+    return false;
+  } catch (e) {
+    _flog('[openExternal] clipboard fallback failed:', e && e.message);
   }
 
   _flog('[openExternal] ALL methods failed for URL:', url);
@@ -189,8 +203,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     prefs = {}
   }
 
-  // setup a clipboard
-  clipboard = undefined
+  // setup a clipboard (custom buffer, separate from electron's clipboard module)
+  let _clipboardBuffer = undefined
 
   // send usage stats
   let usageReport = new UsageReport()
@@ -232,6 +246,32 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
 
   const server = require('http').createServer((req, res) => {
     const urlPath = req.url.split('?')[0];
+
+    // ★ API routes — handled in-process (no SvelteKit server on HarmonyOS)
+    if (urlPath === '/api/plugins') {
+      // Built-in plugin list (replaces psychopy.org/plugins.json which is unreachable on HarmonyOS)
+      const builtinPlugins = [
+        {name: 'PsychoPy', pipname: 'psychopy', icon: '/icons/plugin-psychopy.svg', homepage: 'https://psychopy.org', description: 'Core PsychoPy package', keywords: ['psychopy','experiment']},
+        {name: 'NumPy', pipname: 'numpy', icon: '/icons/plugin-numpy.svg', homepage: 'https://numpy.org', description: 'Scientific computing', keywords: ['numpy','math']},
+        {name: 'SciPy', pipname: 'scipy', icon: '/icons/plugin-scipy.svg', homepage: 'https://scipy.org', description: 'Scientific computing tools', keywords: ['scipy','math']},
+        {name: 'Matplotlib', pipname: 'matplotlib', icon: '/icons/plugin-matplotlib.svg', homepage: 'https://matplotlib.org', description: 'Plotting library', keywords: ['matplotlib','plot']},
+        {name: 'Pandas', pipname: 'pandas', icon: '/icons/plugin-pandas.svg', homepage: 'https://pandas.pydata.org', description: 'Data analysis toolkit', keywords: ['pandas','data']},
+        {name: 'Pillow', pipname: 'Pillow', icon: '/icons/plugin-pillow.svg', homepage: 'https://python-pillow.org', description: 'Image processing library', keywords: ['pillow','image']},
+        {name: 'OpenCV', pipname: 'opencv-python', icon: '/icons/plugin-opencv.svg', homepage: 'https://opencv.org', description: 'Computer vision library', keywords: ['opencv','vision']},
+        {name: 'Pyo', pipname: 'pyo', icon: '/icons/plugin-pyo.svg', homepage: 'https://belangeo.github.io/pyo/', description: 'Digital signal processing', keywords: ['pyo','audio']},
+        {name: 'Soundfile', pipname: 'soundfile', icon: '/icons/plugin-soundfile.svg', homepage: 'https://python-soundfile.readthedocs.io/', description: 'Audio library', keywords: ['soundfile','audio']},
+        {name: 'Pyglet', pipname: 'pyglet', icon: '/icons/plugin-pyglet.svg', homepage: 'https://pyglet.org', description: 'Windowing/multimedia library', keywords: ['pyglet','graphics']}
+      ];
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(builtinPlugins));
+      return;
+    }
+    if (urlPath === '/api/surveys') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ surveys: [] }));
+      return;
+    }
+
     let filePath = distDir + urlPath;
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       const ext = path.extname(filePath);
@@ -582,7 +622,37 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       },
       files: {
         load: ipcMain.handle("electron.files.load", (evt, file) => fs.readFileSync(file, { encoding: 'utf8' })),
-        save: ipcMain.handle("electron.files.save", (evt, file, content) => fs.writeFileSync(file, content, { encoding: 'utf8', mode: 0o777 })),
+        save: ipcMain.handle("electron.files.save", (evt, file, content) => {
+          try {
+            // Ensure parent directory exists
+            const parentDir = path.dirname(file);
+            if (!fs.existsSync(parentDir)) {
+              fs.mkdirSync(parentDir, { recursive: true });
+            }
+            fs.writeFileSync(file, content, { encoding: 'utf8', mode: 0o777 });
+            return true;
+          } catch (err) {
+            _flog('[files.save] Write failed:', err && err.message, 'for path:', file);
+            // Fallback: write to appData directory
+            try {
+              const fallbackDir = path.join(app.getPath('appData'), 'psychopy4', 'exports');
+              if (!fs.existsSync(fallbackDir)) {
+                fs.mkdirSync(fallbackDir, { recursive: true });
+              }
+              const fallbackPath = path.join(fallbackDir, path.basename(file));
+              fs.writeFileSync(fallbackPath, content, { encoding: 'utf8', mode: 0o777 });
+              _flog('[files.save] Fallback write succeeded at:', fallbackPath);
+              // Notify renderer about fallback
+              for (const win of BrowserWindow.getAllWindows()) {
+                win.webContents.send('stderr', `[files.save] Original path unwritable, saved to: ${fallbackPath}`);
+              }
+              return fallbackPath;
+            } catch (err2) {
+              _flog('[files.save] Fallback also failed:', err2 && err2.message);
+              throw err2;
+            }
+          }
+        }),
         exists: ipcMain.handle("electron.files.exists", (evt, file) => fs.existsSync(file)),
         stat: ipcMain.handle("electron.files.stat", (evt, file) => {
           let stat = fs.statSync(file)
@@ -605,8 +675,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         })
       },
       clipboard: {
-        get: ipcMain.handle("electron.clipboard.get", (evt) => clipboard),
-        set: ipcMain.handle("electron.clipboard.set", (evt, value) => clipboard = value)
+        get: ipcMain.handle("electron.clipboard.get", (evt) => _clipboardBuffer),
+        set: ipcMain.handle("electron.clipboard.set", (evt, value) => _clipboardBuffer = value)
       },
       authenticatePavlovia: ipcMain.handle("electron.authenticatePavlovia", (evt, url) => authenticatePavlovia(url)),
       version: ipcMain.handle("electron.version", (evt) => appVersion),

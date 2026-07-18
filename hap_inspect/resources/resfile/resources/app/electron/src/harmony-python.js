@@ -722,8 +722,19 @@ export function registerHarmonyPythonHandlers() {
     const pyEnv = getPythonEnv();
     try {
       const resp = proc.execSync(`"${getPython()}" -m pip list --format json`, { timeout: 15000, encoding: "utf8", env: pyEnv });
-      return JSON.parse(resp);
-    } catch (_) { return []; }
+      const arr = JSON.parse(resp);
+      // Convert array [{name, version}, ...] to object {name: version} for frontend compat
+      const packages = {};
+      for (const item of arr) {
+        if (item.name) {
+          packages[item.name] = item.version || '';
+        }
+      }
+      return packages;
+    } catch (err) {
+      _flog && _flog('[getPackages] pip list failed:', err && err.message);
+      return {};
+    }
   });
   ipcMain.handle("python.venv.getPackageDetails", async (evt, venv, name) => {
     // 真行为：用 pip show 拿包详情，错误真出到 terminal

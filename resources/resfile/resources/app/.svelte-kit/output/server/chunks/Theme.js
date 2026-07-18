@@ -6874,6 +6874,19 @@ var pending = {
 	devices: Promise.resolve(),
 	preferences: Promise.resolve()
 };
+function mergeProfiles(fallback, pyData) {
+	for (const [key, obj] of Object.entries(pyData)) {
+		const fb = fallback[key] || {};
+		const merged = {
+			...fb,
+			...obj
+		};
+		if (fb.iconSVG) merged.iconSVG = fb.iconSVG;
+		if (fb.iconFile) merged.iconFile = fb.iconFile;
+		if (fb.params) merged.params = fb.params;
+		fallback[key] = merged;
+	}
+}
 if (python) python.liaison.ready("app").then((ready) => {
 	if (!ready) {
 		console.warn("[profiles] liaison not ready, keeping fallback profiles");
@@ -6882,15 +6895,15 @@ if (python) python.liaison.ready("app").then((ready) => {
 	pending.components = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getElementProfiles"]
-	}).then((data) => Object.assign(profiles.components, data));
+	}).then((data) => mergeProfiles(profiles.components, data));
 	pending.loops = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getLoopProfiles"]
-	}).then((data) => Object.assign(profiles.loops, data));
+	}).then((data) => mergeProfiles(profiles.loops, data));
 	pending.devices = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getDeviceProfiles"]
-	}).then((resp) => Object.assign(profiles.devices, resp));
+	}).then((resp) => mergeProfiles(profiles.devices, resp));
 });
 //#endregion
 //#region src/lib/utils/transpiler.js
@@ -7645,7 +7658,7 @@ var Flow = class Flow {
 			if (currentLoop instanceof Flow) dynamic.push(loop);
 			else currentLoop.routines.push(loop);
 			if (rt.complete) currentLoop = loop;
-		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) logging.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
+		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) console.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
 		else currentLoop = currentLoop.parent;
 		else if (currentLoop instanceof Flow) dynamic.push(rt);
 		else currentLoop.routines.push(rt);
@@ -8982,7 +8995,7 @@ var Experiment = class {
 		await python.liaison.send(version, {
 			command: "try",
 			args: ["prefs.setDevicesFile", path.join(await electron.paths.user(), "devices.json")]
-		}, 1e4).catch((err) => logging.error([`Failed to set devices file`, err]));
+		}, 1e4).catch((err) => console.error("Failed to set devices file:", err));
 		await python.liaison.send(version, {
 			command: "init",
 			args: ["currentExperiment", "psychopy.experiment:Experiment"]

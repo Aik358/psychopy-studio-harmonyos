@@ -7658,7 +7658,7 @@ var Flow = class Flow {
 			if (currentLoop instanceof Flow) dynamic.push(loop);
 			else currentLoop.routines.push(loop);
 			if (rt.complete) currentLoop = loop;
-		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) logging.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
+		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) console.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
 		else currentLoop = currentLoop.parent;
 		else if (currentLoop instanceof Flow) dynamic.push(rt);
 		else currentLoop.routines.push(rt);
@@ -8995,7 +8995,7 @@ var Experiment = class {
 		await python.liaison.send(version, {
 			command: "try",
 			args: ["prefs.setDevicesFile", path.join(await electron.paths.user(), "devices.json")]
-		}, 1e4).catch((err) => logging.error([`Failed to set devices file`, err]));
+		}, 1e4).catch((err) => console.error("Failed to set devices file:", err));
 		await python.liaison.send(version, {
 			command: "init",
 			args: ["currentExperiment", "psychopy.experiment:Experiment"]
