@@ -658,3 +658,109 @@ _orig_eps NameError（del 删了闭包引用的变量）
 - **涉及功能**：Run in browser（调系统浏览器）、See readme（打开 README）、其他 shell.openExternal 路径
 - **根因**：鸿蒙沙箱内无 `xdg-open`/`open`/`start` 等系统打开工具，`shell.openPath`/`openExternal` 是 Electron-OH 原生 API 但鸿蒙没有对应的系统 URI handler。需走鸿蒙 Ability 机制（`startAbility`）但沙箱权限受限
 - **待探索路径**：`aa startAbility` + URI scheme 打开系统浏览器 / 文件管理器
+
+---
+
+## [2026-07-19 05:00] — File 读写权限：systemPreferences.requestDirectoryPermission
+
+### 根因
+所有 Desktop 路径的文件操作（`scandir`、`readFileSync`、`writeFileSync`、Python `open()`）在鸿蒙沙箱内均报 `EPERM` / `PermissionError`。HarmonyOS HAP 应用只能在 `/data/storage/el2/base/` 沙箱内自由读写，`/storage/Users/currentUser/Desktop/` 等路径默认不可访问。
+
+### 发现关键 API
+Electron-OH 提供 `systemPreferences.requestDirectoryPermission(path?)` —— 不传参默认申请 Desktop/Documents/Downloads 三个目录的持久化读写权限。这是 WPS / CodeArts 能编辑桌面文件的原理。
+
+### 修复
+**`index.cjs`**（3 副本同步）：
+- `require('electron')` 加 `systemPreferences`
+- App 启动时调用 `systemPreferences.requestDirectoryPermission()` — 无参，申请桌面/文档/下载三个目录
+
+### 验证
+待实机测试：File → Open 打开桌面文件后，`scandir` 和 `readFileSync` 应不再报 EPERM。
+
+---
+
+## [2026-07-19 05:30] — Run in browser 完整方案：ESM + importmap + IIFE bridge
+
+### 架构决策
+改用方案 B（`<script type="module">` + Python `writeScript(modular=true)` 生成 ESM 格式 JS），贴合原始 PsychoPy 行为，方便以后升级。
+
+### 改动文件
+
+**`harmony-python.js`**（3 副本）：
+- HTML 模板改为：`<script type="importmap">` 映射 `./lib/psychojs-2025.2.4.js` → `./lib/psychojs-esm-shim.js`
+- 浏览器加载顺序：IIFE 库（设置 `window.PsychoJS`）→ importmap → `<script type="module" src="experiment.js">`
+- 新建 ESM shim 文件 `lib/psychojs-esm-shim.js`：从 `window.PsychoJS` 提取 `core/data/util/visual/sound/hardware`，作为 named exports
+- HTTP 服务器绑定 `127.0.0.1`，端口 9200+ 自动寻找；浏览器打开三步降级（shell.openExternal → NAPI → aa start）
+
+**`experiment.svelte.js`**（3 副本 + vite build）：
+- `runJS` 改为调 Python `_compileJSString()` → `currentExperiment.writeScript(modular=true)` 生成 ESM 格式 JS
+- `_compileJSString()` 新增：通过 liaison 加载实验、编译 JS、校验返回值必须是合法 JS 字符串
+- 保留 `exportExperimentToJS` 作为 fallback
+- 保留 `files.save` 返回值修正
+
+### 设计亮点
+- ESM shim 层只 10 行代码，不改 IIFE 库文件
+- importmap 映射可随时改为真实 ESM 库路径（以后从 CDN 下载）
+- Python 后端处理条件文件（XLSX），解决前端读 Desktop 路径 EPERM 的问题
+
+---
+
+## [2026-07-19 06:00] — iohub.devices.display Stub
+
+### 根因
+`psychopy.iohub.devices.display` 模块依赖 `pyglet`（GLFW/X11/Cocoa 窗口系统），鸿蒙上没有这些桌面窗口管理器。每次 `writeScript` 触发 psychopy import 链时，`iohub/devices/__init__.py` 尝试导入 display 模块 → `ModuleNotFoundError` → 整条 import 链崩溃 → `writeScript` 返回错误对象。
+
+### 鸿蒙窗口系统分析
+- ✅ HarmonyOS 支持 OpenGL ES 3.2 + EGL（PBuffer + Window Surface）
+- ✅ ArkUI XComponent 可提供 `NativeWindow` 给 EGL 渲染
+- ❌ pyglet 依赖的 GLFW 需要 X11/Wayland/Cocoa — 鸿蒙没有
+- ❌ pyglet 的 `window.Window` 创建需要桌面窗口管理器 — 鸿蒙的 ArkUI 窗口不是同一抽象层
+
+### 三层渲染路线图
+
+| 阶段 | 方案 | 用途 | 状态 |
+|------|------|------|------|
+| display stub | mock 模块，防止 import 崩溃 | 打通 `writeScript`/`getAllComponents` | ✅ |
+| EGL PBuffer headless | pyglet 配置 EGL + `eglCreatePbufferSurface` 离屏渲染 | Run .py 无头模式跑实验 | 🔲 |
+| ArkUI XComponent 窗口 | surfaceId → NativeWindow → EGL Window Surface → psychopy 真全屏 | Run .py 有窗口实时显示 | 🔲 远期 |
+
+### 修复
+**`liaison_shim.py`**（4 副本同步）：
+- 在 import psychopy 之前，注入 `psychopy.iohub.devices.display` 到 `sys.modules`
+- Stub `Display` 类实现完整接口（`getIndex`, `getDeviceNumber`, `getDisplayCount`, `_createAllRuntimeInfoDicts`, 坐标转换方法）
+- 返回合理默认值（单显示器 1920×1080@60Hz）
+- 同时设置 `PSYCHOPY_NO_GUI=1`（已有）
+
+**`settings/__init__.py`**（3 副本同步）：
+- `writeInitCodeJS` 中 `open("index.html", 'wb')` 包 `try/except (PermissionError, OSError)` — Desktop 写失败不阻断 JS 生成
+
+### 验证
+- ✅ `python3 ast.parse` 通过
+- ✅ 语法检查通过
+
+---
+
+## 当前总体架构图
+
+```
+[SvelteKit 前端] ──IPC──> [Node.js 主进程 (index.cjs)]
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                  │                  │
+     [systemPreferences]  [harmony-python.js]  [Electron dialogs]
+     申请 Desktop 权限    Python liaison       File Open/Save
+            │                  │                  │
+            │    [liaison_shim.py]              [fs 操作]
+            │    - iohub stub                    │
+            │    - entry_points monkey-patch     │
+            │    - _harmony_open redirect         │
+            │    - platform.system→Linux          │
+            │                  │                  │
+            ▼                  ▼                  ▼
+        [ArkTS 层]       [Python 3.12]       [HarmonyOS 沙箱]
+    XComponent/EGL      psychopy lib      /data/storage/el2/base/
+   (远期窗口渲染)     writeScript ✅       (appData 可读写)
+                    getAllComponents ✅
+```
+
+
