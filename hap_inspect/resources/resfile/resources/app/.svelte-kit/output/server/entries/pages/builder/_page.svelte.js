@@ -126,8 +126,8 @@ async function compileJS() {
 	return target;
 }
 async function runPython() {
-	await sendToRunner();
 	await current.experiment.runPython(true);
+	await sendToRunner();
 	return true;
 }
 async function stopPython(executable) {

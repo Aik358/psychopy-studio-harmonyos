@@ -52,3 +52,7 @@ __pycache__/
 .bitfun/
 .codegenie/
 .appanalyzer/
+
+# Backup dist directories
+dist.bak/
+
