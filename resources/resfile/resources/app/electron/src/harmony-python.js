@@ -1048,7 +1048,47 @@ export function registerHarmonyPythonHandlers() {
       fs.writeFileSync(path.join(runDir, "index.html"), jsCode || "", "utf8");
       if (conditionsJSON) fs.writeFileSync(path.join(runDir, "conditions.json"), conditionsJSON, "utf8");
       if (resourcesJSON) fs.writeFileSync(path.join(runDir, "resources.json"), resourcesJSON, "utf8");
-      return await _startPsychoJS(runDir);
+      // Copy resource files from expDir to runDir if provided
+      if (expDir) {
+        try {
+          const resList = resourcesJSON ? JSON.parse(resourcesJSON) : [];
+          for (const res of resList) {
+            const srcPath = res.abs || (path.isAbsolute(res.rel) ? res.rel : path.join(expDir, res.rel));
+            if (fs.existsSync(srcPath)) {
+              const destPath = path.join(runDir, path.basename(srcPath));
+              fs.copyFileSync(srcPath, destPath);
+              logging.log(`[browserRun] Copied resource: ${srcPath} -> ${destPath}`);
+            }
+          }
+        } catch (e) { logging.warn(`[browserRun] Resource copy failed: ${e && e.message}`); }
+      }
+      const serverInfo = await _startPsychoJS(runDir);
+      // Open a new BrowserWindow to load the PsychoJS runner
+      if (serverInfo && serverInfo.address) {
+        const runnerUrl = `http://${serverInfo.address}/index.html`;
+        logging.log(`[browserRun] Opening runner window: ${runnerUrl}`);
+        try {
+          const { BrowserWindow: BW } = require('electron');
+          const runnerWin = new BW({
+            width: 1024,
+            height: 768,
+            title: `PsychoJS Runner - ${expName || 'experiment'}`,
+            webPreferences: {
+              contextIsolation: false,
+              nodeIntegration: false,
+            }
+          });
+          runnerWin.loadURL(runnerUrl);
+          runnerWin.on('closed', () => {
+            _stopPsychoJS(serverInfo.address);
+          });
+        } catch (e) {
+          logging.error(`[browserRun] Failed to open runner window: ${e && e.message}`);
+          // Fallback: try openExternal
+          try { openExternalHarmony(runnerUrl); } catch(_) {}
+        }
+      }
+      return serverInfo;
     } catch (err) {
       logging.error(`browserRun failed: ${err}`);
       return { error: String(err) };

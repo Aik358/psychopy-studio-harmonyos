@@ -488,7 +488,12 @@ export class Experiment {
         )
         // save to python/js file
         if (typeof script === "string") {
-            await electron.files.save(targetFile, script)
+            const savedPath = await electron.files.save(targetFile, script)
+            // If save returned a different path (fallback), use that
+            if (typeof savedPath === 'string' && savedPath !== targetFile) {
+                console.warn(`[writeScript] File saved to fallback path: ${savedPath}`)
+                targetFile = savedPath
+            }
         } else {
             console.error(script)
         }
@@ -677,6 +682,29 @@ export class Experiment {
                 officialJSPath ? expDir : ""
             );
             console.log(`[PsychoJS Browser] Result:`, result);
+            // Open a new Electron window to load the PsychoJS runner
+            if (result && result.address) {
+                const runnerUrl = `http://${result.address}/index.html`;
+                console.log(`[PsychoJS Browser] Opening runner window: ${runnerUrl}`);
+                try {
+                    // Try opening via electron.windows.new (creates a new BrowserWindow)
+                    if (electron && electron.windows && typeof electron.windows.new === 'function') {
+                        await electron.windows.new(runnerUrl);
+                    } else if (electron && typeof electron.files !== 'undefined' && typeof electron.files.openExternal === 'function') {
+                        // Fallback: openExternal
+                        await electron.files.openExternal(runnerUrl);
+                    } else {
+                        // Last resort: open in current window's new tab
+                        window.open(runnerUrl, '_blank');
+                    }
+                } catch (e) {
+                    console.warn(`[PsychoJS Browser] Could not open runner window: ${e.message || e}`);
+                    // Fallback: try openExternal
+                    try { await electron.files.openExternal(runnerUrl); } catch(_) {}
+                }
+            } else if (result && result.error) {
+                alert(`[PsychoJS Browser] Server error: ${result.error}`);
+            }
         } catch (err) {
             console.error(`[PsychoJS Browser] ERROR:`, err);
             alert(`[PsychoJS Browser] Failed: ${err?.message || err}\nCheck console (Ctrl+Shift+I) for details.`);

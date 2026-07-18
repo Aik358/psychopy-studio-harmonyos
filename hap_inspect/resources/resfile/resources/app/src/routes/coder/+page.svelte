@@ -68,6 +68,10 @@
             script.file = inherited.file
             current.pages.push(script)
             current.tab = current.pages.length - 1
+            // ★ MUST load file content — otherwise Coder shows empty tab
+            ;(async () => {
+                try { await script.fromFile(inherited.file) } catch(e) { console.warn('[Coder] fromFile failed:', e) }
+            })()
         }
     }
 

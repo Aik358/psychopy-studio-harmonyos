@@ -1215,6 +1215,13 @@ function _page($$renderer, $$props) {
 				script.file = inherited.file;
 				current.pages.push(script);
 				current.tab = current.pages.length - 1;
+				(async () => {
+					try {
+						await script.fromFile(inherited.file);
+					} catch (e) {
+						console.warn("[Coder] fromFile failed:", e);
+					}
+				})();
 			}
 		}
 		setContext("current", current);
