@@ -259,10 +259,12 @@ export async function compileJS() {
 }
 
 export async function runPython() {
-    // send to runner
-    await sendToRunner()
-    // run script
+    // Compile and start script FIRST (while still in Builder context),
+    // then send to Runner. This avoids the race condition where
+    // goto('/runner') destroys Builder before runPython can execute.
     await current.experiment.runPython(true)
+    // send to runner after script has started
+    await sendToRunner()
 
     return true
 }

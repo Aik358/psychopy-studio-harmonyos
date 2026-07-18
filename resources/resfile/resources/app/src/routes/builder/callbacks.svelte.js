@@ -2,7 +2,7 @@ import { electron, projects, python } from '$lib/globals.svelte.js';
 import { current } from './globals.svelte.js';
 
 import path from "path-browserify";
-import { newWindow, openIn, showDevTools } from "$lib/utils/views.svelte"
+import { newWindow, openIn, showDevTools, openExternal } from "$lib/utils/views.svelte"
 import { browseFileOpen, browseFileSave, parsePath } from "$lib/utils/files.js";
 import { Routine, HasParams } from "$lib/experiment"
 import { prefs } from "$lib/preferences.svelte";
@@ -215,7 +215,12 @@ export function togglePiloting() {
 
 
 export async function sendToRunner() {
-    await openIn(current.experiment.file.file, "runner")
+    // ★ 转接层：把当前文件交给 openIn，由 openIn 统一 flushBeforeNavigate 落 localStorage
+    // ★★ 显式传 source='builder' — consumeCurrentFile('runner') 判 source==='runner' 才是自回环
+    //    传 'builder' 才能让 runner mount 时读到文件（不误判回环 → runner 不行的根因）
+    const f = current.experiment.file;
+    if (f) f.source = 'builder';
+    await openIn(f, "runner")
 }
 
 
@@ -254,10 +259,12 @@ export async function compileJS() {
 }
 
 export async function runPython() {
-    // send to runner
-    await sendToRunner()
-    // run script
+    // Compile and start script FIRST (while still in Builder context),
+    // then send to Runner. This avoids the race condition where
+    // goto('/runner') destroys Builder before runPython can execute.
     await current.experiment.runPython(true)
+    // send to runner after script has started
+    await sendToRunner()
 
     return true
 }
@@ -287,7 +294,7 @@ export async function runJS() {
     if (current.experiment.pilotMode) {
         await current.experiment.runJS(true)
     } else {
-        await window.open(`https://run.pavlovia.org/${current.project.namespace?.path}/${current.project.path}`)
+        await openExternal(`https://run.pavlovia.org/${current.project.namespace?.path}/${current.project.path}`)
     }
 }
 

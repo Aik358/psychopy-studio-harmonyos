@@ -12,7 +12,7 @@ const fs = require("fs");
 const proc = require("child_process");
 const { app, dialog, BrowserWindow, ipcMain, shell, clipboard } = require('electron');
 
-// ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
+// ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding via renderer, then aa start
 function openExternalHarmony(url) {
   _flog('[openExternal] Attempting to open:', url);
 
@@ -25,43 +25,55 @@ function openExternalHarmony(url) {
     _flog('[openExternal] shell.openExternal failed:', e && e.message);
   }
 
-  // 2) Try NAPI binding (registered by ExternalProtocolAdapterBind.ets)
+  // 2) Try NAPI binding via renderer's V8 context (JsBindingUtils registers there, not in Node main process)
+  //    ExternalProtocolAdapter.OpenExternal and FileManagerAdapter.OpenUrlInDefaultBrowser are bound to
+  //    the Chromium V8 context, not the Node.js main process globalThis.
   try {
-    if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
-      globalThis.ExternalProtocolAdapter.OpenExternal(url);
-      _flog('[openExternal] NAPI ExternalProtocolAdapter.OpenExternal called');
+    const wins = BrowserWindow.getAllWindows();
+    if (wins.length > 0) {
+      const js = 
+        (function() {
+          try {
+            if (typeof ExternalProtocolAdapter !== 'undefined' && ExternalProtocolAdapter.OpenExternal) {
+              ExternalProtocolAdapter.OpenExternal();
+              return 'ok:ExternalProtocolAdapter';
+            }
+          } catch(e) { return 'err:ExternalProtocolAdapter:' + e.message; }
+          try {
+            if (typeof FileManagerAdapter !== 'undefined' && FileManagerAdapter.OpenUrlInDefaultBrowser) {
+              FileManagerAdapter.OpenUrlInDefaultBrowser();
+              return 'ok:FileManagerAdapter';
+            }
+          } catch(e) { return 'err:FileManagerAdapter:' + e.message; }
+          return 'not-available';
+        })()
+      ;
+      // executeJavaScript is async but we fire-and-forget with logging
+      wins[0].webContents.executeJavaScript(js, true)
+        .then(result => _flog('[openExternal] NAPI via renderer result:', result))
+        .catch(err => _flog('[openExternal] NAPI via renderer error:', err && err.message));
+      _flog('[openExternal] NAPI dispatched via renderer executeJavaScript');
       return true;
     }
   } catch (e) {
-    _flog('[openExternal] NAPI failed:', e && e.message);
+    _flog('[openExternal] NAPI via renderer failed:', e && e.message);
   }
 
-  // 3) Try FileManagerAdapter.OpenUrlInDefaultBrowser NAPI binding
+  // 3) Fallback: aa start with --ps uri <url> (best effort)
   try {
-    if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
-      globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
-      _flog('[openExternal] NAPI FileManagerAdapter.OpenUrlInDefaultBrowser called');
-      return true;
-    }
-  } catch (e) {
-    _flog('[openExternal] NAPI FileManagerAdapter failed:', e && e.message);
-  }
-
-  // 4) Fallback: aa start with --ps uri <url> (best effort)
-  try {
-    proc.execSync(`aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "${url}"`, { timeout: 5000 });
+    proc.execSync(a start -a MainAbility -b com.huawei.hwbrowser --ps uri "", { timeout: 5000 });
     _flog('[openExternal] aa start browser succeeded');
     return true;
   } catch (e) {
     _flog('[openExternal] aa start failed:', e && e.message);
   }
 
-  // 5) Last resort: copy to clipboard and notify renderer
+  // 4) Last resort: copy to clipboard and notify renderer
   try {
     clipboard.writeText(url);
     _flog('[openExternal] URL copied to clipboard as last resort');
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send('stderr', `[openExternal] Cannot open URL automatically. URL copied to clipboard: ${url}`);
+      win.webContents.send('stderr', [openExternal] Cannot open URL automatically. URL copied to clipboard: );
     }
     return false;
   } catch (e) {

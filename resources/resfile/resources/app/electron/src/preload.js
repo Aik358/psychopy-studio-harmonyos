@@ -154,14 +154,14 @@ window.addEventListener('DOMContentLoaded', () => {
   setTimeout(injectTerminalButton, 1500);
   setTimeout(injectTerminalButton, 3000);
   // Use MutationObserver to detect when ribbon buttons appear
+  // Keep observer alive permanently — SPA goto() transitions re-render Ribbon,
+  // and the terminal button needs to be re-injected each time.
   const observer = new MutationObserver(() => {
     if (!document.getElementById('harmony-terminal-btn') && document.querySelector('button')) {
       injectTerminalButton();
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
-  // Stop observing after 10s to avoid memory leak
-  setTimeout(() => observer.disconnect(), 10000);
 });
 
 function injectTerminalButton() {
