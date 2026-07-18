@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Liaison Shim — Pure Python WebSocket liaison replacement for HarmonyOS.
 Does NOT depend on rpds-py / maturin / Rust.
@@ -16,6 +16,30 @@ import os, sys
 
 # Prevent stale .pyc bytecode on HAP's read-only filesystem
 sys.dont_write_bytecode = True
+
+# --- HarmonyOS file redirect: transparently remap blocked paths to sandbox ---
+import builtins as _b
+_original_open = _b.open
+_REDIRECT_BASE = "/data/storage/el2/base/cache/harmony_redirect"
+_BLOCKED_ROOTS = [
+    "/storage/Users/currentUser/Desktop",
+    "/storage/Users/currentUser/Documents",
+    "/storage/Users/currentUser/Downloads",
+]
+def _harmony_open(file, mode='r', *args, **kwargs):
+    path_str = str(file)
+    if any(c in mode for c in ('w', 'a', 'x', '+')):
+        for prefix in _BLOCKED_ROOTS:
+            if path_str.startswith(prefix):
+                rel = path_str[len(prefix):].lstrip('/').lstrip('\\')
+                sandbox_path = os.path.join(_REDIRECT_BASE, os.path.basename(prefix), rel)
+                try:
+                    os.makedirs(os.path.dirname(sandbox_path), exist_ok=True)
+                except Exception:
+                    pass
+                return _original_open(sandbox_path, mode, *args, **kwargs)
+    return _original_open(file, mode, *args, **kwargs)
+_b.open = _harmony_open
 
 # Suppress SyntaxWarning noise from psychopy lib (stringtools r"\s|-", etc.)
 # Must be done BEFORE any import that triggers the warning
@@ -41,7 +65,7 @@ import asyncio
 import socket
 import traceback
 
-# 鈹€鈹€ Environment 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Environment 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 os.environ['PSYCHOPY_NO_GUI'] = '1'
 os.environ['MPLBACKEND'] = 'Agg'
 # Prevent OpenBLAS from spawning threads that trigger SECCOMP violations on HarmonyOS
@@ -51,29 +75,29 @@ os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_MAIN_FREE'] = '1'
 
-# 鈹€鈹€ 楦胯挋娌欑鍙啓璺緞 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-# Psychopy preferences.py 鐢?os.environ['HOME'] + '.psychopy3' 鏋勯€?userPrefsDir
-# 锛堜笉璇?PSYCHOPY_HOME锛夛紝榛樿 ~ 鍗?/storage/Users/currentUser 楦胯挋娌欑鎷掔粷鍐欍€?
-# 鎶?HOME 閲嶅畾鍚戝埌娌欑鍙啓鐩綍锛宒evices.json / userPrefs.cfg 閮戒細钀借繖閲屻€?
-# MPLCONFIGDIR 鍚岀悊 鈥?matplotlib 鐢?~ 鎴栬鍙橀噺鏋勯€犵紦瀛樼洰褰曘€?
+# 鈹?鈹? 楦胯挋娌欑?卞彲鍐欒矾寰? 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
+# Psychopy preferences.py 鐢?os.environ['HOME'] + '.psychopy3' 鏋勯??userPrefsDir
+# 锛堜笉璇?PSYCHOPY_HOME锛夛紝榛樿?? ~ 鍗?/storage/Users/currentUser 楦胯挋娌欑?辨嫆缁濆啓銆?
+# 鎶?HOME 閲嶅畾鍚戝埌娌欑?卞彲鍐欑洰褰曪紝devices.json / userPrefs.cfg 閮戒細钀借繖閲屻??
+# MPLCONFIGDIR 鍚岀悊 鈥?matplotlib 鐢?~ 鎴栬?ュ彉閲忔瀯閫犵紦瀛樼洰褰曘??
 _HARMONY_SANDBOX = "/data/storage/el2/base/cache"
 os.makedirs(os.path.join(_HARMONY_SANDBOX, "home"), exist_ok=True)
 os.environ['HOME'] = os.path.join(_HARMONY_SANDBOX, "home")
 os.makedirs(os.path.join(_HARMONY_SANDBOX, "matplotlib"), exist_ok=True)
 os.environ['MPLCONFIGDIR'] = os.path.join(_HARMONY_SANDBOX, "matplotlib")
 
-# 鈹€鈹€ platform.system() 楦胯挋琛ヤ竵 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? platform.system() 楦胯挋琛ヤ竵 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 # psychopy preferences.py 琛?161 鐢?platform.system() + '.spec' 鎵?spec 鏂囦欢
-# 楦胯挋杩斿洖 'HarmonyOS' 浣?preferences 鐩綍鍙湁 Darwin/FreeBSD/Linux/Windows.spec
+# 楦胯挋杩斿洖 'HarmonyOS' 浣?preferences 鐩?褰曞彧鏈? Darwin/FreeBSD/Linux/Windows.spec
 # 鈫?鎵句笉鍒?HarmonyOS.spec 鈫?prefsSpec 绌?鈫?validate 鏃犻粯璁?鈫?cfg['general'] KeyError
-# 楦胯挋 POSIX 鍏煎锛孡inux.spec 鍐呭閫傜敤锛屾墦琛ヤ竵璁?platform.system() 杩斿洖 'Linux'
+# 楦胯挋 POSIX 鍏煎?癸紝Linux.spec 鍐呭?归?傜敤锛屾墦琛ヤ竵璁?platform.system() 杩斿洖 'Linux'
 import platform as _platform
 _platform.system = lambda *a, **kw: 'Linux'
-# 鍚屾椂鏀?platform 骞冲彴鍚嶏紙鏌愪簺搴撶敤 sys.platform=='linux' 鍒ゅ畾锛岄缚钂欐湰鏉ュ氨鏄級
-# 鈹€鈹€ 棰勭疆鏈€灏?userPrefs.cfg 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鍚屾椂鏀?platform 骞冲彴鍚嶏紙鏌愪簺搴撶敤 sys.platform=='linux' 鍒ゅ畾锛岄缚钂欐湰鏉ュ氨鏄?锛?
+# 鈹?鈹? 棰勭疆鏈?灏?userPrefs.cfg 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 # preferences.loadUserPrefs() 鍔犺浇 userPrefs.cfg 鏃惰嫢鏂囦欢涓嶅瓨鍦?绌?cfg 娌?section
 # 鈫?loadAll 琛?309 self.userPrefsCfg['general'] 鎶?KeyError 鈫?import psychopy 澶辫触
-# 棰勭疆鍚叏閮?8 涓繀闇€ section 鐨勬渶灏?cfg 鍒版矙绠卞彲鍐欑洰褰曪紝璁╅娆″惎鍔ㄤ篃鑳?import
+# 棰勭疆鍚?鍏ㄩ??8 涓?蹇呴渶 section 鐨勬渶灏?cfg 鍒版矙绠卞彲鍐欑洰褰曪紝璁╅?栨?″惎鍔ㄤ篃鑳?import
 _HARMONY_HOME = os.environ['HOME']
 _HARMONY_PREFS_DIR = os.path.join(_HARMONY_HOME, '.psychopy3')
 os.makedirs(_HARMONY_PREFS_DIR, exist_ok=True)
@@ -84,7 +108,7 @@ fullscr = True
 allowGUI = True
 quitKey = escape
 paths = list()
-# 鈫?psychopy/__init__.py:124 璇?prefs.general['paths'] 寰幆娣诲姞 site 璺緞锛岀己姝ら敭鎶?KeyError
+# 鈫?psychopy/__init__.py:124 璇?prefs.general['paths'] 寰?鐜?娣诲姞 site 璺?寰勶紝缂烘?ら敭鎶?KeyError
 
 [app]
 resetPrefs = False
@@ -106,8 +130,8 @@ audioLib = ptb
 
 [keyBindings]
 """
-# 鍐欐垨鏇存柊 userPrefs.cfg 鈥?纭繚 [general] 娈垫湁 paths 閿?
-# 鏃?HAP 鍒涘缓鐨勬枃浠剁己 paths 閿紝file exists 璺宠繃瀵艰嚧淇涓嶇敓鏁?
+# 鍐欐垨鏇存柊 userPrefs.cfg 鈥?纭?淇? [general] 娈垫湁 paths 閿?
+# 鏃?HAP 鍒涘缓鐨勬枃浠剁己 paths 閿?锛宖ile exists 璺宠繃瀵艰嚧淇?澶嶄笉鐢熸??
 try:
     if os.path.isfile(_HARMONY_PREFS_FILE):
         # 璇荤幇鏈夋枃浠讹紝琛ョ己閿?
@@ -153,15 +177,15 @@ try:
 except Exception as _e:
     print(f"[liaison-shim] WARNING: Failed to write/update userPrefs.cfg: {_e}", flush=True)
 
-# 鈹€鈹€ Add site-packages to sys.path 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Add site-packages to sys.path 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 _HARMONY_SITE_PATHS = [
     "/data/service/hnp/python.org/python_3.12/lib/python3.12/site-packages",
     "/data/service/hnp/python.org/python_3.12/lib/python3.12/dist-packages",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"),
     "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
-    # json_tricks 绛夌敤鎴?pip 瀹夎鐨勫寘鍦?~/.local 涓?
+    # json_tricks 绛夌敤鎴?pip 瀹夎?呯殑鍖呭??~/.local 涓?
     # 鈽?涓嶈兘鐢?os.path.expanduser("~") 鈥?鍓嶉潰 HOME 宸查噸瀹氬悜鍒版矙绠?
-    # ~ 浼氬睍寮€鍒?/data/storage/el2/base/cache/home 鑰岄潪鐢ㄦ埛鐪?home
+    # ~ 浼氬睍寮?鍒?/data/storage/el2/base/cache/home 鑰岄潪鐢ㄦ埛鐪?home
     # 鐪熻矾寰勬槸 /storage/Users/currentUser/.local/lib/python3.12/site-packages
     "/storage/Users/currentUser/.local/lib/python3.12/site-packages",
     "/storage/Users/currentUser/.local/lib/python3.12/dist-packages",
@@ -179,7 +203,7 @@ for _p in _HARMONY_SITE_PATHS:
         print(f"[liaison-shim] DEBUG _HARMONY_SITE_PATHS skip: {_p} exists={os.path.isdir(_p)} in_path={_p in sys.path}", flush=True)
 print(f"[liaison-shim] DEBUG sys.path[0:5]={sys.path[:5]}", flush=True)
 
-# 鈹€鈹€ Monkey-patch missing GUI modules 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Monkey-patch missing GUI modules 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 import types
 
 def _mock_module(name, **attrs):
@@ -189,7 +213,7 @@ def _mock_module(name, **attrs):
     sys.modules[name] = mod
     return mod
 
-# 鈹€鈹€ json_tricks 杩愯鏃跺洖閫€锛圚AP 婕忔墦鍖?json_tricks/ 鐩綍锛夆攢鈹€
+# 鈹?鈹? json_tricks 杩愯?屾椂鍥為??锛圚AP 婕忔墦鍖?json_tricks/ 鐩?褰曪級鈹?鈹?
 # 宓屽叆 json_tricks v3.17.3 鍏?9 鏂囦欢婧愮爜锛?3KB 鈫?lzma 13.7KB 鈫?b64 18.3KB锛?
 # import json_tricks 澶辫触鏃惰В鍘嬫敞鍏?sys.modules
 _JSON_TRICKS_B64 = (
@@ -473,8 +497,8 @@ except ImportError:
     import json_tricks
     print("[liaison-shim] json_tricks loaded from inline fallback (v" + json_tricks.__version__ + ")", flush=True)
 
-# 鈹€鈹€ astunparse 杩愯鏃跺洖閫€锛圚AP 鏋勫缓鍙兘婕忔墦鍖?astunparse 鐩綍锛夆攢鈹€鈹€鈹€
-# astunparse 鏄函 Python 鍖咃紝v1.6.3锛屽祵鍏ヤ互涓嬫簮鐮佺‘淇濊澶囩鍙敤
+# 鈹?鈹? astunparse 杩愯?屾椂鍥為??锛圚AP 鏋勫缓鍙?鑳芥紡鎵撳??astunparse 鐩?褰曪級鈹?鈹?鈹?鈹?
+# astunparse 鏄?绾? Python 鍖咃紝v1.6.3锛屽祵鍏ヤ互涓嬫簮鐮佺‘淇濊?惧?囩??鍙?鐢?
 import textwrap, importlib, sys as _sys
 _ASTUNPARSE_SOURCE = {
     "__init__.py": textwrap.dedent("""\
@@ -994,14 +1018,14 @@ def _mock_pyqt6():
             }))
 
 def _mock_wx():
-    """Mock wx 灞炴€цˉ鍏?鈥?psychopy.localization._localization 琛?52 璋?wx.Locale()锛?
-    鍘?mock 鍙缓绌烘ā鍧楁病 Locale 绫?鈫?AttributeError 鈫?localization import 澶辫触
+    """Mock wx 灞炴?цˉ鍏?鈥?psychopy.localization._localization 琛?52 璋?wx.Locale()锛?
+    鍘?mock 鍙?寤虹┖妯″潡娌? Locale 绫?鈫?AttributeError 鈫?localization import 澶辫触
     鈫?data 鈫?experiment 鏁翠釜閾炬柇 鈫?liaison 璋?getElementProfiles/writeScript 鎶?
     'logging is not defined'锛堝疄闄呮槸 _experiment.py 娌″姞杞芥垚鍔燂級"""
     if 'wx' not in sys.modules:
         wx_mod = types.ModuleType('wx')
         # localization._localization 琛?35-155 鐢ㄥ埌鐨?API锛歸x.Locale() / wx.LANGUAGE_DEFAULT
-        # 鐢?stub 鑰岄潪 mock 鐪熻涓?鈥?psychopy 鍙敤瀹冭 locale 鍏冩暟鎹紝楦胯挋鍚庣涓嶉渶瑕佺湡 wx
+        # 鐢?stub 鑰岄潪 mock 鐪熻?屼??鈥?psychopy 鍙?鐢ㄥ畠璇? locale 鍏冩暟鎹?锛岄缚钂欏悗绔?涓嶉渶瑕佺湡 wx
         wx_mod.LANGUAGE_DEFAULT = 0
         class _LangInfo:
             def __init__(self, desc, canon): self.Description = desc; self.CanonicalName = canon
@@ -1014,7 +1038,7 @@ def _mock_wx():
             def IsAvailable(self, i): return i == wx_mod.LANGUAGE_DEFAULT
         wx_mod.Locale = _Locale
         wx_mod.GetTranslation = lambda s: s
-        wx_mod.__version__ = '4.2.0'  # wizard.py:22 妫€ wx.__version__
+        wx_mod.__version__ = '4.2.0'  # wizard.py:22 妫? wx.__version__
         sys.modules['wx'] = wx_mod
     else:
         wx_mod = sys.modules['wx']
@@ -1042,18 +1066,18 @@ _mock_pyqt6()
 _mock_pyqt5()
 _mock_wx()
 
-# 鈹€鈹€ libsndfile 鐪熷簱锛圚armonyBrew Cellar锛夆攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? libsndfile 鐪熷簱锛圚armonyBrew Cellar锛夆攢鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 # psychopy.tools.audiotools 琛?107 `import soundfile as sf`锛岄缚钂欑郴缁?Python 缂?libsndfile.so
 # 鈫?OSError 鈫?microphone/camera 缁勪欢 import 澶辫触 鈫?getAllComponents 鎶ラ敊
-# HarmonyBrew 宸茶 libsndfile 1.2.2_1锛岀敤 LD_LIBRARY_PATH 璁?ctypes ffi.dlopen 鎵惧埌鐪?.so
-# 锛堝疄娴嬶細璁炬鍙橀噺鍚庨缚钂欑郴缁?Python soundfile 0.14.0 鐪熷姞杞芥垚鍔燂紝available_formats 姝ｅ父锛?
+# HarmonyBrew 宸茶?? libsndfile 1.2.2_1锛岀敤 LD_LIBRARY_PATH 璁?ctypes ffi.dlopen 鎵惧埌鐪?.so
+# 锛堝疄娴嬶細璁炬?ゅ彉閲忓悗楦胯挋绯荤??Python soundfile 0.14.0 鐪熷姞杞芥垚鍔燂紝available_formats 姝ｅ父锛?
 _HB_LIBSNDFILE = os.path.expanduser("~/.harmonybrew/Cellar/libsndfile/1.2.2_1/lib")
 _HB_LIB = os.path.expanduser("~/.harmonybrew/lib")
 if os.path.isdir(_HB_LIBSNDFILE):
     _ld = os.environ.get("LD_LIBRARY_PATH", "")
     os.environ["LD_LIBRARY_PATH"] = ":".join([p for p in [_HB_LIBSNDFILE, _HB_LIB, _ld] if p])
 
-# 鈹€鈹€ Import PsychoPy 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Import PsychoPy 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 START_MARKER = "LIAISON_START"
 psychopy_version = None
 
@@ -1064,10 +1088,10 @@ try:
 except Exception as e:
     print(f"[liaison-shim] WARNING: Failed to import psychopy: {e}", flush=True)
 
-# 鈹€鈹€ Registry 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Registry 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 _registry = {}
 
-# 鈹€鈹€ Command handlers 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? Command handlers 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 
 def _resolve(val):
     if isinstance(val, str) and val.startswith("$"):
@@ -1307,7 +1331,7 @@ def execute_command(command):
         raise ValueError(f"Unknown command: {cmd_name}")
     return handler(args, kwargs)
 
-# 鈹€鈹€ WebSocket server 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# 鈹?鈹? WebSocket server 鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?鈹?
 
 _active_websocket = None
 
@@ -1382,9 +1406,9 @@ async def main():
     address = f"localhost:{port}"
 
     # 鈽?鎶?LIAISON_START@ 鍜?Listening on ws:// 绉诲埌 async with 鍧楀唴
-    # 鏃т唬鐮佸湪 websockets.serve() 鍚姩涔嬪墠灏辨墦鍗颁簡 LIAISON_START@
-    # 鈫?startLiaison 妫€娴嬪埌鍚庣珛鍗宠繛 WebSocket锛屼絾鏈嶅姟鍣ㄨ繕娌″紑濮嬬洃鍚?
-    # 鈫?ECONNREFUSED 鈫?liaison 鍚姩澶辫触 鈫?sendLiaison 鎶?"Liaison not connected"
+    # 鏃т唬鐮佸湪 websockets.serve() 鍚?鍔ㄤ箣鍓嶅氨鎵撳嵃浜? LIAISON_START@
+    # 鈫?startLiaison 妫?娴嬪埌鍚庣珛鍗宠繛 WebSocket锛屼絾鏈嶅姟鍣ㄨ繕娌″紑濮嬬洃鍚?
+    # 鈫?ECONNREFUSED 鈫?liaison 鍚?鍔ㄥけ璐? 鈫?sendLiaison 鎶?"Liaison not connected"
     async with websockets.serve(handle_message, "localhost", port):
         print(f"{START_MARKER}@{address}", flush=True)
         print(f"[liaison-shim] Listening on ws://{address}", flush=True)

@@ -29,11 +29,16 @@
 
 import { inject, injectable } from 'inversify';
 import { Want, wantConstant } from '@kit.AbilityKit';
+import common from '@ohos.app.ability.common';
+import { BusinessError } from '@kit.BasicServicesKit';
 
 import { BaseAdapter } from '../common/BaseAdapter';
 import LogMethod from '../common/LogDecorator';
+import LogUtil from '../utils/LogUtil';
 import LaunchHelper from '../utils/LaunchHelper';
 import { ContextAdapter } from './ContextAdapter';
+
+const TAG = 'ExternalProtocolAdapter';
 
 @injectable()
 export class ExternalProtocolAdapter extends BaseAdapter {
@@ -46,9 +51,29 @@ export class ExternalProtocolAdapter extends BaseAdapter {
 
   @LogMethod
   openExternal(urlStr: string) {
+    const context = this.ctxAdapter.getActiveContext() as common.UIAbilityContext;
+    if (context && typeof context.openLink === 'function') {
+      try {
+        context.openLink(urlStr, { appLinkingOnly: false })
+          .then(() => LogUtil.info(TAG, `openLink success: ${urlStr}`))
+          .catch((err: BusinessError) => {
+            LogUtil.error(TAG, `openLink failed: ${JSON.stringify(err)}, falling back to startAbility`);
+            this.fallbackStartAbility(urlStr);
+          });
+        return;
+      } catch (e) {
+        LogUtil.error(TAG, `openLink exception: ${JSON.stringify(e)}`);
+      }
+    }
+    this.fallbackStartAbility(urlStr);
+  }
+
+  private fallbackStartAbility(urlStr: string) {
     const want: Want = {
-      flags: wantConstant.Flags.FLAG_START_WITHOUT_TIPS,
-      uri: urlStr
+      action: 'ohos.want.action.viewData',
+      entities: ['entity.system.browsable'],
+      uri: urlStr,
+      flags: wantConstant.Flags.FLAG_START_WITHOUT_TIPS
     }
     LaunchHelper.Launch(this.ctxAdapter.getActiveContext(), want);
   }

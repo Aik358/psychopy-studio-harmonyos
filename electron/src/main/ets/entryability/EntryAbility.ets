@@ -47,6 +47,15 @@ export default class EntryAbility extends WebAbility {
     super.onDestroy();
   }
 
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    super.onNewWant(want, launchParam);
+    // When taskbar right-click "new window" has no URI, open a proper Electron window
+    const uriNotNull = want["uri"] !== undefined && want["uri"] !== '';
+    if (!uriNotNull) {
+      this.openNewWindow(this.startUri);
+    }
+  }
+
   onWindowStageCreate(windowStage: window.WindowStage) {
     super.onWindowStageCreate(windowStage);
   }

@@ -6,6 +6,7 @@
  */
 
 import fs from "fs";
+import http from "http";
 import os from "os";
 import path from "path";
 import net from "net";
@@ -978,119 +979,198 @@ export function registerHarmonyPythonHandlers() {
     return JSON.stringify(diag, null, 2);
   });
 
-  // ── PsychoJS server helpers ─────────────────────────────────
+  // ── PsychoJS inline server ──────────────────────────────────
   const _psychojsServers = {};
+  const _psychojsLibDir = path.join(__dirname, "psychojs-browser", "lib");
 
-  async function _startPsychoJS(cwd) {
-    const pythonPath = getPython();
-    // 动态找空闲端口 — liaison 已占 8002，从 8003 递增避免 `Address in use`
-    // net.createServer().listen() 是异步的，错误在回调；用同步的 listen + 'error' 事件判断
-    // listen 同步抛 EADDRINUSE 很快；不抛就是空闲（还没真正监听但 OS 会先做 bind 检查）
-    let port = 8003;
-    while (port < 8100) {
-      const testServer = net.createServer();
-      const isFree = await new Promise((resolve) => {
-        testServer.once("error", () => resolve(false));
-        testServer.listen(port, "localhost", () => {
-          testServer.close(() => resolve(true));
-        });
-      });
-      if (isFree) break;
-      port++;
-    }
-    const server = proc.spawn(pythonPath, [
-      "-m", "http.server", String(port), "--directory", cwd || os.tmpdir()
-    ], {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: getPythonEnv(),
-    });
-
-    const id = `psychojs-${++_processCounter}`;
-    server.stdout.on("data", (data) => output("psychojs", decoder.decode(data)));
-    server.stderr.on("data", (data) => {
-      const text = decoder.decode(data);
-      output("stderr", { error: text });  // 包成前端期望结构让 PythonErrors 窗能显示
-      logging.error(`PsychoJS server stderr: ${text}`);
-    });
-    server.on("error", (err) => logging.error(`PsychoJS server error: ${err}`));
-    server.on("close", () => {
-      delete _psychojsServers[id];
-      _shellProcesses.delete(id);
-    });
-
-    _psychojsServers[id] = { process: server, address: `localhost:${port}` };
-    _shellProcesses.set(id, server);
-    logging.log(`PsychoJS server ${id} started at localhost:${port}`);
-    return { address: `localhost:${port}`, id };
+  function _psychojsReadLib(name) {
+    return fs.readFileSync(path.join(_psychojsLibDir, name), "utf8");
   }
 
-  function _stopPsychoJS(address) {
-    for (const [id, srv] of Object.entries(_psychojsServers)) {
-      if (srv.address === address || id === address) {
-        srv.process.kill();
-        _shellProcesses.delete(id);
-        delete _psychojsServers[id];
-        return true;
+  function _psychojsBridgeScript() {
+    return [
+      '(function(){',
+      '  var ns = window.PsychoJS;',
+      '  if (!ns || typeof ns !== "object") {',
+      '    document.body.innerHTML = "<pre style=\\"color:red;padding:20px\\">FATAL: PsychoJS IIFE not loaded</pre>";',
+      '    return;',
+      '  }',
+      '  var RealPsychoJS = ns.core && ns.core.PsychoJS;',
+      '  if (typeof RealPsychoJS !== "function") {',
+      '    document.body.innerHTML = "<pre style=\\"color:red;padding:20px\\">FATAL: PsychoJS constructor not found</pre>";',
+      '    return;',
+      '  }',
+      '  window.PsychoJS = RealPsychoJS;',
+      '  window.util = ns.util;',
+      '  window.visual = ns.visual;',
+      '  window.core = ns.core;',
+      '  window.data = ns.data;',
+      '  window.sound = ns.sound;',
+      '  window.hardware = ns.hardware;',
+      '  window.Scheduler = ns.util.Scheduler;',
+      '  window.TrialHandler = ns.data.TrialHandler;',
+      '  window.MultiStairHandler = ns.data.MultiStairHandler;',
+      '  for (var k in RealPsychoJS) {',
+      '    if (RealPsychoJS.hasOwnProperty(k)) window.PsychoJS[k] = RealPsychoJS[k];',
+      '  }',
+      '  if (RealPsychoJS.prototype) window.PsychoJS.prototype = RealPsychoJS.prototype;',
+      '})();',
+    ].join('\n');
+  }
+
+  function _psychojsGenerateHTML(expName) {
+    var n = (expName || "PsychoPy").replace(/[<>]/g, "");
+    return [
+      '<!DOCTYPE html><html><head><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">',
+      '<title>' + n + ' [PsychoPy]</title>',
+      '<link rel="stylesheet" href="jquery-ui-1.12.1.min.css">',
+      '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;overflow:hidden;width:100vw;height:100vh}canvas{display:block}#root{position:absolute;top:0;left:0;width:100%;height:100%}#__error{position:fixed;top:0;left:0;width:100%;max-height:50vh;overflow:auto;background:rgba(0,0,0,0.9);color:#f44;padding:10px;font-family:monospace;font-size:12px;z-index:99999;display:none;white-space:pre-wrap}</style>',
+      '</head><body><div id="root"></div><div id="__error"></div>',
+      '<script>window.addEventListener("error",function(e){var ov=document.getElementById("__error");if(ov){ov.style.display="block";ov.textContent+="ERROR: "+e.message+"\\n"+(e.error&&e.error.stack||"")+"\\n";}});</script>',
+      '<script src="jquery-3.6.0.min.js"></script>',
+      '<script src="jquery-ui-1.12.1.min.js"></script>',
+      '<script src="preloadjs-1.0.0.min.js"></script>',
+      '<script src="pixi-legacy-5.3.12.min.js"></script>',
+      '<script src="psychojs-2025.2.4.iife.js"></script>',
+      '<script>' + _psychojsBridgeScript() + '</script>',
+      '<script src="experiment.js"></script>',
+      '</body></html>',
+    ].join('\n');
+  }
+
+  async function _psychojsStartServer(jsCode, expName, conditionsJSON, resourcesJSON, expDir) {
+    var t;
+    try { t = app.getPath("temp"); } catch(e) { t = os.tmpdir(); }
+    var sn = (expName || "exp").replace(/[^a-zA-Z0-9_-]/g, "_");
+    var d = path.join(t, "psychojs_" + sn + "_" + Date.now());
+    fs.mkdirSync(d, { recursive: true });
+
+    // Copy library files
+    try {
+      fs.writeFileSync(path.join(d, "jquery-3.6.0.min.js"), _psychojsReadLib("jquery-3.6.0.min.js"), "utf8");
+      fs.writeFileSync(path.join(d, "jquery-ui-1.12.1.min.js"), _psychojsReadLib("jquery-ui-1.12.1.min.js"), "utf8");
+      fs.writeFileSync(path.join(d, "jquery-ui-1.12.1.min.css"), _psychojsReadLib("jquery-ui-1.12.1.min.css"), "utf8");
+      fs.writeFileSync(path.join(d, "pixi-legacy-5.3.12.min.js"), _psychojsReadLib("pixi-legacy-5.3.12.min.js"), "utf8");
+      fs.writeFileSync(path.join(d, "preloadjs-1.0.0.min.js"), _psychojsReadLib("preloadjs-1.0.0.min.js"), "utf8");
+      fs.writeFileSync(path.join(d, "psychojs-2025.2.4.iife.js"), _psychojsReadLib("psychojs-2025.2.4.iife.js"), "utf8");
+    } catch(e) {
+      logging.error("psychojs: failed to copy lib files:", e.message);
+    }
+
+    fs.writeFileSync(path.join(d, "experiment.js"), jsCode || "", "utf8");
+    fs.writeFileSync(path.join(d, "index.html"), _psychojsGenerateHTML(expName || "experiment"), "utf8");
+    if (conditionsJSON) {
+      try { fs.writeFileSync(path.join(d, "conditions.json"), conditionsJSON, "utf8"); } catch(e){}
+    }
+
+    // Start HTTP server on first available port
+    var mime = { '.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.json':'application/json' };
+    var svr;
+    var port = 9200;
+    while (port < 9300) {
+      try {
+        svr = await new Promise(function(resolve, reject) {
+          var s = http.createServer(function(req, res) {
+            var reqPath = (req.url || "/").split('?')[0];
+            // Map root "/" to index.html
+            if (reqPath === "/") reqPath = "/index.html";
+            var f = path.join(d, reqPath);
+            // Security: ensure path stays inside d
+            if (f.indexOf(d) !== 0) {
+              res.writeHead(403);
+              res.end();
+              return;
+            }
+            if (fs.existsSync(f) && fs.statSync(f).isFile()) {
+              var ext = path.extname(f);
+              res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' });
+              res.end(fs.readFileSync(f));
+            } else {
+              res.writeHead(404);
+              res.end();
+            }
+          });
+          s.once("error", function(e) {
+            s.close();
+            reject(e);
+          });
+          s.listen(port, "127.0.0.1", function() { resolve(s); });
+        });
+        break;
+      } catch (e) {
+        port++;
       }
     }
-    return false;
+    if (!svr) throw new Error("No available port for PsychoJS server");
+    var url = "http://127.0.0.1:" + port + "/";
+    _psychojsServers[url] = { server: svr, dir: d };
+    logging.log("PsychoJS server started at " + url);
+    return url;
   }
 
   // ── PsychoJS IPC handlers ────────────────────────────────────
-  ipcMain.handle("python.psychojs.run", async (evt, cwd) => _startPsychoJS(cwd));
+  ipcMain.handle("python.psychojs.run", async (evt, cwd) => {
+    logging.error("python.psychojs.run is deprecated — use browserRun");
+    return { error: "deprecated" };
+  });
 
-  ipcMain.handle("python.psychojs.stop", (evt, address) => _stopPsychoJS(address));
+  ipcMain.handle("python.psychojs.stop", (evt, address) => {
+    var s = _psychojsServers[address || ""];
+    if (s) { try { s.server.close(); } catch(_){} try { fs.rmSync(s.dir,{recursive:true,force:true}); } catch(_){} delete _psychojsServers[address]; return true; }
+    return false;
+  });
 
   ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
     try {
-      const runDir = path.join(os.tmpdir(), "psychojs_run", expName || "experiment");
-      fs.mkdirSync(runDir, { recursive: true });
-      fs.writeFileSync(path.join(runDir, "index.html"), jsCode || "", "utf8");
-      if (conditionsJSON) fs.writeFileSync(path.join(runDir, "conditions.json"), conditionsJSON, "utf8");
-      if (resourcesJSON) fs.writeFileSync(path.join(runDir, "resources.json"), resourcesJSON, "utf8");
-      // Copy resource files from expDir to runDir if provided
-      if (expDir) {
-        try {
-          const resList = resourcesJSON ? JSON.parse(resourcesJSON) : [];
-          for (const res of resList) {
-            const srcPath = res.abs || (path.isAbsolute(res.rel) ? res.rel : path.join(expDir, res.rel));
-            if (fs.existsSync(srcPath)) {
-              const destPath = path.join(runDir, path.basename(srcPath));
-              fs.copyFileSync(srcPath, destPath);
-              logging.log(`[browserRun] Copied resource: ${srcPath} -> ${destPath}`);
-            }
-          }
-        } catch (e) { logging.warn(`[browserRun] Resource copy failed: ${e && e.message}`); }
+      var url = await _psychojsStartServer(jsCode, expName, conditionsJSON, resourcesJSON, expDir);
+      // Open in system browser — try multiple approaches
+      var opened = false;
+
+      // 1) Try Electron shell.openExternal
+      try {
+        const { shell: esh } = require_("electron");
+        esh.openExternal(url);
+        opened = true;
+        logging.log("browserRun: opened via shell.openExternal");
+      } catch (e) {
+        logging.log("browserRun: shell.openExternal failed: " + (e && e.message));
       }
-      const serverInfo = await _startPsychoJS(runDir);
-      // Open a new BrowserWindow to load the PsychoJS runner
-      if (serverInfo && serverInfo.address) {
-        const runnerUrl = `http://${serverInfo.address}/index.html`;
-        logging.log(`[browserRun] Opening runner window: ${runnerUrl}`);
+
+      // 2) Try NAPI bindings (may not be ready yet)
+      if (!opened) {
         try {
-          const { BrowserWindow: BW } = require('electron');
-          const runnerWin = new BW({
-            width: 1024,
-            height: 768,
-            title: `PsychoJS Runner - ${expName || 'experiment'}`,
-            webPreferences: {
-              contextIsolation: false,
-              nodeIntegration: false,
-            }
-          });
-          runnerWin.loadURL(runnerUrl);
-          runnerWin.on('closed', () => {
-            _stopPsychoJS(serverInfo.address);
-          });
+          if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
+            globalThis.ExternalProtocolAdapter.OpenExternal(url);
+            opened = true;
+            logging.log("browserRun: opened via ExternalProtocolAdapter");
+          } else if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
+            globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
+            opened = true;
+            logging.log("browserRun: opened via FileManagerAdapter");
+          }
         } catch (e) {
-          logging.error(`[browserRun] Failed to open runner window: ${e && e.message}`);
-          // Fallback: try openExternal
-          try { openExternalHarmony(runnerUrl); } catch(_) {}
+          logging.log("browserRun: NAPI failed: " + (e && e.message));
         }
       }
-      return serverInfo;
+
+      // 3) Fallback: aa start system command
+      if (!opened) {
+        try {
+          proc.execSync('aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "' + url + '"', { timeout: 5000 });
+          opened = true;
+          logging.log("browserRun: opened via aa start");
+        } catch (e) {
+          logging.log("browserRun: aa start failed: " + (e && e.message));
+        }
+      }
+
+      if (!opened) {
+        logging.error("browserRun: ALL open methods failed");
+      }
+      return { url: url };
     } catch (err) {
-      logging.error(`browserRun failed: ${err}`);
+      logging.error('browserRun failed: ' + (err && (err.stack || err.message || String(err))));
       return { error: String(err) };
     }
   });
@@ -1107,7 +1187,11 @@ export function registerHarmonyPythonHandlers() {
     }
   });
 
-  ipcMain.handle("python.psychojs.browserStop", (evt, address) => _stopPsychoJS(address));
+  ipcMain.handle("python.psychojs.browserStop", (evt, address) => {
+    var s = _psychojsServers[address || ""];
+    if (s) { try { s.server.close(); } catch(_){} try { fs.rmSync(s.dir,{recursive:true,force:true}); } catch(_){} delete _psychojsServers[address]; return true; }
+    return false;
+  });
 
   ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
     try {

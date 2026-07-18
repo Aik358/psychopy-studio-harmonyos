@@ -82,6 +82,15 @@ export class FileManagerAdapter extends BaseAdapter {
 
   @LogMethod
   openUrlInDefaultBrowser(url: string) {
+    let context = this.ctxAdapter.getActiveContext() as common.UIAbilityContext;
+    if (context && typeof context.openLink === 'function') {
+      try {
+        context.openLink(url, { appLinkingOnly: false });
+        return;
+      } catch (e) {
+        LogUtil.error(TAG, `openLink failed: ${JSON.stringify(e)}`);
+      }
+    }
     let want: Want = {
       action: 'ohos.want.action.viewData',
       entities: ['entity.system.browsable'],

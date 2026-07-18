@@ -488,7 +488,10 @@ export class Experiment {
         )
         // save to python/js file
         if (typeof script === "string") {
-            await electron.files.save(targetFile, script)
+            let savedPath = await electron.files.save(targetFile, script)
+            if (typeof savedPath === "string") {
+                targetFile = savedPath
+            }
         } else {
             console.error(script)
         }

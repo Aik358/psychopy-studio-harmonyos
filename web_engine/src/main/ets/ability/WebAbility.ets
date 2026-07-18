@@ -277,7 +277,7 @@ export class WebAbility extends WebBaseAbility {
     return true;
   }
 
-  private openNewWindow(open_url: string) {
+  protected openNewWindow(open_url: string) {
     this.nativeContext.ExecuteCommand(CommandType.kNewWindow, { url: open_url });
   }
 
