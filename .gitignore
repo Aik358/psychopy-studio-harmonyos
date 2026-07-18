@@ -56,3 +56,6 @@ __pycache__/
 # Backup dist directories
 dist.bak/
 
+
+fix_opexternal.ps1
+
