@@ -7993,13 +7993,6 @@ var status = {
 };
 //#endregion
 //#region src/lib/utils/versions.js
-function ppy2py(version) {
-	version = Version.parse(version);
-	let updates = [["2022.1.0", "3.8"], ["2024.2.0", "3.10"]];
-	let output = "3.8";
-	for (let [ppy, py] of updates) if (version.newerThan(ppy)) output = py;
-	return output;
-}
 var Version = class Version {
 	static pattern = /(?<major>\d+)\.(?<minor>\d+)(?:\.(?<patch>(?:\d+|\*))(?<extra>[\d\w]+)?)?/;
 	constructor(version) {
@@ -8102,78 +8095,76 @@ var Version = class Version {
 };
 //#endregion
 //#region src/lib/python/functions.svelte.js
+var _setupCompleted = false;
+var _setupRunning = false;
 function handleError(err) {
 	if ("error" in err) err = err.error;
 	console.error(err);
 	status.ready.reject(err);
 }
 async function installPython(version = void 0, forceReinstall = false) {
-	if (!version || version === "app") version = await electron.version();
-	let prerelease;
-	if (version === "dev") prerelease = true;
-	else if (Version.parse(version).extra) {
-		prerelease = true;
-		version = Version.parse(version).format("patch");
-	} else prerelease = false;
-	try {
-		version = Version.parse(version).format("patch");
-	} catch {}
-	let pyVersion;
-	if (version === "dev") pyVersion = "3.10";
-	else {
-		version = Version.parse(version);
-		if (version.olderThan("2022.1.0")) {
-			console.warn(`Version ${version.format()} of PsychoPy is not supported in PsychoPy Studio as it cannot run in Python >=3.8. Using the oldest compatible version (2022.1).`);
-			version = new Version("2022.1.*");
-		}
-		pyVersion = ppy2py(version);
-		version = version.format();
-	}
-	if (!forceReinstall) {
-		if (await python.uv.findPython(version).catch(handleError)) return;
-	}
-	status.message = "Installing Python and PsychoPy library...";
-	status.dlg.message = `### Installing Python (${pyVersion}) and PsychoPy library (${version ? version : "latest version"})...\nThis may take some time and, unfortunately, cannot be done in the background. Once it's finished installing, you won't have to see this message again.`;
+	status.message = "Installing packages (this may take a few minutes)...";
+	status.dlg.message = "### Welcome to PsychoPy for HarmonyOS\n\nThis is a one-time setup. We're installing the required Python packages:\n\n- **PsychoPy** — experiment engine\n- **NumPy / SciPy** — scientific computing\n- **Matplotlib / Pillow** — graphics\n- **Pandas / OpenPyXL** — data & spreadsheets\n- **SoundFile** — audio support\n\nPlease wait while packages download and install. Progress details are shown below.";
 	status.dlg.shown = true;
 	status.dlg.busy = true;
-	await python.uv.makeExecutable(version, pyVersion).catch(handleError);
-	await python.venv.setup(version, prerelease);
+	const ok = await python.venv.installAllDeps().catch(() => false);
 	status.dlg.busy = false;
+	if (ok) status.dlg.message = "### Setup Complete ✓\n\nAll packages installed. You can close this window and start using PsychoPy.";
 }
 async function setupPython(version = void 0, forceReinstall = false) {
+	if (_setupCompleted && !forceReinstall) {
+		status.ready.resolve(true);
+		return;
+	}
+	if (_setupRunning) return;
+	_setupRunning = true;
 	if (!python) {
 		status.ready.resolve();
+		_setupCompleted = true;
+		_setupRunning = false;
 		return;
 	}
 	status.ready = Promise.withResolvers();
 	status.dismiss = Promise.withResolvers();
 	status.ready.promise.finally((val) => setTimeout((evt) => status.dismiss.resolve(val), 2e3));
 	if (!version || version === "app") version = await electron.version();
-	status.message = "Checking Python...";
-	if (!await python.uv.exists().catch(handleError) || forceReinstall) {
-		status.message = "Downloading UV (a Python installer)...";
-		status.dlg.message = "### Downloading UV (a Python installer)...\nThis is a program we use to install Python. Once it's finished installing, you won't have to see this message again.";
-		status.dlg.shown = true;
-		status.dlg.busy = true;
-		await python.uv.install().catch(handleError);
-		status.dlg.busy = false;
+	status.message = "Looking for Python 3...";
+	if (!await python.uv.findPython(version).catch(() => false)) {
+		status.message = "Python 3 not found";
+		handleError(/* @__PURE__ */ new Error("Python 3.12+ is required. Install via HNP (HarmonyOS Native Package) or harmonybrew."));
+		_setupRunning = false;
+		return;
 	}
-	if (!await python.uv.findPython(version).catch(handleError) || forceReinstall) await installPython(version, forceReinstall);
-	status.message = "Connecting Python";
+	status.message = "Checking PsychoPy installation...";
+	let setupResult = await python.venv.setup().catch(() => ({ success: false }));
+	if (!setupResult || !setupResult.success) {
+		if (setupResult && setupResult.missingPsychopy) {
+			status.message = "PsychoPy library not installed";
+			status.dlg.shown = true;
+			await installPython(version, true);
+		} else if (setupResult && setupResult.missingPython) {
+			handleError(/* @__PURE__ */ new Error("Python not found on this system."));
+			_setupRunning = false;
+			return;
+		}
+	}
+	status.message = "Connecting to Python...";
 	if (await python.liaison.started(version)) {
-		status.message = "Connected Python";
+		status.message = "Python connected";
 		status.ready.resolve(true);
 		python.ready = true;
 	} else {
-		status.message = "Starting Python...";
+		status.message = "Starting Python backend...";
 		await python.liaison.start(version).catch(handleError);
-		status.message = "Successfully started Python";
+		status.message = "Python backend started";
 		status.ready.resolve(true);
 	}
 	python.liaison.ready(version).then((ready) => {
 		if (ready) python.ready = true;
 		else console.warn("[setupPython] liaison not ready, python.ready stays false");
 	});
+	_setupCompleted = true;
+	_setupRunning = false;
 	return python;
 }
 //#endregion

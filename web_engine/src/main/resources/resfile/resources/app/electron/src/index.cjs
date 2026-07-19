@@ -10,7 +10,14 @@ if (!Promise.withResolvers) {
 const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
-const { app, dialog, BrowserWindow, ipcMain, shell, clipboard } = require('electron');
+const { app, dialog, BrowserWindow, ipcMain, shell, clipboard, systemPreferences } = require('electron');
+// Request Desktop/Documents/Downloads directory access (HarmonyOS sandbox)
+try {
+  systemPreferences.requestDirectoryPermission();
+  _flog('[init] requestDirectoryPermission called (Desktop/Documents/Downloads)');
+} catch(e) {
+  _flog('[init] requestDirectoryPermission failed:', e && e.message);
+}
 
 // ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
 function openExternalHarmony(url) {
@@ -18,11 +25,14 @@ function openExternalHarmony(url) {
 
   // 1) Try Electron's built-in shell.openExternal
   try {
-    const result = shell.openExternal(url);
-    _flog('[openExternal] shell.openExternal succeeded:', result);
-    return result;
+    var result = shell.openExternal(url);
+    if (result) {
+      _flog('[openExternal] shell.openExternal succeeded');
+      return true;
+    }
+    _flog('[openExternal] shell.openExternal returned falsy, falling through');
   } catch (e) {
-    _flog('[openExternal] shell.openExternal failed:', e && e.message);
+    _flog('[openExternal] shell.openExternal threw:', e && e.message);
   }
 
   // 2) Try NAPI binding (registered by ExternalProtocolAdapterBind.ets)
@@ -136,12 +146,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     ipcMain.handle("python.uv.findPython", () => "python3");
     ipcMain.handle("python.uv.getEnvironments", () => []);
     // Venv
-    ipcMain.handle("python.venv.setup", () => true);  // pretend setup succeeded
+    ipcMain.handle("python.venv.setup", () => ({ success: true }));
     ipcMain.handle("python.venv.executable", () => "python3");
     ipcMain.handle("python.venv.installPackage", () => true);
     ipcMain.handle("python.venv.uninstallPackage", () => true);
-    ipcMain.handle("python.venv.getPackages", () => []);
+    ipcMain.handle("python.venv.getPackages", () => ({}));
     ipcMain.handle("python.venv.getPackageDetails", () => ({}));
+    ipcMain.handle("python.venv.installAllDeps", () => false);
     // Shell
     ipcMain.handle("python.shell.list", () => []);
     ipcMain.handle("python.shell.open", () => null);

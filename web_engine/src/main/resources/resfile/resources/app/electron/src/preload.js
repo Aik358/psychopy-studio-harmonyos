@@ -74,7 +74,8 @@ const python = {
     installPackage: (venv, name) => ipcRenderer.invoke("python.venv.installPackage", venv, name).then(resp => resp),
     uninstallPackage: (venv, name) => ipcRenderer.invoke("python.venv.uninstallPackage", venv, name).then(resp => resp),
     getPackages: (venv) => ipcRenderer.invoke("python.venv.getPackages", venv).then(resp => resp),
-    getPackageDetails: (venv, name) => ipcRenderer.invoke("python.venv.getPackageDetails", venv, name).then(resp => resp)
+    getPackageDetails: (venv, name) => ipcRenderer.invoke("python.venv.getPackageDetails", venv, name).then(resp => resp),
+    installAllDeps: () => ipcRenderer.invoke("python.venv.installAllDeps").then(resp => resp)
   },
   uv: {
     folder: () => ipcRenderer.invoke("python.uv.folder").then(resp => resp),

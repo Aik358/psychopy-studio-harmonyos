@@ -6869,41 +6869,60 @@ var profiles = {
 	preferences: preferences_default
 };
 var pending = {
-	components: Promise.resolve(),
-	loops: Promise.resolve(),
-	devices: Promise.resolve(),
-	preferences: Promise.resolve()
+	components: Promise.withResolvers().promise,
+	loops: Promise.withResolvers().promise,
+	devices: Promise.withResolvers().promise,
+	preferences: Promise.withResolvers().promise
 };
-function mergeProfiles(fallback, pyData) {
-	for (const [key, obj] of Object.entries(pyData)) {
-		const fb = fallback[key] || {};
-		const merged = {
-			...fb,
-			...obj
-		};
-		if (fb.iconSVG) merged.iconSVG = fb.iconSVG;
-		if (fb.iconFile) merged.iconFile = fb.iconFile;
-		if (fb.params) merged.params = fb.params;
-		fallback[key] = merged;
-	}
-}
-if (python) python.liaison.ready("app").then((ready) => {
-	if (!ready) {
-		console.warn("[profiles] liaison not ready, keeping fallback profiles");
-		return;
-	}
+if (python) python.liaison.ready("app").then(() => {
 	pending.components = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getElementProfiles"]
-	}).then((data) => mergeProfiles(profiles.components, data));
+	}).then((data) => {
+		for (const [key, obj] of Object.entries(data)) {
+			const fb = profiles.components[key] || {};
+			const merged = {
+				...fb,
+				...obj
+			};
+			if (fb.iconSVG) merged.iconSVG = fb.iconSVG;
+			if (fb.iconFile) merged.iconFile = fb.iconFile;
+			if (fb.params) merged.params = fb.params;
+			profiles.components[key] = merged;
+		}
+	});
 	pending.loops = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getLoopProfiles"]
-	}).then((data) => mergeProfiles(profiles.loops, data));
+	}).then((data) => {
+		for (const [key, obj] of Object.entries(data)) {
+			const fb = profiles.loops[key] || {};
+			const merged = {
+				...fb,
+				...obj
+			};
+			if (fb.iconSVG) merged.iconSVG = fb.iconSVG;
+			if (fb.iconFile) merged.iconFile = fb.iconFile;
+			if (fb.params) merged.params = fb.params;
+			profiles.loops[key] = merged;
+		}
+	});
 	pending.devices = python.liaison.send("app", {
 		command: "run",
 		args: ["psychopy.experiment:getDeviceProfiles"]
-	}).then((resp) => mergeProfiles(profiles.devices, resp));
+	}).then((resp) => {
+		for (const [key, obj] of Object.entries(resp)) {
+			const fb = profiles.devices[key] || {};
+			const merged = {
+				...fb,
+				...obj
+			};
+			if (fb.iconSVG) merged.iconSVG = fb.iconSVG;
+			if (fb.iconFile) merged.iconFile = fb.iconFile;
+			if (fb.params) merged.params = fb.params;
+			profiles.devices[key] = merged;
+		}
+	});
 });
 //#endregion
 //#region src/lib/utils/transpiler.js
@@ -7989,7 +8008,9 @@ var status = {
 		message: "",
 		shown: false,
 		busy: false
-	}
+	},
+	phase: "starting",
+	error: ""
 };
 //#endregion
 //#region src/lib/utils/versions.js
@@ -8163,16 +8184,14 @@ async function setupPython(version = void 0, forceReinstall = false) {
 	if (await python.liaison.started(version)) {
 		status.message = "Connected Python";
 		status.ready.resolve(true);
-		python.ready = true;
 	} else {
 		status.message = "Starting Python...";
 		await python.liaison.start(version).catch(handleError);
 		status.message = "Successfully started Python";
 		status.ready.resolve(true);
 	}
-	python.liaison.ready(version).then((ready) => {
-		if (ready) python.ready = true;
-		else console.warn("[setupPython] liaison not ready, python.ready stays false");
+	python.liaison.ready(version).then((evt) => {
+		python.ready = true;
 	});
 	return python;
 }
@@ -8505,6 +8524,9 @@ function exportExperimentToJS(experiment, options) {
 	lines.push("");
 	lines.push("var globalClock;");
 	lines.push("var routineTimer;");
+	routineList.forEach(function(r) {
+		lines.push("var " + r.name + "Clock;");
+	});
 	lines.push("async function experimentInit() {");
 	lines.push("  // Create some handy timers");
 	lines.push("  globalClock = new util.Clock();  // to track the time since experiment started");

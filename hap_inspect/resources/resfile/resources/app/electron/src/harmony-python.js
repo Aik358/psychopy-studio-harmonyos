@@ -218,13 +218,32 @@ function getPythonEnv() {
   });
   const pythonpath = [...extraPaths, ...existingPath.split(':').filter(Boolean)].join(':');
   // HarmonyBrew Cellar 的 C 库（libsndfile 等）加进 LD_LIBRARY_PATH
-  // 鸿蒙系统 Python 缺 libsndfile.so → soundfile import 失败 → getAllComponents 报错
-  // HarmonyBrew 装了 libsndfile 1.2.2_1，但 linker 默认不搜 Cellar 路径
-  // 必须在父进程 spawn Python 时就设好，子进程内 os.environ 设太晚 linker 已搜完
+  // 动态扫描 Cellar 目录，不硬编码版本号
+  const realHome = os.homedir();
   const hbLibPaths = [
-    path.join(os.homedir(), ".harmonybrew", "Cellar", "libsndfile", "1.2.2_1", "lib"),
-    path.join(os.homedir(), ".harmonybrew", "lib"),
-  ].filter(p => { try { return fs.existsSync(p); } catch (_) { return false; } });
+    path.join(realHome, ".harmonybrew", "lib"),
+  ];
+  // Scan libsndfile Cellar for available versions
+  try {
+    const cellarDir = path.join(realHome, ".harmonybrew", "Cellar", "libsndfile");
+    if (fs.existsSync(cellarDir)) {
+      const vers = fs.readdirSync(cellarDir).sort().reverse();
+      for (const v of vers) {
+        const libPath = path.join(cellarDir, v, "lib");
+        if (fs.existsSync(libPath)) {
+          hbLibPaths.unshift(libPath);
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+  // Also try common non-Cellar harmonybrew lib path
+  try {
+    const altLib = path.join(realHome, ".harmonybrew", "lib");
+    if (fs.existsSync(altLib) && !hbLibPaths.includes(altLib)) {
+      hbLibPaths.push(altLib);
+    }
+  } catch (_) {}
   const existingLdPath = process.env.LD_LIBRARY_PATH || "";
   const ldLibraryPath = [...hbLibPaths, ...existingLdPath.split(':').filter(Boolean)].join(':');
   return {
@@ -234,6 +253,9 @@ function getPythonEnv() {
     PYTHONUNBUFFERED: "1",
     PYTHONPATH: pythonpath,
     LD_LIBRARY_PATH: ldLibraryPath,
+    // Redirect HOME to sandbox so .psychopy3/themes/etc. are writable.
+    // Desktop/Documents/Downloads access is handled by requestDirectoryPermission() in index.cjs.
+    HOME: "/data/storage/el2/base/cache/home",
     // Prevent OpenBLAS from spawning threads that trigger SECCOMP violations
     OPENBLAS_NUM_THREADS: "1",
     OMP_NUM_THREADS: "1",
@@ -264,6 +286,7 @@ function findPython() {
     return _pythonPath;
   }
 
+  // Try known paths first, then dynamically scan HNP directory
   for (const p of HARMONY_PYTHON_PATHS) {
     try {
       if (fs.existsSync(p)) {
@@ -274,6 +297,25 @@ function findPython() {
       }
     } catch (_) {}
   }
+
+  // Dynamic scan: find all python.org versions under HNP
+  try {
+    const hnpBase = "/data/service/hnp/python.org";
+    if (fs.existsSync(hnpBase)) {
+      const dirs = fs.readdirSync(hnpBase);
+      for (const d of dirs.sort().reverse()) {  // newest first
+        const pyBin = path.join(hnpBase, d, "bin", "python3");
+        if (fs.existsSync(pyBin)) {
+          try {
+            const ver = proc.execSync(`"${pyBin}" --version`, { timeout: 5000, encoding: "utf8" }).trim();
+            logging.log(`Found Python (dyn): ${pyBin} (${ver})`);
+            _pythonPath = pyBin;
+            return pyBin;
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
 
   try {
     const w = proc.execSync("which python3", { timeout: 3000, encoding: "utf8" }).trim();
@@ -464,6 +506,42 @@ async function startLiaison() {
     } catch (_) {}
   });
 
+  // Initialize liaison with prefs, alerts, and plugins
+  // (matches official liaison.js start() lines 98-160)
+  try {
+    logging.log("[startLiaison] Initializing liaison services...");
+
+    // setup alerts
+    var hasAlerts = await sendLiaison({command: "exists", args: ["psychopy.alerts.liaison:LiaisonAlertHandler"]}, 10000).catch(() => false);
+    if (hasAlerts) {
+      await sendLiaison({command: "init", args: ["alerts", "psychopy.alerts.liaison:LiaisonAlertHandler"], kwargs: {liaison: "$liaison"}}, 30000).catch(() => {});
+      await sendLiaison({command: "run", args: ["psychopy.alerts:addAlertHandler", "$alerts"]}, 30000).catch(() => {});
+    }
+
+    // setup prefs
+    await sendLiaison({command: "register", args: ["prefs", "psychopy.preferences:prefs"]}, 10000).catch(
+      err => logging.error(`[startLiaison] Failed to register prefs: ${err?.message || err}`)
+    );
+    // set devices file path
+    var devicesPath = path.join(app.getPath("appData"), "psychopy4", "devices.json");
+    await sendLiaison({command: "try", args: ["prefs.setDevicesFile", devicesPath]}, 10000).catch(() => {});
+    // load preferences
+    var prefsPath = path.join(app.getPath("appData"), "psychopy4", "preferences.json");
+    if (fs.existsSync(prefsPath)) {
+      await sendLiaison({command: "try", args: ["prefs.fromJSON", prefsPath]}, 10000).catch(() => {});
+    }
+
+    // activate plugins
+    var hasPlugins = await sendLiaison({command: "exists", args: ["psychopy.plugins:activatePlugins"]}, 10000).catch(() => false);
+    if (hasPlugins) {
+      await sendLiaison({command: "run", args: ["psychopy.plugins:activatePlugins"]}, undefined).catch(() => {});
+    }
+
+    logging.log("[startLiaison] Liaison services initialized");
+  } catch (err) {
+    logging.error(`[startLiaison] Service init error (non-fatal): ${err?.message || err}`);
+  }
+
   _liaisonReady = true;
   logging.log(`[startLiaison] SUCCESS — _liaisonReady=true, address=${_liaisonAddress}`);
   return _liaisonAddress;
@@ -477,7 +555,7 @@ async function sendLiaison(command, timeout = 30000) {
   const msgid = crypto.randomUUID();
   const msg = { command, id: msgid };
 
-  return new Promise((resolve, reject) => {
+  const rawResult = await new Promise((resolve, reject) => {
     _pendingMessages.set(msgid, { resolve, reject });
     _liaisonSocket.send(JSON.stringify(msg));
 
@@ -490,6 +568,345 @@ async function sendLiaison(command, timeout = 30000) {
       }, timeout);
     }
   });
+  // Post-process generated JS to fix Python syntax leaking into output
+  if (typeof rawResult === "string" && rawResult.length > 100) {
+    return _fixGeneratedJS(rawResult);
+  }
+  return rawResult;
+}
+
+/**
+ * Fix Python syntax that leaks into the generated JavaScript.
+ * The PsychoPy JS transpiler (py2js_transpiler.py) doesn't handle all
+ * Python → JS conversions, leaving invalid JS in the output.
+ */
+function _fixGeneratedJS(jsCode) {
+  var fixed = _fixPythonPercentFormatting(jsCode)
+    // f'{randint(a, b):0Wd}' → String(util.randint(a,b)).padStart(W,'0')
+    .replace(/f'\{randint\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*:\s*(\d+)d\s*\}'/g,
+      function(match, minimum, maximum, width) {
+        return "String(util.randint(" + minimum + "," + maximum + ")).padStart(" + Number(width) + ",'0')";
+      })
+    .replace(/f'\{randint\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*:\s*(\d+)\.(\d+)f\s*\}'/g,
+      function(match, minimum, maximum, width) {
+        return "String(parseInt(util.randint(" + minimum + "," + maximum + "))).padStart(" + Number(width) + ",'0')";
+      })
+    // Python None → JS undefined
+    .replace(/\bNone\b/g, 'undefined')
+    // Python False/True → JS false/true
+    .replace(/\bFalse\b/g, 'false')
+    .replace(/\bTrue\b/g, 'true');
+
+  // ESM module: PsychoPy's JS templates (JS_setupExp.tmpl, loops.py,
+  // _base.py, _experiment.py, every Routine's init code) emit assignments
+  // to a *large* set of variables WITHOUT ever declaring them. In a
+  // classic <script> these become implicit globals on window; under
+  // <script type="module"> strict mode they throw ReferenceError. Rather
+  // than hand-maintaining a fixed list (which fails the first time a
+  // routine-specific Clock, Component array, or keyboard _allKeys is
+  // added), scan the whole script for bare-name assignments and inject a
+  // single module-scope `var` declaration block listing every one.
+  //
+  // Safety: declaring a module-scope `var` for a variable that some
+  // function also declares locally is harmless — the inner `var` shadows
+  // the outer one. We only need to avoid re-declaring variables that the
+  // transpiler already declared at module scope (let expName, const
+  // {Scheduler}, etc.).
+  var implicitGlobals = _scanImplicitGlobals(fixed);
+  // Ensure critical variables are always declared even if scanner missed them.
+  // currentLoop and frameDur are assigned inside updateInfo(); various Clocks
+  // and Component arrays are assigned inside experimentInit() and each Routine.
+  // The scanner catches most but may miss some due to code structure changes.
+  var CRITICAL_GLOBALS = ['currentLoop', 'frameDur', 'globalClock', 'routineTimer',
+    't', 'frameN', 'continueRoutine', 'routineForceEnded'];
+  for (var i = 0; i < CRITICAL_GLOBALS.length; i++) {
+    if (implicitGlobals.indexOf(CRITICAL_GLOBALS[i]) < 0) {
+      implicitGlobals.push(CRITICAL_GLOBALS[i]);
+    }
+  }
+  implicitGlobals.sort();
+  if (implicitGlobals.length > 0) {
+    fixed = fixed.replace(
+      /(const\s+\{[^}]*Scheduler[^}]*\}\s*=\s*util\s*;)/,
+      '$1\n' +
+      'var ' + implicitGlobals.join(', ') + ';' +
+      '  // bridged for ESM strict mode (PsychoPy templates rely on implicit globals)'
+    );
+  }
+  return fixed;
+}
+
+// Scan a JS source string for identifiers that are assigned without a
+// preceding `var`/`let`/`const`/`function`/`class`/`import`/`export`
+// keyword, and are not already declared at module scope. Returns a
+// de-duplicated, sorted array of identifier names.
+//
+// We deliberately over-match rather than under-match: the cost of a
+// spurious module-scope `var` is nil (shadowed by any inner `var`), while
+// the cost of missing one is a runtime ReferenceError that aborts the
+// experiment.
+function _scanImplicitGlobals(jsCode) {
+  // Identifiers already declared at module scope by the transpiler or
+  // imported via ESM `import`/`const { X } = Y`. We collect these by
+  // scanning the source for declaration statements, then exclude them
+  // from the implicit-globals result.
+  var declared = {};
+  // ESM imports: `import { a, b as c } from '...'` / `import defaultName from '...'`
+  var importRe = /\bimport\s+(?:([A-Za-z_$][\w$]*)|(?:\{([^}]*)\}))\s*(?:,|from)\s/g;
+  var im;
+  while ((im = importRe.exec(jsCode)) !== null) {
+    if (im[1]) declared[im[1]] = true;
+    if (im[2]) {
+      im[2].split(',').forEach(function(part) {
+        var name = part.replace(/^[^:]*:\s*/, '').trim();
+        // `a as b` → declared name is `b`
+        var m = part.match(/\bas\s+([A-Za-z_$][\w$]*)/);
+        if (m) declared[m[1]] = true;
+        else if (name) declared[name] = true;
+      });
+    }
+  }
+  // All `var`/`let`/`const`/`function`/`class` declarations (any scope —
+  // inner-scope var would shadow outer, so we treat any declared name as
+  // "do not re-declare at module top" to keep the injected block short).
+  var declRe = /\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\b/g;
+  var dm;
+  while ((dm = declRe.exec(jsCode)) !== null) declared[dm[1]] = true;
+  var fnRe = /\bfunction\s+([A-Za-z_$][\w$]*)\b/g;
+  var fm;
+  while ((fm = fnRe.exec(jsCode)) !== null) declared[fm[1]] = true;
+  var classRe = /\bclass\s+([A-Za-z_$][\w$]*)\b/g;
+  var cm;
+  while ((cm = classRe.exec(jsCode)) !== null) declared[cm[1]] = true;
+  // Function parameter lists — also "declared" inside their scope.
+  var paramRe = /\bfunction\s*[A-Za-z_$]*\s*\(([^)]*)\)/g;
+  var pm;
+  while ((pm = paramRe.exec(jsCode)) !== null) {
+    pm[1].split(',').forEach(function(p) {
+      var name = p.replace(/=[\s\S]*$/, '').replace(/\/\/.*$/, '').trim();
+      // Strip type annotations / patterns; keep simple identifiers.
+      var idMatch = name.match(/^([A-Za-z_$][\w$]*)/);
+      if (idMatch) declared[idMatch[1]] = true;
+    });
+  }
+  // Arrow-function params: `(a, b) => ...` or `x => ...`
+  var arrowParamRe = /\(([^)]*)\)\s*=>/g;
+  var apm;
+  while ((apm = arrowParamRe.exec(jsCode)) !== null) {
+    apm[1].split(',').forEach(function(p) {
+      var idMatch = p.replace(/=[\s\S]*$/, '').trim().match(/^([A-Za-z_$][\w$]*)/);
+      if (idMatch) declared[idMatch[1]] = true;
+    });
+  }
+  var singleArrowRe = /\b([A-Za-z_$][\w$]*)\s*=>/g;
+  var sam;
+  while ((sam = singleArrowRe.exec(jsCode)) !== null) declared[sam[1]] = true;
+  // `for (const X of ...)` / `for (let X = ...; ...)` loop vars.
+  var forRe = /\bfor\s*\(\s*(?:var|let|const)\s+([A-Za-z_$][\w$]*)\b/g;
+  var fom;
+  while ((fom = forRe.exec(jsCode)) !== null) declared[fom[1]] = true;
+
+  // Reserved words we never want to declare.
+  var KEYWORDS = {
+    'true': true, 'false': true, 'null': true, 'undefined': true,
+    'this': true, 'arguments': true, 'window': true, 'document': true,
+    'console': true, 'Math': true, 'Array': true, 'Object': true,
+    'JSON': true, 'Number': true, 'String': true, 'Boolean': true,
+    'Promise': true, 'Date': true, 'Error': true, 'TypeError': true,
+    'RangeError': true, 'ReferenceError': true, 'SyntaxError': true,
+    'NaN': true, 'Infinity': true, 'globalThis': true, 'self': true,
+    'Symbol': true, 'BigInt': true, 'RegExp': true, 'FormData': true,
+    'fetch': true, 'navigator': true, 'location': true,
+    'return': true, 'if': true, 'else': true, 'for': true, 'while': true,
+    'do': true, 'switch': true, 'case': true, 'break': true, 'continue': true,
+    'throw': true, 'try': true, 'catch': true, 'finally': true,
+    'typeof': true, 'instanceof': true, 'in': true, 'of': true, 'new': true,
+    'delete': true, 'void': true, 'yield': true, 'async': true, 'await': true,
+    'debugger': true, 'with': true, 'default': true, 'var': true, 'let': true,
+    'const': true, 'function': true, 'class': true, 'import': true, 'export': true,
+    'extends': true, 'super': true, 'static': true, 'get': true, 'set': true,
+    'enum': true, 'public': true, 'private': true, 'protected': true, 'readonly': true,
+    'namespace': true, 'module': true, 'declare': true, 'type': true, 'interface': true,
+    'as': true, 'from': true, 'is': true, 'keyof': true, 'infer': true,
+    'implements': true, 'package': true, 'abstract': true, 'satisfies': true,
+    'override': true, 'accessor': true, 'out': true, 'constructor': true,
+    'util': true, 'core': true, 'data': true, 'visual': true, 'sound': true,
+    'hardware': true, 'PsychoJS': true, 'Scheduler': true, 'TrialHandler': true,
+    'MultiStairHandler': true, 'StairHandler': true, 'QuestHandler': true,
+    'ExperimentHandler': true, 'Shelf': true,
+    'abs': true, 'sin': true, 'cos': true, 'sqrt': true, 'pi': true, 'round': true,
+    'expName': true, 'expInfo': true, 'PILOTING': true, 'psychoJS': true,
+  };
+
+  // Match bare-name assignment LHS at the start of a line (allowing any
+  // leading whitespace). We anchor on `^` + indent + identifier + ` = `
+  // and reject when the identifier is followed by `.`/`[` (property access)
+  // or when `=` is part of `==`/`===`/`=>`/`<=`/`>=`/`!=`/`!==`.
+  //
+  // The `m` flag makes `^` match line starts. We capture the identifier.
+  var assignRe = /^\s*([A-Za-z_$][\w$]*)\s*(=(?![=>])|[\+\-\*\/%&|^]=|\+\+|--)\s/gm;
+  var implicit = {};
+  var am;
+  while ((am = assignRe.exec(jsCode)) !== null) {
+    var name = am[1];
+    if (KEYWORDS[name]) continue;
+    if (declared[name]) continue;
+    implicit[name] = true;
+  }
+
+  // Also catch multi-target chained assignments where the first LHS is a
+  // bare name: `a = b = c;` — the regex above already catches `a`, but
+  // subsequent targets like `b` may sit mid-line. We handle the common
+  // shape `name = name = value` by splitting on top-level `=` after the
+  // first. This is rare in PsychoPy output, so we keep it best-effort.
+  // (Skip: covered by the next pass below if the chained target starts a
+  // new statement.)
+
+  // Sort for deterministic output (helps debugging / diffs).
+  return Object.keys(implicit).sort();
+}
+
+/**
+ * Convert Python Unicode-string percent formatting emitted verbatim by
+ * SettingsComponent.writeInitCodeJS / JS_setupExp.tmpl into a JS template
+ * literal. A regular expression cannot safely consume the argument list:
+ * expInfo['participant'] contains a nested `]`.
+ */
+function _fixPythonPercentFormatting(jsCode) {
+  const formatStart = /\bu(['"])((?:\\.|[^])*?)\1\s*%\s*\[/g;
+  let fixedCode = '';
+  let copyFrom = 0;
+  let match;
+
+  while ((match = formatStart.exec(jsCode)) !== null) {
+    const listStart = formatStart.lastIndex;
+    const listEnd = _findPythonListEnd(jsCode, listStart);
+    if (listEnd === -1) {
+      continue;
+    }
+
+    const args = _splitPythonFormatArgs(jsCode.slice(listStart, listEnd));
+    const template = _pythonPercentFormatToTemplate(match[2], args);
+    if (template === null) {
+      // Leave unknown formatting untouched instead of silently changing its
+      // meaning. It remains visible in the generated script for diagnosis.
+      continue;
+    }
+
+    fixedCode += jsCode.slice(copyFrom, match.index) + template;
+    copyFrom = listEnd + 1;
+    formatStart.lastIndex = copyFrom;
+  }
+
+  return fixedCode + jsCode.slice(copyFrom);
+}
+
+// listStart is immediately after the opening `[`. Find its matching `]` while
+// respecting Python-style quoted dictionary keys and nested bracketed values.
+function _findPythonListEnd(source, listStart) {
+  let depth = 1;
+  let quote = null;
+  let escaped = false;
+
+  for (let index = listStart; index < source.length; index++) {
+    const character = source[index];
+    if (quote !== null) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+    } else if (character === '[') {
+      depth++;
+    } else if (character === ']') {
+      depth--;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function _splitPythonFormatArgs(source) {
+  const args = [];
+  let itemStart = 0;
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index];
+    if (quote !== null) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+    } else if (character === '[' || character === '(' || character === '{') {
+      depth++;
+    } else if (character === ']' || character === ')' || character === '}') {
+      depth--;
+    } else if (character === ',' && depth === 0) {
+      args.push(source.slice(itemStart, index).trim());
+      itemStart = index + 1;
+    }
+  }
+
+  const finalArg = source.slice(itemStart).trim();
+  if (finalArg) {
+    args.push(finalArg);
+  }
+  return args;
+}
+
+function _pythonPercentFormatToTemplate(format, args) {
+  let argIndex = 0;
+  let invalid = false;
+  // Escape only literal text before adding `${...}` substitutions.
+  const templateBody = format.replace(/`/g, '\\`').replace(/\$\{/g, '\\${').replace(
+    /%(%|[-+ #0]*\d*(?:\.\d+)?[diouxXeEfFgGcrs])/g,
+    function(token, specifier) {
+      if (specifier === '%') {
+        return '%';
+      }
+      if (argIndex >= args.length || !args[argIndex]) {
+        invalid = true;
+        return token;
+      }
+      const expression = _pythonExpressionToJS(args[argIndex++]);
+      return '${' + expression + '}';
+    }
+  );
+
+  // An unsupported percent directive, or a mismatch between directives and
+  // list items, is safer left untouched than converted to a wrong filename.
+  if (invalid || /%(?!%|[-+ #0]*\d*(?:\.\d+)?[diouxXeEfFgGcrs])/.test(format) || argIndex !== args.length) {
+    return null;
+  }
+
+  return '`' + templateBody + '`';
+}
+
+function _pythonExpressionToJS(expression) {
+  // Bracket access is valid JS, but dot access produces the expected output
+  // for normal expInfo keys and is easier to read in generated experiments.
+  return expression.replace(
+    /\b([A-Za-z_$][\w$]*)\[['"]([A-Za-z_$][\w$]*)['"]\]/g,
+    '$1.$2'
+  );
 }
 
 async function stopLiaison() {
@@ -680,22 +1097,84 @@ export function registerHarmonyPythonHandlers() {
     }
   });
 
-  // Venv — 鸿蒙用系统 Python 直接，但前端 SetupPython 流程调 venv.setup
-  // 不 stub 假返回 true，改真行为：验证 Python 可用，错误真出到 terminal
+  // Venv — HarmonyOS uses system Python directly. Verify psychopy is importable.
   ipcMain.handle("python.venv.setup", async () => {
     const py = getPython();
+    const pyEnv = getPythonEnv();
     try {
-      const ver = proc.execSync(`"${py}" --version`, { env: getPythonEnv(), encoding: "utf8", timeout: 10000 }).trim();
-      const msg = `[venv.setup] Using system Python: ${ver} at ${py}`;
-      output("stdout", msg);
-      for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", msg);
-      return true;
+      // Check Python exists
+      const ver = proc.execSync(`"${py}" --version`, { env: pyEnv, encoding: "utf8", timeout: 10000 }).trim();
+      output("stdout", `[setup] System Python: ${ver} at ${py}`);
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `Python ${ver}`);
+      // Verify psychopy is importable
+      try {
+        const pv = proc.execSync(`"${py}" -c "import psychopy; print(psychopy.__version__)"`, { env: pyEnv, encoding: "utf8", timeout: 30000 }).trim();
+        output("stdout", `[setup] PsychoPy ${pv} is importable ✓`);
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `PsychoPy ${pv} ✓`);
+      } catch (e) {
+        output("stderr", { error: `[setup] PsychoPy NOT importable. Run "pip install psychopy" to install.` });
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `PsychoPy not found ✗`);
+        return { success: false, missingPsychopy: true };
+      }
+      return { success: true };
     } catch (err) {
-      const msg = `[venv.setup] Python setup failed: ${err.stderr || err.message}`;
+      const msg = `[setup] Python not found: ${err.stderr || err.message}`;
       output("stderr", { error: msg });
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", msg);
-      return false;
+      return { success: false, missingPython: true };
     }
+  });
+
+  // Install all core PsychoPy dependencies in one go
+  ipcMain.handle("python.venv.installAllDeps", async () => {
+    const py = getPython();
+    const pyEnv = getPythonEnv();
+    const deps = ["psychopy==2026.1.2", "numpy", "scipy", "matplotlib", "pandas",
+      "openpyxl", "pillow", "websockets", "soundfile", "imageio",
+      "imageio-ffmpeg", "markdown-it-py", "packaging",
+    ];
+    const welcome = "PsychoPy 2026.1.2 — Environment Setup\n========================================\n";
+    output("stdout", welcome);
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", welcome);
+    let installed = 0, skipped = 0, failed = 0;
+    for (const name of deps) {
+      // Check if already installed (skip if version matches)
+      let alreadyInstalled = false;
+      try {
+        const pkgName = name.split("==")[0];
+        proc.execSync(`"${py}" -m pip show "${pkgName}"`, { timeout: 10000, encoding: "utf8", env: pyEnv });
+        alreadyInstalled = true;
+      } catch (_) {}
+      
+      if (alreadyInstalled) {
+        skipped++;
+        const skipMsg = `  ✓ ${name} (already installed)`;
+        output("stdout", skipMsg);
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", skipMsg + "\n");
+        continue;
+      }
+      
+      installed++;
+      const progress = `[${installed}/${deps.length - skipped}] Installing ${name}...`;
+      output("stdout", progress);
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", progress + "\n");
+      try {
+        proc.execSync(`"${py}" -m pip install "${name}" --no-input --quiet`, { timeout: 180000, env: pyEnv });
+        const okMsg = `  ✓ ${name} installed`;
+        output("stdout", okMsg);
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", okMsg + "\n");
+      } catch (err) {
+        failed++;
+        const errStr = (err.stderr || err.message || "").substring(0, 120);
+        const failMsg = `  ✗ ${name} FAILED: ${errStr}`;
+        output("stderr", { error: failMsg });
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", failMsg + "\n");
+      }
+    }
+    const summary = `\nDone: ${installed} installed, ${skipped} skipped, ${failed} failed`;
+    output("stdout", summary);
+    for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", summary + "\n");
+    return failed === 0;
   });
   ipcMain.handle("python.venv.executable", () => getPython());
   ipcMain.handle("python.venv.installPackage", async (evt, venv, name) => {
@@ -913,7 +1392,8 @@ export function registerHarmonyPythonHandlers() {
     // Check key packages using a temp script file
     // Step 1: find_spec (safe, no import, no SECCOMP risk)
     // Step 2: try import for version (may fail for numpy/scipy due to OpenBLAS SECCOMP)
-    const keyPkgs = ['numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets'];
+    const keyPkgs = ['psychopy', 'numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets',
+      'openpyxl', 'soundfile', 'imageio', 'imageio-ffmpeg', 'markdown_it', 'packaging'];
     const pyEnv = getPythonEnv();
     const checkScript = [
       'import importlib.util as u',
@@ -1018,6 +1498,162 @@ export function registerHarmonyPythonHandlers() {
     ].join('\n');
   }
 
+  // Resource file extensions PsychoJS ServerManager may download at runtime.
+  // Excludes .js (would overwrite experiment.js) and .psyexp/.py source files.
+  var _RESOURCE_EXTS = [
+    '.xlsx', '.xls', '.xlsm', '.csv', '.tsv', '.txt',
+    '.json',
+    '.png', '.jpg', '.jpeg', '.gif', '.svg', '.bmp', '.webp',
+    '.wav', '.mp3', '.ogg', '.flac', '.aac',
+    '.mov', '.mp4', '.webm', '.ogv',
+  ];
+  var _RESOURCE_EXTS_SET = {};
+  for (var _i = 0; _i < _RESOURCE_EXTS.length; _i++) {
+    _RESOURCE_EXTS_SET[_RESOURCE_EXTS[_i]] = true;
+  }
+
+  /**
+   * Copy experiment resource files (xlsx/csv/images/audio/json) into the
+   * HTTP output directory `outDir` so PsychoJS ServerManager can fetch them.
+   *
+   * Strategy:
+   *   1. Parse `resourcesJSON` (a JSON string of `[{rel, abs}, ...]`) and
+   *      copy each `abs → outDir/rel`. This is the primary path because the
+   *      frontend already enumerated the resources the experiment needs.
+   *   2. Fallback: scan `expDir` (the .psyexp folder) for any file whose
+   *      extension is in `_RESOURCE_EXTS` and copy it to `outDir` root.
+   *      This catches resources the frontend list missed (e.g. multiple
+   *      loops with different conditions files).
+   *
+   * Both steps are best-effort: missing source files and copy errors are
+   * logged but do not abort the server startup.
+   */
+  function _copyExperimentResources(outDir, resourcesJSON, expDir) {
+    var copied = {};
+    function copyPair(src, relPath) {
+      if (!src || !relPath) return;
+      try {
+        if (!fs.existsSync(src)) {
+          logging.log("psychojs: resource source missing: " + src);
+          return;
+        }
+        // Normalize the destination path: strip any "../" or absolute
+        // prefix so the file lands inside outDir.
+        var cleanRel = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+        // Drop leading ".." segments for safety.
+        while (cleanRel.indexOf('../') === 0 || cleanRel.indexOf('./') === 0) {
+          cleanRel = cleanRel.replace(/^(?:\.\.\/|\.\/)/, '');
+        }
+        var dst = path.join(outDir, cleanRel);
+        var dstDir = path.dirname(dst);
+        if (!fs.existsSync(dstDir)) fs.mkdirSync(dstDir, { recursive: true });
+        // Don't overwrite experiment.js with a same-named resource.
+        if (cleanRel === 'experiment.js' || cleanRel === 'index.html') {
+          return;
+        }
+        fs.copyFileSync(src, dst);
+        copied[cleanRel] = true;
+        logging.log("psychojs: copied resource " + cleanRel + " from " + src);
+      } catch (e) {
+        logging.error("psychojs: failed to copy resource " + src + ": " + (e && e.message));
+      }
+    }
+
+    // 1. Explicit resourcesJSON list
+    if (resourcesJSON) {
+      var list = null;
+      try {
+        list = typeof resourcesJSON === 'string' ? JSON.parse(resourcesJSON) : resourcesJSON;
+      } catch (e) {
+        logging.error("psychojs: resourcesJSON parse failed: " + (e && e.message));
+      }
+      if (Array.isArray(list)) {
+        for (var k = 0; k < list.length; k++) {
+          var item = list[k];
+          if (!item || typeof item !== 'object') continue;
+          copyPair(item.abs || item.path || item.src, item.rel || item.name || path.basename(item.abs || ''));
+        }
+      }
+    }
+
+    // 2. Fallback: scan expDir for any resource-type files not already copied.
+    if (expDir && fs.existsSync(expDir) && fs.statSync(expDir).isDirectory()) {
+      try {
+        var entries = fs.readdirSync(expDir);
+        for (var j = 0; j < entries.length; j++) {
+          var name = entries[j];
+          var srcPath = path.join(expDir, name);
+          try {
+            if (!fs.statSync(srcPath).isFile()) continue;
+          } catch (_) { continue; }
+          var ext = path.extname(name).toLowerCase();
+          if (!_RESOURCE_EXTS_SET[ext]) continue;
+          // Skip already-copied files (keyed by basename in fallback mode).
+          if (copied[name]) continue;
+          try {
+            fs.copyFileSync(srcPath, path.join(outDir, name));
+            copied[name] = true;
+            logging.log("psychojs: copied resource " + name + " from expDir");
+          } catch (e) {
+            logging.error("psychojs: failed to copy " + name + ": " + (e && e.message));
+          }
+        }
+      } catch (e) {
+        logging.error("psychojs: expDir scan failed: " + (e && e.message));
+      }
+    }
+
+    logging.log("psychojs: resource copy complete — " + Object.keys(copied).length + " files");
+  }
+
+  // CSS for PsychoJS GUI dialogs. PsychoJS's own dialog stylesheet is not
+  // shipped with the IIFE/ESM bundle, so without these rules DlgFromDict
+  // creates DOM elements that have zero size, no positioning, and default
+  // (transparent) backgrounds — the participant dialog is therefore
+  // invisible even though the markup is present in #root. The rules below
+  // mirror the .dialog-container / .dialog-content / .dialog-overlay /
+  // .dialog-title / .dialog-button / .progress-* / .scrollable-container
+  // classes referenced inside _GUI.DlgFromDict and _GUI.dialog in the
+  // psychojs-2026.1.2 ESM library. z-index:10000 places the dialog above
+  // the pixi canvas (which sits inside #root at the default z-index).
+  function _psychojsDialogCSS() {
+    return [
+      // A11yDialog.hide() only sets aria-hidden="true" on the dialog element
+      // without removing it from the DOM. Without this CSS rule the dialog
+      // stays visible after hide(), causing users to click Cancel/Close
+      // buttons which triggers _onCancelExperiment → this._dialog.hide()
+      // where _dialog is already null (set by _onStartExperiment), producing
+      // TypeError: Cannot read properties of null (reading 'hide').
+      '.dialog-container[aria-hidden="true"]{display:none!important}',
+      '.dialog-container{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);font-family:Arial,Helvetica,sans-serif;color:#222}',
+      '.dialog-container .dialog-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:transparent}',
+      '.dialog-container .dialog-content{position:relative;z-index:1;max-width:480px;width:90vw;max-height:90vh;overflow:hidden;background:#fff;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.45);display:flex;flex-direction:column}',
+      '.dialog-container .dialog-title{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#f6f7f9;border-bottom:1px solid #e5e5e5;border-radius:8px 8px 0 0}',
+      '.dialog-container .dialog-title p{margin:0;font-size:16px;font-weight:600;color:#333}',
+      '.dialog-container .dialog-close{background:transparent;border:0;font-size:22px;line-height:1;color:#999;cursor:pointer;padding:0 4px}',
+      '.dialog-container .dialog-close:hover{color:#333}',
+      '.dialog-container .scrollable-container{padding:16px 18px;overflow:auto;flex:1 1 auto;font-size:14px;line-height:1.45}',
+      '.dialog-container .scrollable-container label{display:block;margin:10px 0 4px;font-weight:600;color:#444}',
+      '.dialog-container .scrollable-container .text,.dialog-container .scrollable-container select{width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box}',
+      '.dialog-container .scrollable-container .checkbox{width:auto}',
+      '.dialog-container .scrollable-container .validateTips{margin:10px 0 0;font-size:12px;color:#888}',
+      '.dialog-container .scrollable-container hr{border:0;border-top:1px solid #eee;margin:14px 0}',
+      '.dialog-container .logo{max-width:200px;max-height:80px;display:block;margin:0 auto 12px}',
+      '.dialog-container .progress-msg{padding:6px 18px 0;font-size:12px;color:#666}',
+      '.dialog-container .progress-container{height:8px;background:#eee;margin:6px 18px 14px;border-radius:4px;overflow:hidden}',
+      '.dialog-container .progress-bar{height:100%;width:0%;background:#3071e0;transition:width .2s linear}',
+      '.dialog-container .dialog-button-group{display:flex;justify-content:flex-end;gap:8px;padding:10px 18px;border-top:1px solid #eee;background:#fafafa}',
+      '.dialog-container .dialog-button{padding:8px 16px;border:1px solid #ccc;border-radius:4px;background:#fff;color:#333;font-size:14px;cursor:pointer}',
+      '.dialog-container .dialog-button:hover{background:#f0f0f0}',
+      '.dialog-container .dialog-button.disabled{opacity:.5;cursor:not-allowed}',
+      '.dialog-container .dialog-title.dialog-error{background:#fdecea}',
+      '.dialog-container .dialog-title.dialog-error p{color:#b00020}',
+      '.dialog-container .dialog-title.dialog-warning{background:#fff8e1}',
+      '.dialog-container .dialog-title.dialog-warning p{color:#a86a00}',
+      '.sn-notifications-container{position:fixed;bottom:20px;right:20px;z-index:10001;display:flex;flex-direction:column;gap:10px}',
+    ].join('\n');
+  }
+
   function _psychojsGenerateHTML(expName) {
     var n = (expName || "PsychoPy").replace(/[<>]/g, "");
     return [
@@ -1026,15 +1662,30 @@ export function registerHarmonyPythonHandlers() {
       '<title>' + n + ' [PsychoPy]</title>',
       '<link rel="stylesheet" href="jquery-ui-1.12.1.min.css">',
       '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;overflow:hidden;width:100vw;height:100vh}canvas{display:block}#root{position:absolute;top:0;left:0;width:100%;height:100%}#__error{position:fixed;top:0;left:0;width:100%;max-height:50vh;overflow:auto;background:rgba(0,0,0,0.9);color:#f44;padding:10px;font-family:monospace;font-size:12px;z-index:99999;display:none;white-space:pre-wrap}</style>',
+      '<style>' + _psychojsDialogCSS() + '</style>',
       '</head><body><div id="root"></div><div id="__error"></div>',
       '<script>window.addEventListener("error",function(e){var ov=document.getElementById("__error");if(ov){ov.style.display="block";ov.textContent+="ERROR: "+e.message+"\\n"+(e.error&&e.error.stack||"")+"\\n";}});</script>',
+      // Defence-in-depth: block all click events on elements inside
+      // [aria-hidden="true"] dialogs. A11yDialog.hide() only sets
+      // aria-hidden but leaves the DOM in place. The CSS display:none rule
+      // hides the dialog visually, but stray click events can still fire on
+      // the hidden buttons (e.g. if focus + Enter is used). This interceptor
+      // prevents those clicks from reaching _onCancelExperiment which would
+      // throw TypeError: Cannot read properties of null (reading 'hide')
+      // because _dialog was already set to null by _onStartExperiment.
+      '<script>',
+      'document.addEventListener("click",function(e){var d=e.target.closest&&e.target.closest(".dialog-container[aria-hidden=\\"true\\"]");if(d){e.preventDefault();e.stopPropagation();}},true);',
+      '</script>',
       '<script src="jquery-3.6.0.min.js"></script>',
       '<script src="jquery-ui-1.12.1.min.js"></script>',
       '<script src="preloadjs-1.0.0.min.js"></script>',
       '<script src="pixi-legacy-5.3.12.min.js"></script>',
-      '<script src="psychojs-2025.2.4.iife.js"></script>',
-      '<script>' + _psychojsBridgeScript() + '</script>',
-      '<script src="experiment.js"></script>',
+      // No IIFE/bridge: experiment.js is ESM and imports everything it needs
+      // from ./lib/psychojs-2026.1.2.js. Loading the IIFE in parallel creates
+      // a second PsychoJS instance whose gui/window singletons diverge from
+      // the ESM ones, which silently breaks DlgFromDict (the participant
+      // dialog never attaches to the DOM).
+      '<script type="module" src="experiment.js"></script>',
       '</body></html>',
     ].join('\n');
   }
@@ -1046,23 +1697,32 @@ export function registerHarmonyPythonHandlers() {
     var d = path.join(t, "psychojs_" + sn + "_" + Date.now());
     fs.mkdirSync(d, { recursive: true });
 
-    // Copy library files
+    // Copy library files — including the official ESM library from Pavlovia CDN
     try {
       fs.writeFileSync(path.join(d, "jquery-3.6.0.min.js"), _psychojsReadLib("jquery-3.6.0.min.js"), "utf8");
       fs.writeFileSync(path.join(d, "jquery-ui-1.12.1.min.js"), _psychojsReadLib("jquery-ui-1.12.1.min.js"), "utf8");
       fs.writeFileSync(path.join(d, "jquery-ui-1.12.1.min.css"), _psychojsReadLib("jquery-ui-1.12.1.min.css"), "utf8");
       fs.writeFileSync(path.join(d, "pixi-legacy-5.3.12.min.js"), _psychojsReadLib("pixi-legacy-5.3.12.min.js"), "utf8");
       fs.writeFileSync(path.join(d, "preloadjs-1.0.0.min.js"), _psychojsReadLib("preloadjs-1.0.0.min.js"), "utf8");
-      fs.writeFileSync(path.join(d, "psychojs-2025.2.4.iife.js"), _psychojsReadLib("psychojs-2025.2.4.iife.js"), "utf8");
+      fs.writeFileSync(path.join(d, "psychojs-2026.1.2.iife.js"), _psychojsReadLib("psychojs-2026.1.2.iife.js"), "utf8");
+      // Official ESM library — experiment imports from ./lib/psychojs-2026.1.2.js
+      var libDir = path.join(d, "lib");
+      fs.mkdirSync(libDir, { recursive: true });
+      fs.writeFileSync(path.join(libDir, "psychojs-2026.1.2.js"), _psychojsReadLib("psychojs-2026.1.2.js"), "utf8");
     } catch(e) {
       logging.error("psychojs: failed to copy lib files:", e.message);
     }
-
-    fs.writeFileSync(path.join(d, "experiment.js"), jsCode || "", "utf8");
+    fs.writeFileSync(path.join(d, "experiment.js"), _fixGeneratedJS(jsCode || ""), "utf8");
     fs.writeFileSync(path.join(d, "index.html"), _psychojsGenerateHTML(expName || "experiment"), "utf8");
     if (conditionsJSON) {
       try { fs.writeFileSync(path.join(d, "conditions.json"), conditionsJSON, "utf8"); } catch(e){}
     }
+
+    // Copy experiment resource files (xlsx/csv/images/audio/json) into the
+    // HTTP output directory so PsychoJS ServerManager can download them.
+    // Priority: explicit resourcesJSON list [{rel, abs}, ...], then a
+    // fallback scan of expDir for any resource-type files.
+    _copyExperimentResources(d, resourcesJSON, expDir);
 
     // Start HTTP server on first available port
     var mime = { '.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.json':'application/json' };
@@ -1095,7 +1755,7 @@ export function registerHarmonyPythonHandlers() {
             s.close();
             reject(e);
           });
-          s.listen(port, "127.0.0.1", function() { resolve(s); });
+          s.listen(port, "0.0.0.0", function() { resolve(s); });
         });
         break;
       } catch (e) {
@@ -1103,7 +1763,23 @@ export function registerHarmonyPythonHandlers() {
       }
     }
     if (!svr) throw new Error("No available port for PsychoJS server");
-    var url = "http://127.0.0.1:" + port + "/";
+    // HarmonyOS system browser cannot access 127.0.0.1 (sandbox isolation).
+    // Use the device's actual network IP so the browser can reach the server.
+    var deviceIP = "127.0.0.1";
+    try {
+      var ifaces = os.networkInterfaces();
+      for (var name in ifaces) {
+        for (var i = 0; i < ifaces[name].length; i++) {
+          var addr = ifaces[name][i];
+          if (addr.family === 'IPv4' && !addr.internal) {
+            deviceIP = addr.address;
+            break;
+          }
+        }
+        if (deviceIP !== "127.0.0.1") break;
+      }
+    } catch(e) {}
+    var url = "http://" + deviceIP + ":" + port + "/";
     _psychojsServers[url] = { server: svr, dir: d };
     logging.log("PsychoJS server started at " + url);
     return url;
@@ -1130,9 +1806,13 @@ export function registerHarmonyPythonHandlers() {
       // 1) Try Electron shell.openExternal
       try {
         const { shell: esh } = require_("electron");
-        esh.openExternal(url);
-        opened = true;
-        logging.log("browserRun: opened via shell.openExternal");
+        var shellResult = esh.openExternal(url);
+        if (shellResult) {
+          opened = true;
+          logging.log("browserRun: opened via shell.openExternal");
+        } else {
+          logging.log("browserRun: shell.openExternal returned falsy, falling through");
+        }
       } catch (e) {
         logging.log("browserRun: shell.openExternal failed: " + (e && e.message));
       }

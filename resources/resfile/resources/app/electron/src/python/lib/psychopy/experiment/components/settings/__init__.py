@@ -1133,9 +1133,11 @@ class SettingsComponent:
             folder = os.path.dirname(jsFile)
             if not os.path.isdir(folder):
                 os.makedirs(folder)
-            with open(os.path.join(folder, "index.html"), 'wb') as html:
-                html.write(header.encode())
-            html.close()
+            try:
+                with open(os.path.join(folder, "index.html"), 'wb') as html:
+                    html.write(header.encode())
+            except (PermissionError, OSError):
+                pass  # HarmonyOS sandbox may deny write to Desktop/etc.
 
         # Write header comment
         starLen = "*"*(len(jsFilename) + 9)

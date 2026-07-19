@@ -7658,7 +7658,7 @@ var Flow = class Flow {
 			if (currentLoop instanceof Flow) dynamic.push(loop);
 			else currentLoop.routines.push(loop);
 			if (rt.complete) currentLoop = loop;
-		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) logging.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
+		} else if (rt instanceof LoopTerminator) if (currentLoop instanceof Flow) console.warn(`Found Loop Terminator (${rt.name}) with no matching Loop Initiator."`);
 		else currentLoop = currentLoop.parent;
 		else if (currentLoop instanceof Flow) dynamic.push(rt);
 		else currentLoop.routines.push(rt);
@@ -8995,7 +8995,7 @@ var Experiment = class {
 		await python.liaison.send(version, {
 			command: "try",
 			args: ["prefs.setDevicesFile", path.join(await electron.paths.user(), "devices.json")]
-		}, 1e4).catch((err) => logging.error([`Failed to set devices file`, err]));
+		}, 1e4).catch((err) => console.error("Failed to set devices file:", err));
 		await python.liaison.send(version, {
 			command: "init",
 			args: ["currentExperiment", "psychopy.experiment:Experiment"]
@@ -9014,11 +9014,8 @@ var Experiment = class {
 			}
 		}, 1e4).catch((reason) => console.error(reason));
 		if (typeof script === "string") {
-			const savedPath = await electron.files.save(targetFile, script);
-			if (typeof savedPath === "string" && savedPath !== targetFile) {
-				console.warn(`[writeScript] File saved to fallback path: ${savedPath}`);
-				targetFile = savedPath;
-			}
+			let savedPath = await electron.files.save(targetFile, script);
+			if (typeof savedPath === "string") targetFile = savedPath;
 		} else console.error(script);
 		return targetFile;
 	}
@@ -9134,20 +9131,6 @@ var Experiment = class {
 			console.log(`[PsychoJS Browser] Calling python.psychojs.browserRun...`);
 			const result = await python.psychojs.browserRun(finalJSCode, expName, conditionsJSON, officialJSPath ? JSON.stringify(resourceFiles) : "", officialJSPath ? expDir : "");
 			console.log(`[PsychoJS Browser] Result:`, result);
-			if (result && result.address) {
-				const runnerUrl = `http://${result.address}/index.html`;
-				console.log(`[PsychoJS Browser] Opening runner window: ${runnerUrl}`);
-				try {
-					if (electron && electron.windows && typeof electron.windows.new === "function") await electron.windows.new(runnerUrl);
-					else if (electron && typeof electron.files !== "undefined" && typeof electron.files.openExternal === "function") await electron.files.openExternal(runnerUrl);
-					else window.open(runnerUrl, "_blank");
-				} catch (e) {
-					console.warn(`[PsychoJS Browser] Could not open runner window: ${e.message || e}`);
-					try {
-						await electron.files.openExternal(runnerUrl);
-					} catch (_) {}
-				}
-			} else if (result && result.error) alert(`[PsychoJS Browser] Server error: ${result.error}`);
 		} catch (err) {
 			console.error(`[PsychoJS Browser] ERROR:`, err);
 			alert(`[PsychoJS Browser] Failed: ${err?.message || err}\nCheck console (Ctrl+Shift+I) for details.`);

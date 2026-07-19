@@ -245,26 +245,22 @@ export async function compileJS() {
     // if no file, save as
     if (current.experiment.file === undefined) {
         await file_save_as()
-        // if cancelled save, cancel compile
         if (current.experiment.file === undefined) {
             return
         }
     }
     // use experiment object to write
     let target = await current.experiment.writeScript("PsychoJS");
-    // open in Coder
-    openIn(target, "coder");
-
+    // Don't navigate away — JS files run in browser via "Run in browser" button
+    alert("Experiment compiled to JavaScript.\n\nClick the \"Run in browser\" button in the toolbar to test it.");
     return target
 }
 
 export async function runPython() {
-    // Compile and start script FIRST (while still in Builder context),
-    // then send to Runner. This avoids the race condition where
-    // goto('/runner') destroys Builder before runPython can execute.
-    await current.experiment.runPython(true)
-    // send to runner after script has started
+    // send to runner
     await sendToRunner()
+    // run script
+    await current.experiment.runPython(true)
 
     return true
 }

@@ -2354,22 +2354,10 @@ function Panel$2($$renderer, $$props) {
 		* Get Components again from PsychoPy
 		*/
 		async function refreshProfiles() {
-			let ready = false;
-			try {
-				ready = await python?.liaison?.ready?.("app");
-			} catch (_) {}
-			if (!ready) {
-				console.warn("[refreshProfiles] liaison not ready, keeping existing profiles");
-				return;
-			}
-			try {
-				pending.components = await python.liaison.send("app", {
-					command: "run",
-					args: ["psychopy.experiment:getElementProfiles"]
-				}, 1e5).then((data) => Object.assign(profiles.components, data));
-			} catch (err) {
-				console.error("[refreshProfiles] liaison.send failed:", err);
-			}
+			if (await python?.ready) pending.components = python.liaison.send("app", {
+				command: "run",
+				args: ["psychopy.experiment:getElementProfiles"]
+			}, 1e5).then((data) => Object.assign(profiles.components, data));
 		}
 		let showFilterDlg = false;
 		let showPluginMgr = false;

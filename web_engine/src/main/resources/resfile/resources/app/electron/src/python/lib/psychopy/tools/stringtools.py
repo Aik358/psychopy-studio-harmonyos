@@ -250,8 +250,8 @@ class CaseSwitcher:
         return value
 
 
-def wrap(value, chars, delim="\\s|\\-"):
-    """
+def wrap(value, chars, delim=r"\s|-"):
+    r"""
     Wrap a string at a number of characters.
 
     Parameters

@@ -659,7 +659,7 @@ class Routine(list):
         code = '// Initialize components for Routine "%s"\n'
         buff.writeIndentedLines(code % self.name)
         self._clockName = self.name + "Clock"
-        buff.writeIndented('%s = new util.Clock();\n' % self._clockName)
+        buff.writeIndented('var %s = new util.Clock();\n' % self._clockName)
         for thisCompon in self:
             if hasattr(thisCompon, 'writeInitCodeJS'):
                 thisCompon.writeInitCodeJS(buff)
@@ -872,11 +872,11 @@ class Routine(list):
 
         code = ("TrialHandler.fromSnapshot(snapshot); // ensure that .thisN vals are up to date\n\n"
                 "//--- Prepare to start Routine '%(name)s' ---\n"
-                "t = 0;\n"
-                "frameN = -1;\n"
-                "continueRoutine = true; // until we're told otherwise\n"
+                "var t = 0;\n"
+                "var frameN = -1;\n"
+                "var continueRoutine = true; // until we're told otherwise\n"
                 "// keep track of whether this Routine was forcibly ended\n"
-                "routineForceEnded = false;\n"
+                "var routineForceEnded = false;\n"
                 % self.params)
         buff.writeIndentedLines(code)
         # can we use non-slip timing?

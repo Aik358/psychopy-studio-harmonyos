@@ -583,101 +583,37 @@ export class Experiment {
         try {
             let expName = this.file?.stem || "experiment";
             let expDir = this.file?.parent || "";
-            // Try multiple possible official JS filenames
-            let jsCandidates = [
-                path.join(expDir, expName + ".js"),
-                path.join(expDir, (expName || "").replace(/[-\s]+/g, "") + ".js"),
-            ];
-            // Also check for .js files in expDir via scandir
-            try {
-                let dirFiles = await electron.files.scandir(expDir, false);
-                for (let f of dirFiles) {
-                    if (f.endsWith(".js") && !f.includes("node_modules")) {
-                        jsCandidates.push(path.join(expDir, f));
-                    }
-                }
-            } catch(e) {}
+            console.log(`[PsychoJS Browser] Compiling experiment from model...`);
 
-            let finalJSCode = "";
-            let conditionsJSON = "";
+            // Collect XLSX conditions files for resource copy
             let resourceFiles = [];
-            let officialJSPath = "";
-
-            // Try each candidate
-            for (let candidate of jsCandidates) {
-                try {
-                    let exists = await electron.files.exists(candidate);
-                    if (exists) {
-                        console.log(`[PsychoJS Browser] Testing official JS: ${candidate}`);
-                        finalJSCode = await electron.files.load(candidate);
-                        officialJSPath = candidate;
-                        console.log(`[PsychoJS Browser] Loaded official JS: ${candidate} (${finalJSCode.length} chars)`);
-                        break;
-                    }
-                } catch(e) {
-                    console.warn(`[PsychoJS Browser] Skip candidate ${candidate}: ${e.message}`);
-                }
-            }
-
-            if (officialJSPath) {
-
-                // Find XLSX conditions files referenced in the experiment
-                for (const flowItem of (this.flow?.flat || [])) {
-                    if (typeof flowItem.addTerminator === 'function') {
-                        let condFile = flowItem.params?.conditionsFile?.val || flowItem._conditionsFile;
-                        if (condFile) {
-                            let condPath = condFile;
-                            if (expDir && !path.isAbsolute(condFile)) {
-                                condPath = path.join(expDir, condFile);
-                            }
-                            resourceFiles.push({ rel: condFile, abs: condPath });
-                        }
-                    }
-                }
-            } else {
-                // Use generated code
-                console.log(`[PsychoJS Browser] Compiling experiment from model...`);
-                if (typeof exportExperimentToJS !== 'function') {
-                    alert("[PsychoJS Browser] exportExperimentToJS is not loaded.");
-                    return;
-                }
-
-                // Read conditions from loops
-                let conditions = [];
-                for (const flowItem of (this.flow?.flat || [])) {
-                    if (typeof flowItem.addTerminator === 'function') {
-                        let condFile = flowItem.params?.conditionsFile?.val || flowItem._conditionsFile;
-                        if (!condFile) continue;
+            for (const flowItem of (this.flow?.flat || [])) {
+                if (typeof flowItem.addTerminator === 'function') {
+                    let condFile = flowItem.params?.conditionsFile?.val || flowItem._conditionsFile;
+                    if (condFile) {
                         let condPath = condFile;
                         if (expDir && !path.isAbsolute(condFile)) {
                             condPath = path.join(expDir, condFile);
                         }
-                        try {
-                            if (python.psychojs.readConditions) {
-                                conditionsJSON = await python.psychojs.readConditions(condPath);
-                                conditions = JSON.parse(conditionsJSON || "[]");
-                                console.log(`[PsychoJS Browser] Loaded ${conditions.length} conditions`);
-                            }
-                        } catch (e) {
-                            console.warn(`[PsychoJS Browser] Could not read conditions: ${condPath}`, e);
-                        }
-                        break;
+                        resourceFiles.push({ rel: condFile, abs: condPath });
                     }
                 }
-
-                finalJSCode = exportExperimentToJS(this, {
-                    debug: this.settings.params?.debugMode?.val === "True",
-                    conditions: conditions
-                });
             }
 
-            console.log(`[PsychoJS Browser] JS length: ${finalJSCode.length}, resources: ${resourceFiles.length}`);
+            // Always use model-generated IIFE code (no imports).
+            // Official .js from writeScript is ESM format which our HTML
+            // template can't load — it expects legacy-browsers style globals.
+            const finalJSCode = exportExperimentToJS(this, {
+                debug: this.settings.params?.debugMode?.val === "True",
+                conditionFiles: resourceFiles.map(r => r.rel)
+            });
 
+            console.log(`[PsychoJS Browser] JS length: ${finalJSCode.length}, resources: ${resourceFiles.length}`);
             console.log(`[PsychoJS Browser] Calling python.psychojs.browserRun...`);
             const result = await python.psychojs.browserRun(
-                finalJSCode, expName, conditionsJSON,
-                officialJSPath ? JSON.stringify(resourceFiles) : "",
-                officialJSPath ? expDir : ""
+                finalJSCode, expName, "",
+                resourceFiles.length > 0 ? JSON.stringify(resourceFiles) : "",
+                expDir
             );
             console.log(`[PsychoJS Browser] Result:`, result);
         } catch (err) {

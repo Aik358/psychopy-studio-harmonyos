@@ -76,9 +76,20 @@
             profilesPending.components = python.liaison.send("app", {
                 command: "run",
                 args: ["psychopy.experiment:getElementProfiles"]
-            }, 100000).then(
-                data => Object.assign(allProfiles.components, data)
-            )
+            }, 100000).then(data => {
+                // merge entries individually (preserves reactive tracking & icon overrides)
+                for (const [key, obj] of Object.entries(data)) {
+                    const fb = allProfiles.components[key] || {}
+                    const merged = { ...fb, ...obj }
+                    if (fb.iconSVG) merged.iconSVG = fb.iconSVG
+                    if (fb.iconFile) merged.iconFile = fb.iconFile
+                    if (fb.params) merged.params = fb.params
+                    allProfiles.components[key] = merged
+                }
+            }).catch(err => {
+                console.error('[refreshProfiles] failed:', err)
+                throw err
+            })
         }
     }
 

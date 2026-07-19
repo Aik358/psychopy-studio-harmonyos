@@ -207,17 +207,14 @@ async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDi
         res.end();
       }
     });
-    s.listen(port, "127.0.0.1", function() { r(s); });
+    s.listen(port, "0.0.0.0", function() { r(s); });
     s.once("error", j);
   });
   var url = "http://127.0.0.1:" + port + "/";
   servers[url] = { server: server, dir: d, createdAt: Date.now() };
 
-  // Open in system browser
-  await shell.openExternal(url).catch(function(e) {
-    console.error("[psychojs-browser] openExternal fail:", e);
-  });
-  console.log("[psychojs-browser] Opened:", url);
+  // Browser opening is handled by the caller (harmony-python.js) via NAPI openLink
+  console.log("[psychojs-browser] Ready at:", url);
   return url;
 }
 

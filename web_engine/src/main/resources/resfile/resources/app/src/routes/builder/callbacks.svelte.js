@@ -245,16 +245,14 @@ export async function compileJS() {
     // if no file, save as
     if (current.experiment.file === undefined) {
         await file_save_as()
-        // if cancelled save, cancel compile
         if (current.experiment.file === undefined) {
             return
         }
     }
     // use experiment object to write
     let target = await current.experiment.writeScript("PsychoJS");
-    // open in Coder
-    openIn(target, "coder");
-
+    // Don't navigate away — JS files run in browser via "Run in browser" button
+    alert("Experiment compiled to JavaScript.\n\nClick the \"Run in browser\" button in the toolbar to test it.");
     return target
 }
 

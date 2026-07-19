@@ -16,6 +16,7 @@ export function exportExperimentToJS(experiment, options) {
   options = options || {};
   var expName = (experiment.file && experiment.file.stem) || "experiment";
   var conditions = options.conditions || [];
+  var conditionFiles = options.conditionFiles || [];
 
   var routines = [];
   for (var k in (experiment.routines || {})) routines.push(experiment.routines[k]);
@@ -102,7 +103,7 @@ export function exportExperimentToJS(experiment, options) {
   lines.push("");
 
   // psychoJS.start
-  var resourceList = buildResourceList(flows, conditions);
+  var resourceList = buildResourceList(flows, conditions, conditionFiles);
   lines.push("psychoJS.start({");
   lines.push("  expName: expName,");
   lines.push("  expInfo: expInfo,");
@@ -218,9 +219,14 @@ function flowScheduler_addRoutines(lines, routineList) {
   });
 }
 
-function buildResourceList(flows, conditions) {
+function buildResourceList(flows, conditions, conditionFiles) {
   var resources = [];
-  // Add conditions files as resources
+  // Add conditions files (.xlsx etc.) as resources for PsychoJS runtime
+  if (conditionFiles && conditionFiles.length > 0) {
+    conditionFiles.forEach(function(f) {
+      resources.push({ name: f, path: f });
+    });
+  }
   if (conditions && conditions.length > 0) {
     resources.push({ name: "conditions.json", path: "conditions.json" });
   }

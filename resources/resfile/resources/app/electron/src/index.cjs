@@ -10,86 +10,72 @@ if (!Promise.withResolvers) {
 const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
-const { app, dialog, BrowserWindow, ipcMain, shell, clipboard } = require('electron');
+const { app, dialog, BrowserWindow, ipcMain, shell, clipboard, systemPreferences } = require('electron');
+// Request Desktop/Documents/Downloads directory access (HarmonyOS sandbox)
+try {
+  systemPreferences.requestDirectoryPermission();
+  _flog('[init] requestDirectoryPermission called (Desktop/Documents/Downloads)');
+} catch(e) {
+  _flog('[init] requestDirectoryPermission failed:', e && e.message);
+}
 
-// [HarmonyOS] openExternal helper — NAPI via renderer first, then shell, then aa start, then clipboard
+// ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
 function openExternalHarmony(url) {
   _flog('[openExternal] Attempting to open:', url);
 
-  // 1) NAPI binding via renderer V8 context (JsBindingUtils registers there, not Node main)
+  // 1) Try Electron's built-in shell.openExternal
   try {
-    const wins = BrowserWindow.getAllWindows();
-    if (wins.length > 0) {
-      const urlStr = JSON.stringify(url);
-      const js = [
-        '(function() {',
-        '  try {',
-        '    if (typeof ExternalProtocolAdapter !== "undefined" && ExternalProtocolAdapter.OpenExternal) {',
-        '      ExternalProtocolAdapter.OpenExternal(' + urlStr + ');',
-        '      return "ok:ExternalProtocolAdapter";',
-        '    }',
-        '  } catch(e) { return "err:ExternalProtocolAdapter:" + e.message; }',
-        '  try {',
-        '    if (typeof FileManagerAdapter !== "undefined" && FileManagerAdapter.OpenUrlInDefaultBrowser) {',
-        '      FileManagerAdapter.OpenUrlInDefaultBrowser(' + urlStr + ');',
-        '      return "ok:FileManagerAdapter";',
-        '    }',
-        '  } catch(e) { return "err:FileManagerAdapter:" + e.message; }',
-        '  try {',
-        '    if (typeof LaunchHelper !== "undefined" && LaunchHelper.Launch) {',
-        '      LaunchHelper(' + urlStr + ');',
-        '      return "ok:LaunchHelper";',
-        '    }',
-        '  } catch(e) { return "err:LaunchHelper:" + e.message; }',
-        '  return "not-available";',
-        '})()'
-      ].join('\n');
-      wins[0].webContents.executeJavaScript(js, true)
-        .then(function(result) {
-          _flog('[openExternal] NAPI result:', result);
-          if (!result || result.indexOf('ok:') !== 0) {
-            try { shell.openExternal(url); } catch(e) { _flog('[openExternal] shell fallback failed:', e && e.message); }
-          }
-        })
-        .catch(function(err) {
-          _flog('[openExternal] NAPI error:', err && err.message);
-          try { shell.openExternal(url); } catch(e) {}
-        });
-      _flog('[openExternal] NAPI dispatched via renderer');
+    var result = shell.openExternal(url);
+    if (result) {
+      _flog('[openExternal] shell.openExternal succeeded');
+      return true;
+    }
+    _flog('[openExternal] shell.openExternal returned falsy, falling through');
+  } catch (e) {
+    _flog('[openExternal] shell.openExternal threw:', e && e.message);
+  }
+
+  // 2) Try NAPI binding (registered by ExternalProtocolAdapterBind.ets)
+  try {
+    if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
+      globalThis.ExternalProtocolAdapter.OpenExternal(url);
+      _flog('[openExternal] NAPI ExternalProtocolAdapter.OpenExternal called');
       return true;
     }
   } catch (e) {
-    _flog('[openExternal] NAPI setup failed:', e && e.message);
+    _flog('[openExternal] NAPI failed:', e && e.message);
   }
 
-  // 2) Electron shell.openExternal (may silently fail on HarmonyOS)
+  // 3) Try FileManagerAdapter.OpenUrlInDefaultBrowser NAPI binding
   try {
-    const result = shell.openExternal(url);
-    _flog('[openExternal] shell.openExternal succeeded:', result);
-    return result;
+    if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
+      globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
+      _flog('[openExternal] NAPI FileManagerAdapter.OpenUrlInDefaultBrowser called');
+      return true;
+    }
   } catch (e) {
-    _flog('[openExternal] shell.openExternal failed:', e && e.message);
+    _flog('[openExternal] NAPI FileManagerAdapter failed:', e && e.message);
   }
 
-  // 3) aa start browser
+  // 4) Fallback: aa start with --ps uri <url> (best effort)
   try {
-    proc.execSync('aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "' + url + '"', { timeout: 5000 });
-    _flog('[openExternal] aa start succeeded');
+    proc.execSync(`aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "${url}"`, { timeout: 5000 });
+    _flog('[openExternal] aa start browser succeeded');
     return true;
   } catch (e) {
     _flog('[openExternal] aa start failed:', e && e.message);
   }
 
-  // 4) Clipboard fallback
+  // 5) Last resort: copy to clipboard and notify renderer
   try {
     clipboard.writeText(url);
-    _flog('[openExternal] URL copied to clipboard');
+    _flog('[openExternal] URL copied to clipboard as last resort');
     for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send('stderr', '[openExternal] URL copied to clipboard: ' + url);
+      win.webContents.send('stderr', `[openExternal] Cannot open URL automatically. URL copied to clipboard: ${url}`);
     }
     return false;
   } catch (e) {
-    _flog('[openExternal] clipboard failed:', e && e.message);
+    _flog('[openExternal] clipboard fallback failed:', e && e.message);
   }
 
   _flog('[openExternal] ALL methods failed for URL:', url);
@@ -160,12 +146,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     ipcMain.handle("python.uv.findPython", () => "python3");
     ipcMain.handle("python.uv.getEnvironments", () => []);
     // Venv
-    ipcMain.handle("python.venv.setup", () => true);  // pretend setup succeeded
+    ipcMain.handle("python.venv.setup", () => ({ success: true }));
     ipcMain.handle("python.venv.executable", () => "python3");
     ipcMain.handle("python.venv.installPackage", () => true);
     ipcMain.handle("python.venv.uninstallPackage", () => true);
-    ipcMain.handle("python.venv.getPackages", () => []);
+    ipcMain.handle("python.venv.getPackages", () => ({}));
     ipcMain.handle("python.venv.getPackageDetails", () => ({}));
+    ipcMain.handle("python.venv.installAllDeps", () => false);
     // Shell
     ipcMain.handle("python.shell.list", () => []);
     ipcMain.handle("python.shell.open", () => null);
@@ -318,27 +305,11 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     _flog('!!! HTTP server error:', err && err.message);
     console.error('[D] Server error:', err);
   });
-  // Dynamic port finding — avoid 'Address in use' from leftover processes
-  let httpPort = 8003;
-  const tryListen = (port) => {
-    server.once('error', (err) => {
-      if (err.code === 'EADDRINUSE' && port < 8010) {
-        _flog('Port ' + port + ' in use, trying ' + (port + 1));
-        tryListen(port + 1);
-      } else {
-        _flog('!!! HTTP server listen error:', err && err.message);
-        console.error('[D] Server error:', err);
-      }
-    });
-    server.listen(port, '127.0.0.1', () => {
-      httpPort = port;
-      svelte.address.port = port;
-      _flog('HTTP server listening on 127.0.0.1:' + port);
-      console.log('[D] HTTP server started on 127.0.0.1:' + port);
-      openMainWindow();
-    });
-  };
-  tryListen(httpPort)
+  server.listen(8003, '127.0.0.1', () => {
+    _flog('HTTP server listening on 127.0.0.1:8003');
+    console.log('[D] HTTP server started on 127.0.0.1:8003');
+    openMainWindow();  
+  });
   function openMainWindow() {
     _flog('=== openMainWindow called ===');
     const mainWin = new BrowserWindow({

@@ -72,26 +72,24 @@
      * Get Components again from PsychoPy
      */
     async function refreshProfiles() {
-        // liaison 未连时 sendLiaison 抛错，profilesPending.components reject → 组件消失
-        // 先检查 liaison ready，未连时静默保持 fallback 不刷新
-        let ready = false
-        try {
-            ready = await python?.liaison?.ready?.("app")
-        } catch (_) {}
-        if (!ready) {
-            console.warn("[refreshProfiles] liaison not ready, keeping existing profiles")
-            return
-        }
-        try {
-            profilesPending.components = await python.liaison.send("app", {
+        if (await python?.ready) {
+            profilesPending.components = python.liaison.send("app", {
                 command: "run",
                 args: ["psychopy.experiment:getElementProfiles"]
-            }, 100000).then(
-                data => Object.assign(allProfiles.components, data)
-            )
-        } catch (err) {
-            // liaison 命令报错时不覆盖 profilesPending，避免组件消失
-            console.error("[refreshProfiles] liaison.send failed:", err)
+            }, 100000).then(data => {
+                // merge entries individually (preserves reactive tracking & icon overrides)
+                for (const [key, obj] of Object.entries(data)) {
+                    const fb = allProfiles.components[key] || {}
+                    const merged = { ...fb, ...obj }
+                    if (fb.iconSVG) merged.iconSVG = fb.iconSVG
+                    if (fb.iconFile) merged.iconFile = fb.iconFile
+                    if (fb.params) merged.params = fb.params
+                    allProfiles.components[key] = merged
+                }
+            }).catch(err => {
+                console.error('[refreshProfiles] failed:', err)
+                throw err
+            })
         }
     }
 

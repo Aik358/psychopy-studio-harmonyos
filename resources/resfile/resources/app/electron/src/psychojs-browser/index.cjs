@@ -29,7 +29,22 @@ function getTempDir() {
   return d;
 }
 
-function readLib(n) {
+function getDeviceIP() {
+  // HarmonyOS system browser cannot reach 127.0.0.1 (sandbox isolation).
+  // Must use the device's actual network IP so the browser can connect.
+  try {
+    var ifaces = os.networkInterfaces();
+    for (var name in ifaces) {
+      for (var i = 0; i < ifaces[name].length; i++) {
+        var addr = ifaces[name][i];
+        if (addr.family === 'IPv4' && !addr.internal) {
+          return addr.address;
+        }
+      }
+    }
+  } catch(e) {}
+  return "127.0.0.1"; // fallback
+}
   return fs.readFileSync(path.join(__dirname, "lib", n), "utf8");
 }
 
@@ -134,12 +149,19 @@ function generateHTML(expName) {
   ].join('\n');
 }
 
-async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDir) {
-  var t = getTempDir();
-  var id = randomUUID().slice(0, 8);
-  var sn = (expName || "exp").replace(/[^a-zA-Z0-9_-]/g, "_");
-  var d = path.join(t, sn + "_" + id);
-  fs.mkdirSync(d, { recursive: true });
+async function writeFiles(jsCode, expName, conditionsJSON, resourcesJSON, expDir) {
+  // Write to experiment directory if provided (user-accessible, e.g. Desktop),
+  // otherwise fall back to app temp dir (sandboxed, browser can't access).
+  var d;
+  if (expDir && fs.existsSync(expDir)) {
+    var sn = (expName || "exp").replace(/[^a-zA-Z0-9_-]/g, "_");
+    d = path.join(expDir, sn + "_psychojs");
+  } else {
+    var t = getTempDir();
+    var sn2 = (expName || "exp").replace(/[^a-zA-Z0-9_-]/g, "_");
+    d = path.join(t, sn2);
+  }
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 
   var expCode = jsCode || "";
   console.log("[psychojs-browser] experiment.js (" + expCode.length + " bytes)" +
@@ -188,7 +210,14 @@ async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDi
   // Write index.html
   fs.writeFileSync(path.join(d, "index.html"), generateHTML(expName || "experiment"), "utf8");
 
-  // Start HTTP server
+  console.log("[psychojs-browser] Files written to:", d);
+  return d;
+}
+
+async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDir) {
+  var d = await writeFiles(jsCode, expName, conditionsJSON, resourcesJSON, expDir);
+
+  // Start HTTP server (for environments where localhost is accessible)
   var port = 9200 + Object.keys(servers).length;
   var mimeTypes = {
     '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
@@ -207,17 +236,15 @@ async function startServer(jsCode, expName, conditionsJSON, resourcesJSON, expDi
         res.end();
       }
     });
-    s.listen(port, "127.0.0.1", function() { r(s); });
+    s.listen(port, "0.0.0.0", function() { r(s); });
     s.once("error", j);
   });
-  var url = "http://127.0.0.1:" + port + "/";
+  var deviceIP = getDeviceIP();
+  var url = "http://" + deviceIP + ":" + port + "/";
   servers[url] = { server: server, dir: d, createdAt: Date.now() };
 
-  // Open in system browser
-  await shell.openExternal(url).catch(function(e) {
-    console.error("[psychojs-browser] openExternal fail:", e);
-  });
-  console.log("[psychojs-browser] Opened:", url);
+  // Browser opening is handled by the caller (harmony-python.js) via NAPI openLink
+  console.log("[psychojs-browser] Ready at:", url);
   return url;
 }
 
@@ -241,4 +268,4 @@ async function stopServer(address) {
   for (var k in servers) delete servers[k];
 }
 
-module.exports = { startServer, saveLog, stopServer };
+module.exports = { startServer, writeFiles, saveLog, stopServer };

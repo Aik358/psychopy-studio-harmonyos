@@ -9,4 +9,7 @@ export var status = $state({
         shown: false,
         busy: false
     },
+    // Loading overlay tracking
+    phase: "starting",  // "starting" | "connecting" | "loading_profiles" | "ready" | "error"
+    error: "",
 })
