@@ -83,7 +83,7 @@ export class ContextPathAdapter extends BaseAdapter {
     documentSaveOptions.pickerMode = picker.DocumentPickerMode.DOWNLOAD;
     documentViewPicker.save(documentSaveOptions).then((documentSaveResult: Array<string>) => {
       uri = documentSaveResult[0];
-      LogUtil.info (TAG, `Invoke documentViewPicker.save successfully, uri is ${uri}`);
+      LogUtil.info(TAG, 'Invoke documentViewPicker.save successfully');
       callback(uri.replace("file://docs", ""));
     }).catch((err: BusinessError) => {
       LogUtil.error(TAG, `Invoke documentViewPicker.save failed, code is ${err.code}, message is ${err.message}`);

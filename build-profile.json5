@@ -3,7 +3,7 @@
     "products": [
       {
         "name": "default",
-        "signingConfig": "default",
+        "signingConfig": "release",
         "compatibleSdkVersion": "6.1.0(23)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
@@ -24,16 +24,16 @@
     ],
     "signingConfigs": [
       {
-        "name": "default",
+        "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B701F90232FE238684F038977219741BD86BF146B854C4D2897C67BAD0F551FD4562CC75DCE3214",
-          "profile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p7b",
+          "storeFile": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.p12",
+          "storePassword": "0000001F5FD7F5524C0E299E74CD08944DA0FAE1474B55F231984BDA75E350C5A50F5E0B407A9F505202BFB6E0707F",
+          "keyAlias": "JHZ_KEY_PSYOH",
+          "keyPassword": "0000001F0E851655B16435964719B66FCAAF57AC576E3A7032AFF3441F20375CB6474034FB6EF9F560D4236F2FC7B8",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\JH Z\\.ohos\\config\\default_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p12",
-          "storePassword": "0000001B23981B2E34BAC39996539ED758596960C04CFB04AA907A7D9570479F49C1509BB9FAB51BEC9EB3"
+          "profile": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.p7b",
+          "certpath": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.cer"
         }
       }
     ]

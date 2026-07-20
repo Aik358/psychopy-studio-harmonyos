@@ -157,11 +157,10 @@ export class DialogAdapter extends BaseAdapter {
       DocumentSelectOptions.fileSuffixFilters = [allFileDescription + "|.*"];
     }
     let dirAndFile: string[] = this.handleDefaultPath(dialogSettings.default_path);
-    LogUtil.info(TAG, 'showOpenDialog dirAndFile: ' + `${dirAndFile[0]}-${dirAndFile[1]}`);
     DocumentSelectOptions.defaultFilePathUri = dirAndFile[0];
     let documentPicker = new picker.DocumentViewPicker();
     documentPicker.select(DocumentSelectOptions).then((DocumentSelectResult: Array<string>) => {
-      LogUtil.info(TAG, 'DocumentViewPicker.select successfully, DocumentSelectResult uri: ' + JSON.stringify(DocumentSelectResult));
+      LogUtil.info(TAG, 'DocumentViewPicker.select successfully, files count: ' + DocumentSelectResult.length);
       if (DocumentSelectResult.length === 0) {
         callback([], true);
       } else {
@@ -179,7 +178,6 @@ export class DialogAdapter extends BaseAdapter {
     let dialogSettings: IOpenDialogSettings = JSON.parse(settings);
     let DocumentSaveOptions = new picker.DocumentSaveOptions();
     let dirAndFile: string[] = this.handleDefaultPath(dialogSettings.default_path);
-    LogUtil.info(TAG, 'ShowSaveDialog dirAndFile: ' + `${dirAndFile[0]}-${dirAndFile[1]}`);
     DocumentSaveOptions.defaultFilePathUri = dirAndFile[0];
     DocumentSaveOptions.newFileNames = [`${dirAndFile[1]}`];
     const context = this.ctxAdapter.getContext();
@@ -191,7 +189,7 @@ export class DialogAdapter extends BaseAdapter {
     }
     let documentPicker = new picker.DocumentViewPicker();
     documentPicker.save(DocumentSaveOptions).then((DocumentSaveResult: Array<string>) => {
-      LogUtil.info(TAG, 'DocumentViewPicker.save successfully, DocumentSaveResult uri: ' + JSON.stringify(DocumentSaveResult));
+      LogUtil.info(TAG, 'DocumentViewPicker.save successfully');
       if (DocumentSaveResult.length === 0) {
         callback('', true);
       } else {

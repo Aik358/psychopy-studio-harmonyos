@@ -2,47 +2,47 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "module description"
+      "value": "PsychoPy Studio OH - Experiment builder and runner for HarmonyOS"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "description"
+      "value": "PsychoPy Studio OH main interface"
     },
     {
       "name": "EntryAbility_label",
-      "value": "PsychoPy Studio"
+      "value": "PsychoPy Studio OH"
     },
     {
       "name": "BrowserAbility_desc",
-      "value": "description"
+      "value": "PsychoPy Studio OH browser"
     },
     {
       "name": "BrowserAbility_label",
-      "value": "BrowserAbility"
+      "value": "Browser"
     },
     {
       "name": "button_ok",
-      "value": "ok"
+      "value": "OK"
     },
     {
       "name": "button_cancel",
-      "value": "cancel"
+      "value": "Cancel"
     },
     {
       "name": "StatusBarEntryAbility_desc",
-      "value": "Application status bar"
+      "value": "PsychoPy Studio OH status bar"
     },
     {
       "name": "StatusBarEntryAbility_label",
-      "value": "Application status bar"
+      "value": "Status Bar"
     },
     {
       "name": "StatelessAbility_desc",
-      "value": "description"
+      "value": "PsychoPy Studio OH stateless runner"
     },
     {
       "name": "StatelessAbility_label",
-      "value": "StatelessAbility"
+      "value": "Runner"
     }
   ]
 }

@@ -2,15 +2,23 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "模块描述"
+      "value": "PsychoPy Studio OH - 鸿蒙版实验构建与运行工具"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "description"
+      "value": "PsychoPy Studio OH 主界面"
     },
     {
       "name": "EntryAbility_label",
-      "value": "PsychoPy Studio"
+      "value": "PsychoPy Studio OH"
+    },
+    {
+      "name": "BrowserAbility_desc",
+      "value": "PsychoPy Studio OH 浏览器"
+    },
+    {
+      "name": "BrowserAbility_label",
+      "value": "浏览器"
     },
     {
       "name": "button_ok",
@@ -22,11 +30,19 @@
     },
     {
       "name": "StatusBarEntryAbility_desc",
-      "value": "应用状态栏"
+      "value": "PsychoPy Studio OH 状态栏"
     },
     {
       "name": "StatusBarEntryAbility_label",
-      "value": "应用状态栏"
+      "value": "状态栏"
+    },
+    {
+      "name": "StatelessAbility_desc",
+      "value": "PsychoPy Studio OH 运行器"
+    },
+    {
+      "name": "StatelessAbility_label",
+      "value": "运行器"
     }
   ]
 }

@@ -79,7 +79,6 @@ export struct WebPage {
     hilog.info(this.domainId, this.logTag, 'aboutToAppear');
     const params = router.getParams() as Record<string, string>;
     this.webUrl = params.url ?? '';
-    hilog.info(this.domainId, this.logTag, `webUrl: ${this.webUrl}`);
   }
 
   aboutToDisappear(): void {

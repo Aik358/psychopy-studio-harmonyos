@@ -55,7 +55,7 @@ export class ExternalProtocolAdapter extends BaseAdapter {
     if (context && typeof context.openLink === 'function') {
       try {
         context.openLink(urlStr, { appLinkingOnly: false })
-          .then(() => LogUtil.info(TAG, `openLink success: ${urlStr}`))
+          .then(() => LogUtil.info(TAG, 'openLink success'))
           .catch((err: BusinessError) => {
             LogUtil.error(TAG, `openLink failed: ${JSON.stringify(err)}, falling back to startAbility`);
             this.fallbackStartAbility(urlStr);

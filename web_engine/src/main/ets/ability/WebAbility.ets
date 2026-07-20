@@ -244,18 +244,11 @@ export class WebAbility extends WebBaseAbility {
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     let uriNotNull = want["uri"] !== undefined && want["uri"] !== '';
     if(want!== undefined && want !== null) {
-      LogUtil.info(TAG, 'onNewWant begin, want: ' +
-        'bundleName: ' + JSON.stringify(want.bundleName) +
-        ', abilityName: ' + JSON.stringify(want.abilityName) +
-        ', deviceId: ' + JSON.stringify(want.deviceId) +
-        ', uri not null: ' + JSON.stringify(uriNotNull) +
-        ', type: ' + JSON.stringify(want.type) +
-        ', flags: ' + JSON.stringify(want.flags) +
-        ', action: ' + JSON.stringify(want.action) +
-        ', parameters: ' + JSON.stringify(want.parameters) +
-        ', entities: ' + JSON.stringify(want.entities) +
-        ', moduleName: ' + JSON.stringify(want.moduleName) +
-        ', LaunchParam: ' + JSON.stringify(launchParam));
+      LogUtil.info(TAG, 'onNewWant: bundleName=' + JSON.stringify(want.bundleName) +
+        ', abilityName=' + JSON.stringify(want.abilityName) +
+        ', uriNotNull=' + JSON.stringify(uriNotNull) +
+        ', action=' + JSON.stringify(want.action) +
+        ', moduleName=' + JSON.stringify(want.moduleName));
     }
     if (uriNotNull) {
       let uri = want['uri'] as string;
