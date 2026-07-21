@@ -72,7 +72,8 @@ const python = {
     installPackage: (venv, name) => ipcRenderer.invoke("python.venv.installPackage", venv, name).then(resp => resp),
     uninstallPackage: (venv, name) => ipcRenderer.invoke("python.venv.uninstallPackage", venv, name).then(resp => resp),
     getPackages: (venv) => ipcRenderer.invoke("python.venv.getPackages", venv).then(resp => resp),
-    getPackageDetails: (venv, name) => ipcRenderer.invoke("python.venv.getPackageDetails", venv, name).then(resp => resp)
+    getPackageDetails: (venv, name) => ipcRenderer.invoke("python.venv.getPackageDetails", venv, name).then(resp => resp),
+    installAllDeps: () => ipcRenderer.invoke("python.venv.installAllDeps").then(resp => resp)
   },
   uv: {
     folder: () => ipcRenderer.invoke("python.uv.folder").then(resp => resp),
@@ -117,7 +118,6 @@ const python = {
     readConditions: (filePath) => ipcRenderer.invoke("python.psychojs.readConditions", filePath).then(resp => resp),
   }
 }
-contextBridge.exposeInMainWorld('python', python)
 // details about HarmonyOS runtime
 const harmony = {
   isHarmonyOS: () => ipcRenderer.invoke("python.harmony.isHarmonyOS").then(resp => resp),
@@ -128,7 +128,21 @@ const harmony = {
   guidance: () => ipcRenderer.invoke("python.harmony.guidance").then(resp => resp),
   autoInstall: () => ipcRenderer.invoke("python.harmony.autoInstall").then(resp => resp)
 };
+python.harmony = harmony;
+contextBridge.exposeInMainWorld('python', python)
 contextBridge.exposeInMainWorld('harmony', harmony)
+
+// Terminal API (Python interactive shell)
+const terminal = {
+  start: () => ipcRenderer.invoke("terminal.python.start").then(resp => resp),
+  send: (id, msg) => ipcRenderer.invoke("terminal.python.send", id, msg).then(resp => resp),
+  close: (id) => ipcRenderer.invoke("terminal.python.close", id).then(resp => resp),
+  exec: (code) => ipcRenderer.invoke("terminal.python.exec", code).then(resp => resp),
+  diagnose: () => ipcRenderer.invoke("terminal.python.diagnose").then(resp => resp),
+  onStdout: (lsnr) => ipcRenderer.on("stdout", lsnr),
+  onStderr: (lsnr) => ipcRenderer.on("stderr", lsnr),
+};
+contextBridge.exposeInMainWorld('terminal', terminal)
 
 const git = {
   listen: (lsnr) => ipcRenderer.on("git", lsnr),

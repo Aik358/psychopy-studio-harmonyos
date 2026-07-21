@@ -17,6 +17,7 @@ import { createRequire } from "module";
 import { app, ipcMain, BrowserWindow } from "electron";
 import logging from "./logging.js";
 import { output, decoder } from "./python/utils.js";
+import * as Harmony from "./harmony.js";
 
 // ESM polyfill for __dirname (Node 20.x)
 const __filename = fileURLToPath(import.meta.url);
@@ -993,6 +994,43 @@ function listShells() {
 // ── Register IPC handlers ───────────────────────────────────
 
 export function registerHarmonyPythonHandlers() {
+  // ── HarmonyOS runtime discovery (tablet detection, Python setup) ──
+  ipcMain.handle("python.harmony.isHarmonyOS", () => Harmony.isHarmonyOS());
+  ipcMain.handle("python.harmony.strategy", () => Harmony.getPythonStrategy());
+  ipcMain.handle("python.harmony.nativePython", () => Harmony.findNativePython());
+  ipcMain.handle("python.harmony.pythonVersion", () => {
+    const p = Harmony.findNativePython();
+    return p ? Harmony.getPythonVersion(p) : null;
+  });
+  ipcMain.handle("python.harmony.diagnose", () => Harmony.diagnosePythonEnvironment());
+  ipcMain.handle("python.harmony.guidance", () => {
+    const diag = Harmony.diagnosePythonEnvironment();
+    return Harmony.generateSetupGuidance(diag);
+  });
+  ipcMain.handle("python.harmony.autoInstall", async () => {
+    try {
+      const diag = Harmony.diagnosePythonEnvironment();
+      if (!diag.python || !diag.pythonOk) {
+        return { success: false, error: "No suitable Python found", diag };
+      }
+      const { default: proc } = await import("child_process");
+      const packages = diag.missingRequired || [];
+      const results = [];
+      for (const pkg of packages) {
+        try {
+          const args = ["-m", "pip", "install", "--no-input", "--quiet", pkg];
+          proc.execSync([diag.python, ...args].join(" "), { timeout: 120000, encoding: "utf8" });
+          results.push({ package: pkg, status: "ok" });
+        } catch (e) {
+          results.push({ package: pkg, status: "failed", error: String(e?.message || e).slice(0, 200) });
+        }
+      }
+      return { success: results.every(r => r.status === "ok"), results, diag };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  });
+
   // Liaison
   ipcMain.handle("python.liaison.start", async () => {
     try {

@@ -32,6 +32,16 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   } catch (err) {
     console.error('[D] Python backend FAILED to load:', err);
   }
+  // ★ HarmonyOS terminal + harmony + full handler set
+  try {
+    const harmonyMod = await import("./harmony-python.js");
+    if (typeof harmonyMod.registerHarmonyPythonHandlers === "function") {
+      harmonyMod.registerHarmonyPythonHandlers();
+      console.log('[D] Harmony Python handlers registered OK');
+    }
+  } catch (err) {
+    console.error('[D] Harmony Python handlers FAILED to load:', err);
+  }
   // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
   // 在当前窗口 loadFile() 加载实验（最稳方案）
   // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
