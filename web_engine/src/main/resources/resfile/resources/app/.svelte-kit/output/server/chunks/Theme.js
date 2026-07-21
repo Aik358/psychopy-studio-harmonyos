@@ -67,6 +67,7 @@ function flushBeforeNavigate(targetView, fileObj) {
 	}
 }
 function consumeCurrentFile(forView) {
+	console.log(`[store] consumeCurrentFile forView=${forView}, currentFile=${JSON.stringify(currentFile)}`);
 	if (!currentFile.file) return null;
 	if (currentFile.source === forView) return null;
 	return {
@@ -157,10 +158,6 @@ async function openIn(file, target) {
 			return;
 		} catch (_) {}
 		try {
-			await electron.windows.navigate(target);
-			return;
-		} catch (_) {}
-		try {
 			await electron.windows.new(target);
 			return;
 		} catch (_) {}
@@ -187,10 +184,6 @@ async function showWindow(target) {
 		}
 		try {
 			await goto(`/${target}`);
-			return;
-		} catch (_) {}
-		try {
-			await electron.windows.navigate(target);
 			return;
 		} catch (_) {}
 	}
@@ -606,6 +599,292 @@ function MessageArray($$renderer, $$props) {
 	$$renderer.push(`<!----></div>`);
 }
 //#endregion
+//#region src/lib/i18n/en_US.js
+var en_US_default = {
+	"menu.file": "File",
+	"menu.edit": "Edit",
+	"menu.view": "View",
+	"menu.experiment": "Experiment",
+	"menu.run": "Run",
+	"menu.tools": "Tools",
+	"menu.help": "Help",
+	"file.new": "New file",
+	"file.open": "Open file",
+	"file.save": "Save file",
+	"file.saveAs": "Save file as",
+	"file.reveal": "Reveal in file explorer",
+	"file.close": "Close window",
+	"file.preferences": "Preferences",
+	"file.resetPrefs": "Reset preferences",
+	"file.quit": "Quit",
+	"file.newConfig": "New configuration",
+	"file.openConfig": "Open configuration",
+	"file.saveConfig": "Save configuration",
+	"file.saveConfigAs": "Save configuration as",
+	"edit.undo": "Undo",
+	"edit.redo": "Redo",
+	"edit.find": "Find",
+	"edit.findInExp": "Find in experiment",
+	"view.showBuilder": "Show Builder",
+	"view.showCoder": "Show Coder",
+	"view.showRunner": "Show Runner",
+	"view.devTools": "Show developer tools",
+	"exp.settings": "Experiment settings",
+	"exp.readme": "Show readme",
+	"exp.copyRoutine": "Copy current Routine",
+	"exp.pasteRoutine": "Paste Routine",
+	"run.togglePilot": "Toggle pilot mode",
+	"run.sendToRunner": "Send to Runner",
+	"run.compilePy": "Compile Python",
+	"run.compileJs": "Compile JS",
+	"run.runInPython": "Run in Python",
+	"run.pilotInPython": "Pilot in Python",
+	"run.runInBrowser": "Run in browser",
+	"run.pilotInBrowser": "Pilot in browser",
+	"tools.deviceManager": "Open device manager",
+	"tools.plugins": "Manage plugins and packages",
+	"tools.userFolder": "Open PsychoPy user folder",
+	"tools.reinstallPy": "Reinstall Python",
+	"help.homepage": "PsychoPy Homepage",
+	"help.docs": "Documentation",
+	"help.forum": "Help Forum",
+	"help.about": "PsychoPy {version}",
+	"help.aboutShort": "PsychoPy {version}",
+	"help.reportBug": "Report bug",
+	"tb.menu": "Menu",
+	"tb.file": "File",
+	"tb.edit": "Edit",
+	"tb.experiment": "Experiment",
+	"tb.desktop": "Desktop",
+	"tb.browser": "Browser",
+	"tb.pavlovia": "Pavlovia",
+	"tb.views": "Views",
+	"tb.selection": "Selection",
+	"tb.newFile": "New file",
+	"tb.openFile": "Open file",
+	"tb.saveFile": "Save file",
+	"tb.saveFileAs": "Save file as",
+	"tb.undo": "Undo",
+	"tb.redo": "Redo",
+	"tb.find": "Find",
+	"tb.monitorCenter": "Open the monitor center",
+	"tb.deviceManager": "Open the device manager",
+	"tb.expSettings": "Experiment settings",
+	"tb.pilot": "Pilot",
+	"tb.run": "Run",
+	"tb.sendToRunner": "Send experiment to runner",
+	"tb.writePy": "Write experiment as a .py file",
+	"tb.runLocal": "Run experiment locally",
+	"tb.pilotLocal": "Pilot experiment locally",
+	"tb.writeJs": "Write experiment as a .js file",
+	"tb.runBrowser": "Run experiment in browser",
+	"tb.pilotBrowser": "Pilot experiment in browser",
+	"tb.sync": "Sync experiment",
+	"tb.builderView": "Builder view",
+	"tb.coderView": "Coder view",
+	"tb.runnerView": "Runner view",
+	"tb.newConfig": "New configuration",
+	"tb.openConfig": "Open configuration",
+	"tb.saveConfig": "Save configuration",
+	"tb.saveConfigAs": "Save configuration as",
+	"tb.openSelectionIn": "Open selection in {target}",
+	"tip.runMode": "Experiment will run in run mode",
+	"tip.pilotMode": "Experiment will run in pilot mode",
+	"dlg.ok": "OK",
+	"dlg.apply": "Apply",
+	"dlg.yes": "Yes",
+	"dlg.no": "No",
+	"dlg.cancel": "Cancel",
+	"dlg.help": "Help",
+	"dlg.reset": "Reset",
+	"home.builder": "Builder",
+	"home.builderDesc": "Generate experiments easily using an intuitive graphical user interface (GUI).",
+	"home.coder": "Coder",
+	"home.coderDesc": "Write and edit code directly in a variety of languages.",
+	"home.runner": "Runner",
+	"home.runnerDesc": "Coordinate running experiments and scripts and view any warnings generated.",
+	"home.ready": "Ready",
+	"home.failedSetup": "Failed setup: ",
+	"home.tryAgain": "Try again?",
+	"tablet.banner": "Running in Tablet Mode",
+	"tablet.title": "Tablet Mode",
+	"tablet.body": "This application is running on a HarmonyOS tablet or in tablet mode. You can edit experiments and run them in the browser. Python-dependent features (local experiment execution, external device connection, device manager, etc.) are unavailable in tablet mode. For full functionality, run this app in PC mode or on a desktop device.",
+	"tablet.switchSuggestion": "On supported devices (e.g. MatePad Edge), you can switch to PC mode in system settings for complete functionality.",
+	"comp.getMore": "Get more...",
+	"comp.reload": "Reload Components",
+	"comp.filter": "Filter...",
+	"comp.loading": "Loading Components...",
+	"comp.failedLoad": "Failed to load Components.",
+	"common.close": "Close",
+	"common.confirm": "Confirm",
+	"common.loading": "Loading...",
+	"common.error": "Error",
+	"common.warning": "Warning"
+};
+//#endregion
+//#region src/lib/i18n/zh_CN.js
+var zh_CN_default = {
+	"menu.file": "文件",
+	"menu.edit": "编辑",
+	"menu.view": "视图",
+	"menu.experiment": "实验",
+	"menu.run": "运行",
+	"menu.tools": "工具",
+	"menu.help": "帮助",
+	"file.new": "新建文件",
+	"file.open": "打开文件",
+	"file.save": "保存文件",
+	"file.saveAs": "文件另存为",
+	"file.reveal": "在文件管理器中显示",
+	"file.close": "关闭窗口",
+	"file.preferences": "首选项",
+	"file.resetPrefs": "重置首选项",
+	"file.quit": "退出",
+	"file.newConfig": "新建配置",
+	"file.openConfig": "打开配置",
+	"file.saveConfig": "保存配置",
+	"file.saveConfigAs": "配置另存为",
+	"edit.undo": "撤销",
+	"edit.redo": "重做",
+	"edit.find": "查找",
+	"edit.findInExp": "在实验中查找",
+	"view.showBuilder": "显示 Builder",
+	"view.showCoder": "显示 Coder",
+	"view.showRunner": "显示 Runner",
+	"view.devTools": "显示开发者工具",
+	"exp.settings": "实验设置",
+	"exp.readme": "显示自述文件",
+	"exp.copyRoutine": "复制当前例程",
+	"exp.pasteRoutine": "粘贴例程",
+	"run.togglePilot": "切换试点模式",
+	"run.sendToRunner": "发送到运行器",
+	"run.compilePy": "编译 Python",
+	"run.compileJs": "编译 JS",
+	"run.runInPython": "在 Python 中运行",
+	"run.pilotInPython": "在 Python 中试跑",
+	"run.runInBrowser": "在浏览器中运行",
+	"run.pilotInBrowser": "在浏览器中试跑",
+	"tools.deviceManager": "打开设备管理器",
+	"tools.plugins": "管理插件与包",
+	"tools.userFolder": "打开 PsychoPy 用户文件夹",
+	"tools.reinstallPy": "重新安装 Python",
+	"help.homepage": "PsychoPy 主页",
+	"help.docs": "文档",
+	"help.forum": "帮助论坛",
+	"help.about": "PsychoPy {version}",
+	"help.aboutShort": "PsychoPy {version}",
+	"help.reportBug": "报告问题",
+	"tb.menu": "菜单",
+	"tb.file": "文件",
+	"tb.edit": "编辑",
+	"tb.experiment": "实验",
+	"tb.desktop": "桌面",
+	"tb.browser": "浏览器",
+	"tb.pavlovia": "Pavlovia",
+	"tb.views": "视图",
+	"tb.selection": "选中项",
+	"tb.newFile": "新建文件",
+	"tb.openFile": "打开文件",
+	"tb.saveFile": "保存文件",
+	"tb.saveFileAs": "文件另存为",
+	"tb.undo": "撤销",
+	"tb.redo": "重做",
+	"tb.find": "查找",
+	"tb.monitorCenter": "打开监视器中心",
+	"tb.deviceManager": "打开设备管理器",
+	"tb.expSettings": "实验设置",
+	"tb.pilot": "试跑",
+	"tb.run": "运行",
+	"tb.sendToRunner": "发送实验到运行器",
+	"tb.writePy": "将实验导出为 .py 文件",
+	"tb.runLocal": "在本地运行实验",
+	"tb.pilotLocal": "在本地试跑实验",
+	"tb.writeJs": "将实验导出为 .js 文件",
+	"tb.runBrowser": "在浏览器中运行实验",
+	"tb.pilotBrowser": "在浏览器中试跑实验",
+	"tb.sync": "同步实验",
+	"tb.builderView": "Builder 视图",
+	"tb.coderView": "Coder 视图",
+	"tb.runnerView": "Runner 视图",
+	"tb.newConfig": "新建配置",
+	"tb.openConfig": "打开配置",
+	"tb.saveConfig": "保存配置",
+	"tb.saveConfigAs": "配置另存为",
+	"tb.openSelectionIn": "在 {target} 中打开选中项",
+	"tip.runMode": "实验将以运行模式运行",
+	"tip.pilotMode": "实验将以试点模式运行",
+	"dlg.ok": "确定",
+	"dlg.apply": "应用",
+	"dlg.yes": "是",
+	"dlg.no": "否",
+	"dlg.cancel": "取消",
+	"dlg.help": "帮助",
+	"dlg.reset": "重置",
+	"home.builder": "Builder",
+	"home.builderDesc": "通过直观的图形界面（GUI）轻松生成实验。",
+	"home.coder": "Coder",
+	"home.coderDesc": "直接用多种语言编写和编辑代码。",
+	"home.runner": "Runner",
+	"home.runnerDesc": "协调运行实验与脚本，并查看产生的警告。",
+	"home.ready": "就绪",
+	"home.failedSetup": "初始化失败：",
+	"home.tryAgain": "重试？",
+	"tablet.banner": "正在以平板模式运行",
+	"tablet.title": "平板模式",
+	"tablet.body": "您正在鸿蒙平板或平板模式下运行本应用。您可以编辑实验并在浏览器中运行。依赖 Python 的功能（本地实验执行、外接设备连接、设备管理器等）在平板模式下不可用。如需完整功能，请在电脑模式或桌面设备上运行本应用。",
+	"tablet.switchSuggestion": "在支持的设备（如 MatePad Edge）上，可在系统设置中切换至电脑模式以解锁完整功能。",
+	"comp.getMore": "获取更多…",
+	"comp.reload": "重新加载组件",
+	"comp.filter": "筛选…",
+	"comp.loading": "正在加载组件…",
+	"comp.failedLoad": "组件加载失败。",
+	"common.close": "关闭",
+	"common.confirm": "确认",
+	"common.loading": "加载中…",
+	"common.error": "错误",
+	"common.warning": "警告"
+};
+//#endregion
+//#region src/lib/i18n/store.svelte.js
+var LANGS = [{
+	code: "zh_CN",
+	label: "简体中文"
+}, {
+	code: "en_US",
+	label: "English"
+}];
+var DICTS = {
+	en_US: en_US_default,
+	zh_CN: zh_CN_default
+};
+var STORAGE_KEY = "psychopy-studio:lang";
+function _readLang() {
+	if (typeof localStorage !== "undefined") try {
+		const saved = localStorage.getItem(STORAGE_KEY);
+		if (saved && LANGS.some((l) => l.code === saved)) return saved;
+	} catch (_) {}
+	if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("zh")) return "zh_CN";
+	return "en_US";
+}
+var i18n = { lang: _readLang() };
+//#endregion
+//#region src/lib/i18n/index.js
+/**
+* Translate `key` into the active language.
+* Falls back to en_US, then to the key itself (the English source string), so
+* anything not yet translated still renders intelligibly. Supports `{var}`
+* interpolation through the `vars` object.
+* @param {string} key
+* @param {Record<string, string|number>} [vars]
+*/
+function t(key, vars) {
+	let str = DICTS[i18n.lang]?.[key];
+	if (str === void 0) str = DICTS.en_US?.[key];
+	if (str === void 0) str = key;
+	if (vars && typeof str === "string") for (const [k, v] of Object.entries(vars)) str = str.replaceAll(`{${k}}`, v ?? "");
+	return str;
+}
+//#endregion
 //#region src/lib/utils/dialog/Dialog.svelte
 function Dialog($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
@@ -632,7 +911,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.HELP) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "Help",
+					label: t("dlg.help"),
 					onclick: () => {
 						openExternal(buttons.HELP);
 					},
@@ -643,7 +922,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.YES) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "Yes",
+					label: t("dlg.yes"),
 					onclick: (evt) => {
 						buttons["YES"](evt);
 						shown = false;
@@ -657,7 +936,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.NO) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "No",
+					label: t("dlg.no"),
 					onclick: (evt) => {
 						buttons["NO"](evt);
 						shown = false;
@@ -671,7 +950,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.OK) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "OK",
+					label: t("dlg.ok"),
 					onclick: (evt) => {
 						buttons["OK"](evt);
 						shown = false;
@@ -685,7 +964,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.APPLY) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "Apply",
+					label: t("dlg.apply"),
 					onclick: (evt) => {
 						buttons["APPLY"](evt);
 					},
@@ -713,7 +992,7 @@ function Dialog($$renderer, $$props) {
 			if (buttons.CANCEL) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: "Cancel",
+					label: t("dlg.cancel"),
 					onclick: (evt) => {
 						buttons["CANCEL"](evt);
 						shown = false;
@@ -8094,6 +8373,12 @@ var Version = class Version {
 	}
 };
 //#endregion
+//#region src/lib/python/tabletMode.svelte.js
+var tabletMode = {
+	active: false,
+	showDialog: false
+};
+//#endregion
 //#region src/lib/python/functions.svelte.js
 var _setupCompleted = false;
 var _setupRunning = false;
@@ -8130,6 +8415,28 @@ async function setupPython(version = void 0, forceReinstall = false) {
 	if (!version || version === "app") version = await electron.version();
 	status.message = "Looking for Python 3...";
 	if (!await python.uv.findPython(version).catch(() => false)) {
+		let isHarmonyOS = false;
+		try {
+			isHarmonyOS = await python.harmony.isHarmonyOS();
+			console.log("[setupPython] hasPython=false, isHarmonyOS=", isHarmonyOS);
+		} catch (err) {
+			console.error("[setupPython] isHarmonyOS() failed:", err);
+		}
+		if (!isHarmonyOS && python.harmony?.diagnose) try {
+			const diag = await python.harmony.diagnose();
+			console.log("[setupPython] diagnose=", diag);
+			if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+		} catch (err) {
+			console.error("[setupPython] diagnose() failed:", err);
+		}
+		if (isHarmonyOS) {
+			console.log("[setupPython] Tablet mode detected (no Python on HarmonyOS), skipping setup");
+			tabletMode.active = true;
+			status.ready.resolve(true);
+			_setupCompleted = true;
+			_setupRunning = false;
+			return;
+		}
 		status.message = "Python 3 not found";
 		handleError(/* @__PURE__ */ new Error("Python 3.12+ is required. Install via HNP (HarmonyOS Native Package) or harmonybrew."));
 		_setupRunning = false;
@@ -8143,6 +8450,28 @@ async function setupPython(version = void 0, forceReinstall = false) {
 			status.dlg.shown = true;
 			await installPython(version, true);
 		} else if (setupResult && setupResult.missingPython) {
+			let isHarmonyOS = false;
+			try {
+				isHarmonyOS = await python.harmony.isHarmonyOS();
+				console.log("[setupPython] missingPython=true, isHarmonyOS=", isHarmonyOS);
+			} catch (err) {
+				console.error("[setupPython] isHarmonyOS() failed:", err);
+			}
+			if (!isHarmonyOS && python.harmony?.diagnose) try {
+				const diag = await python.harmony.diagnose();
+				console.log("[setupPython] diagnose=", diag);
+				if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+			} catch (err) {
+				console.error("[setupPython] diagnose() failed:", err);
+			}
+			if (isHarmonyOS) {
+				console.log("[setupPython] Tablet mode detected (missingPython on HarmonyOS), skipping setup");
+				tabletMode.active = true;
+				status.ready.resolve(true);
+				_setupCompleted = true;
+				_setupRunning = false;
+				return;
+			}
 			handleError(/* @__PURE__ */ new Error("Python not found on this system."));
 			_setupRunning = false;
 			return;
@@ -9276,4 +9605,4 @@ function Theme($$renderer, $$props) {
 	});
 }
 //#endregion
-export { python as $, IconButton as A, Icon as B, Device as C, profiles as D, pending as E, CompactButton as F, showWindow as G, openExternal as H, PanelButton as I, store as J, consumeCurrentFile as K, ToggleButton as L, Dialog as M, DropdownButton as N, RadioButton as O, Menu as P, projects as Q, Button as R, Component as S, Param as T, openIn as U, newWindow as V, showDevTools as W, electron as X, devices as Y, git as Z, FlowLoop as _, PythonErrors as a, Routine as b, CodeOutput as c, Version as d, browseFileOpen as f, writeFile as g, parsePath as h, Experiment as i, MessageDialog as j, SwitchButton as k, CodeEditor as l, mime as m, prefs as n, SetupPython as o, browseFileSave as p, setActiveView as q, Script as r, CodeInput as s, Theme as t, setupPython as u, LoopInitiator as v, HasParams as w, StandaloneRoutine as x, LoopTerminator as y, Tooltip as z };
+export { devices as $, SwitchButton as A, PanelButton as B, Component as C, pending as D, Param as E, LANGS as F, newWindow as G, Button as H, i18n as I, showDevTools as J, openExternal as K, DropdownButton as L, MessageDialog as M, Dialog as N, profiles as O, t as P, store as Q, Menu as R, StandaloneRoutine as S, HasParams as T, Tooltip as U, ToggleButton as V, Icon as W, consumeCurrentFile as X, showWindow as Y, setActiveView as Z, writeFile as _, PythonErrors as a, LoopTerminator as b, CodeOutput as c, tabletMode as d, electron as et, Version as f, parsePath as g, mime as h, Experiment as i, IconButton as j, RadioButton as k, CodeEditor as l, browseFileSave as m, prefs as n, projects as nt, SetupPython as o, browseFileOpen as p, openIn as q, Script as r, python as rt, CodeInput as s, Theme as t, git as tt, setupPython as u, FlowLoop as v, Device as w, Routine as x, LoopInitiator as y, CompactButton as z };

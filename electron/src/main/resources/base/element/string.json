@@ -43,6 +43,10 @@
     {
       "name": "StatelessAbility_label",
       "value": "Runner"
+    },
+    {
+      "name": "OpenNewWindow_label",
+      "value": "Open New Window"
     }
   ]
 }

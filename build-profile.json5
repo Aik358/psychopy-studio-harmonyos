@@ -5,6 +5,7 @@
         "name": "default",
         "signingConfig": "release",
         "compatibleSdkVersion": "6.1.0(23)",
+        "compatibleSdkVersionStage": "release",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "nativeLib": {
@@ -27,13 +28,13 @@
         "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "storeFile": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.p12",
-          "storePassword": "0000001F5FD7F5524C0E299E74CD08944DA0FAE1474B55F231984BDA75E350C5A50F5E0B407A9F505202BFB6E0707F",
-          "keyAlias": "JHZ_KEY_PSYOH",
-          "keyPassword": "0000001F0E851655B16435964719B66FCAAF57AC576E3A7032AFF3441F20375CB6474034FB6EF9F560D4236F2FC7B8",
+          "certpath": "C:\\Users\\JH Z\\.ohos\\config\\release_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001BA37EC23755FAD60AC2D6072254780DA2E68A80505172E62C7595E3CB265792BC0C3C11E0A0C8AB",
+          "profile": "C:\\Users\\JH Z\\.ohos\\config\\release_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p7b",
           "signAlg": "SHA256withECDSA",
-          "profile": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.p7b",
-          "certpath": "C:/Users/JH Z/.ohos/config/PsychoPyStudioOH_Release.cer"
+          "storeFile": "C:\\Users\\JH Z\\.ohos\\config\\release_psychopy-oh-v0.1.6-clone_zagHqWYNWngemoxVUMQOAAcjVNtPyHkothZ_zLYQ8wo=.p12",
+          "storePassword": "0000001BB20385120FFC477C4DFE49814944C523103BBDF763568621831E134091E311DDA6EA361E1B629A"
         }
       }
     ]

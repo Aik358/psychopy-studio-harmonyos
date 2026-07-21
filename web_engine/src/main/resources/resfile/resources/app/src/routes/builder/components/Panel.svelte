@@ -8,6 +8,7 @@
     import { CompactButton } from "$lib/utils/buttons";
     import { PluginManagerDlg } from "$lib/dialogs/pluginManager"
     import { electron, python } from "$lib/globals.svelte";
+    import { t } from "$lib/i18n";
 
     /**
      * Sort Components into ordered categories
@@ -104,7 +105,7 @@
         {#if python?.ready}
             <CompactButton
                 icon="/icons/btn-add.svg"
-                tooltip="Get more..."
+                tooltip={t("comp.getMore")}
                 onclick={evt => showPluginMgr = true}
             />
             <PluginManagerDlg 
@@ -112,13 +113,13 @@
             />
             <CompactButton
                 icon="/icons/btn-refresh.svg"
-                tooltip="Reload Components"
+                tooltip={t("comp.reload")}
                 onclick={refreshProfiles}
             />
         {/if}
         <CompactButton
             icon="/icons/btn-filter.svg"
-            tooltip="Filter..."
+            tooltip={t("comp.filter")}
             onclick={(evt) => showFilterDlg = true}
         />
         <FilterDialog
@@ -129,7 +130,7 @@
     <div class=components>
         {#await python?.ready then ready}
             {#await profilesPending.components}
-                <div class=message>Loading Components...</div>
+                <div class=message>{t("comp.loading")}</div>
             {:then}
                 {#each sortProfiles(allProfiles.components) as [categ, categProfiles]}
                     {#if filterProfiles(categProfiles).length}
@@ -151,7 +152,7 @@
             {:catch err}
                 <div class="message error">
                     <div>
-                        Failed to load Components. 
+                        {t("comp.failedLoad")} 
                     </div>
                     <pre>
 {err.error?.join?.("\n")}

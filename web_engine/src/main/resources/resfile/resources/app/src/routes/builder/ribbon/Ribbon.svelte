@@ -22,6 +22,7 @@
     import { Ribbon, RibbonSection, RibbonGap } from '$lib/utils/ribbon';
     import { getContext } from "svelte";
     import { electron, python, git } from "$lib/globals.svelte.js";
+    import { t } from "$lib/i18n";
     import SavePrompt from "./SavePrompt.svelte";
     import { FindDialog } from "$lib/dialogs/find/index.js";
     import { DeviceManagerDialog } from "$lib/dialogs/deviceManager/index.js"
@@ -71,7 +72,7 @@
     <RibbonSection>
         <IconButton 
             icon="/icons/btn-hamburger.svg"
-            label="Menu"
+            label={t("tb.menu")}
             onclick={() => show.menu = true} 
             borderless
         />
@@ -79,10 +80,10 @@
             bind:shown={show.menu} 
         />
     </RibbonSection>
-    <RibbonSection label=File icon="/icons/rbn-file.svg">
+    <RibbonSection label={t("tb.file")} icon="/icons/rbn-file.svg">
         <IconButton 
             icon="/icons/btn-new.svg" 
-            label="New file" 
+            label={t("tb.newFile")} 
             onclick={(evt) => prompts.NEW = true}
             borderless
         />
@@ -92,7 +93,7 @@
         />  
         <IconButton 
             icon="/icons/btn-open.svg" 
-            label="Open file" 
+            label={t("tb.openFile")} 
             onclick={(evt) => prompts.OPEN = true} 
             borderless
         />
@@ -102,37 +103,37 @@
         />
         <IconButton 
             icon="/icons/btn-save.svg" 
-            label="Save file" 
+            label={t("tb.saveFile")} 
             onclick={file_save}
             disabled={!current.experiment.history.past.length && current.experiment.file.file} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-saveas.svg" 
-            label="Save file as"
+            label={t("tb.saveFileAs")}
             onclick={file_save_as} 
             borderless
         />
     </RibbonSection>
 
-    <RibbonSection label=Edit icon="/icons/rbn-edit.svg">
+    <RibbonSection label={t("tb.edit")} icon="/icons/rbn-edit.svg">
         <IconButton 
             icon="/icons/btn-undo.svg" 
-            label="Undo{lastAction}" 
+            label={t("tb.undo") + (lastAction ?? "")} 
             onclick={undo} 
             disabled={!current.experiment.file.file || !current.experiment.history.past.length} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-redo.svg" 
-            label="Redo {nextAction}" 
+            label={t("tb.redo") + " " + (nextAction ?? "")} 
             onclick={redo} 
             disabled={!current.experiment.file.file || !current.experiment.history.future.length} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-find.svg" 
-            label="Find" 
+            label={t("tb.find")} 
             onclick={() => show.findDlg = true}
             borderless
         />
@@ -141,11 +142,11 @@
         ></FindDialog>
     </RibbonSection>
     
-    <RibbonSection label=Experiment icon="/icons/rbn-experiment.svg">
+    <RibbonSection label={t("tb.experiment")} icon="/icons/rbn-experiment.svg">
         {#if python?.ready}
             <IconButton
                 icon="/icons/btn-monitors.svg"
-                label="Open the monitor center"
+                label={t("tb.monitorCenter")}
                 onclick={(evt) => show.monitorCenterDlg = true}
                 borderless
             ></IconButton>
@@ -154,7 +155,7 @@
             />
             <IconButton
                 icon="/icons/btn-devices.svg"
-                label="Open the device manager"
+                label={t("tb.deviceManager")}
                 onclick={(evt) => show.deviceMgrDlg = true}
                 borderless
             ></IconButton>
@@ -165,7 +166,7 @@
 
         <IconButton 
             icon="/icons/btn-settings.svg" 
-            label="Experiment settings" 
+            label={t("tb.expSettings")} 
             onclick={(evt) => show.settingsDlg = true}
             disabled={current.experiment === null}
             borderless
@@ -177,8 +178,8 @@
         ></ParamsDialog>
         {/if}
         <SwitchButton 
-            labels={["Pilot", "Run"]} 
-            tooltip="Experiment will run in {current.experiment.pilotMode ? "pilot" : "run"} mode"
+            labels={[t("tb.pilot"), t("tb.run")]} 
+            tooltip={t(current.experiment.pilotMode ? "tip.pilotMode" : "tip.runMode")}
             bind:value={
                 () => current.experiment.pilotMode,
                 (value) => {
@@ -194,7 +195,7 @@
         {#if python?.ready}
             <IconButton 
                 icon="/icons/btn-send{current.experiment.pilotMode ? "pilot" : "run"}.svg" 
-                label="Send experiment to runner" 
+                label={t("tb.sendToRunner")} 
                 onclick={sendToRunner}
                 disabled={!current.experiment.file.file}
                 borderless
@@ -203,10 +204,10 @@
     </RibbonSection>
 
     {#if python?.ready}
-        <RibbonSection label=Desktop icon="/icons/rbn-desktop.svg">
+        <RibbonSection label={t("tb.desktop")} icon="/icons/rbn-desktop.svg">
             <IconButton 
                 icon="/icons/btn-compilepy.svg" 
-                label="Write experiment as a .py file" 
+                label={t("tb.writePy")} 
                 onclick={evt => compilePython()}
                 disabled={!current.experiment.file.file}
                 bind:awaiting={awaiting.compilepy}
@@ -214,7 +215,7 @@
             /> 
             <IconButton 
                 icon="/icons/btn-{current.experiment.pilotMode ? "pilot" : "run"}py.svg" 
-                label="{current.experiment.pilotMode ? "Pilot" : "Run"} experiment locally" 
+                label={t(current.experiment.pilotMode ? "tb.pilotLocal" : "tb.runLocal")} 
                 onclick={evt => runPython()}
                 disabled={!current.experiment.file.file}
                 bind:awaiting={awaiting.runpy}
@@ -225,11 +226,11 @@
     {/if}
 
     <!-- Browser run section: always visible in PsychoPy-Oh, even without Python -->
-    <RibbonSection label=Browser icon="/icons/rbn-browser.svg">
+    <RibbonSection label={t("tb.browser")} icon="/icons/rbn-browser.svg">
         {#if python?.ready}
             <IconButton 
                     icon="/icons/btn-compilejs.svg" 
-                    label="Write experiment as a .js file" 
+                    label={t("tb.writeJs")} 
                     onclick={(evt) => compileJS()}
                     disabled={!current.experiment.file.file}
                     bind:awaiting={awaiting.compilejs}
@@ -238,7 +239,7 @@
         {/if}
             <IconButton 
                 icon="/icons/btn-{current.experiment.pilotMode ? "pilot" : "run"}js.svg" 
-                label="{current.experiment.pilotMode ? "Pilot" : "Run"} experiment in browser" 
+                label={t(current.experiment.pilotMode ? "tb.pilotBrowser" : "tb.runBrowser")} 
                 onclick={(evt) => runJS()}
                 disabled={!current.experiment.file.file}
                 bind:awaiting={awaiting.runjs}
@@ -254,13 +255,13 @@
         />
     -->
 
-    <RibbonSection label=Pavlovia icon="/icons/rbn-pavlovia.svg">
+    <RibbonSection label={t("tb.pavlovia")} icon="/icons/rbn-pavlovia.svg">
         
         <PavloviaSync>
             {#snippet button(sync)}
                 <IconButton 
                     icon="/icons/btn-sync.svg" 
-                    label="Sync experiment" 
+                    label={t("tb.sync")} 
                     onclick={(evt) => sync(
                         $state.snapshot(current.experiment.file.parent), 
                         $state.snapshot(current.user),
@@ -277,24 +278,24 @@
 
     <RibbonGap></RibbonGap>
 
-    <RibbonSection label=Views icon="/icons/rbn-windows.svg">
+    <RibbonSection label={t("tb.views")} icon="/icons/rbn-windows.svg">
         <IconButton 
             icon="/icons/btn-builder.svg" 
-            label="Builder view" 
+            label={t("tb.builderView")} 
             onclick={(evt) => showWindow("builder")} 
             borderless
             disabled
         />
         <IconButton 
             icon="/icons/btn-coder.svg" 
-            label="Coder view" 
+            label={t("tb.coderView")} 
             onclick={(evt) => showWindow("coder")} 
             borderless
         />
         {#if electron}
             <IconButton 
                 icon="/icons/btn-runner.svg" 
-                label="Runner view" 
+                label={t("tb.runnerView")} 
                 onclick={(evt) => showWindow("runner")} 
                 borderless
             />

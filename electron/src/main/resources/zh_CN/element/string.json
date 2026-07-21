@@ -13,14 +13,6 @@
       "value": "PsychoPy Studio OH"
     },
     {
-      "name": "BrowserAbility_desc",
-      "value": "PsychoPy Studio OH 浏览器"
-    },
-    {
-      "name": "BrowserAbility_label",
-      "value": "浏览器"
-    },
-    {
       "name": "button_ok",
       "value": "确认"
     },
@@ -37,12 +29,8 @@
       "value": "状态栏"
     },
     {
-      "name": "StatelessAbility_desc",
-      "value": "PsychoPy Studio OH 运行器"
-    },
-    {
-      "name": "StatelessAbility_label",
-      "value": "运行器"
+      "name": "OpenNewWindow_label",
+      "value": "新建窗口"
     }
   ]
 }

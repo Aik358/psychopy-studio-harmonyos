@@ -89,6 +89,7 @@ export function flushBeforeNavigate(targetView, fileObj) {
 // ★ target 视图 mount 时调用：读出 currentFile 并按需清 source（避免回环）
 // 返回 null 表示没有待继承文件
 export function consumeCurrentFile(forView) {
+  console.log(`[store] consumeCurrentFile forView=${forView}, currentFile=${JSON.stringify(currentFile)}`);
   if (!currentFile.file) return null;
   // 同一视图自己产生的文件不回环消费
   if (currentFile.source === forView) return null;

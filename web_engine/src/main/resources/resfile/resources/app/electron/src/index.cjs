@@ -1,106 +1,7 @@
-// Promise.withResolvers polyfill for Node 20.x (Electron-OH)
-if (!Promise.withResolvers) {
-  Promise.withResolvers = function() {
-    let resolve, reject;
-    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
-    return { promise, resolve, reject };
-  };
-}
-
 const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
-const { app, dialog, BrowserWindow, ipcMain, shell, clipboard, systemPreferences } = require('electron');
-// Request Desktop/Documents/Downloads directory access (HarmonyOS sandbox)
-try {
-  systemPreferences.requestDirectoryPermission();
-  _flog('[init] requestDirectoryPermission called (Desktop/Documents/Downloads)');
-} catch(e) {
-  _flog('[init] requestDirectoryPermission failed:', e && e.message);
-}
-
-// ★ HarmonyOS openExternal helper — tries Electron shell first, then NAPI binding, then aa start
-function openExternalHarmony(url) {
-  _flog('[openExternal] Attempting to open:', url);
-
-  // 1) Try Electron's built-in shell.openExternal
-  try {
-    var result = shell.openExternal(url);
-    if (result) {
-      _flog('[openExternal] shell.openExternal succeeded');
-      return true;
-    }
-    _flog('[openExternal] shell.openExternal returned falsy, falling through');
-  } catch (e) {
-    _flog('[openExternal] shell.openExternal threw:', e && e.message);
-  }
-
-  // 2) Try NAPI binding (registered by ExternalProtocolAdapterBind.ets)
-  try {
-    if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
-      globalThis.ExternalProtocolAdapter.OpenExternal(url);
-      _flog('[openExternal] NAPI ExternalProtocolAdapter.OpenExternal called');
-      return true;
-    }
-  } catch (e) {
-    _flog('[openExternal] NAPI failed:', e && e.message);
-  }
-
-  // 3) Try FileManagerAdapter.OpenUrlInDefaultBrowser NAPI binding
-  try {
-    if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
-      globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
-      _flog('[openExternal] NAPI FileManagerAdapter.OpenUrlInDefaultBrowser called');
-      return true;
-    }
-  } catch (e) {
-    _flog('[openExternal] NAPI FileManagerAdapter failed:', e && e.message);
-  }
-
-  // 4) Fallback: aa start with --ps uri <url> (best effort)
-  try {
-    proc.execSync(`aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "${url}"`, { timeout: 5000 });
-    _flog('[openExternal] aa start browser succeeded');
-    return true;
-  } catch (e) {
-    _flog('[openExternal] aa start failed:', e && e.message);
-  }
-
-  // 5) Last resort: copy to clipboard and notify renderer
-  try {
-    clipboard.writeText(url);
-    _flog('[openExternal] URL copied to clipboard as last resort');
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.webContents.send('stderr', `[openExternal] Cannot open URL automatically. URL copied to clipboard: ${url}`);
-    }
-    return false;
-  } catch (e) {
-    _flog('[openExternal] clipboard fallback failed:', e && e.message);
-  }
-
-  _flog('[openExternal] ALL methods failed for URL:', url);
-  return false;
-}
-
-// ★ 文件日志 — Electron-OH 的 console.log 不进 hilog，写文件辅助调试白屏根因
-const _logFile = path.join(app.getPath("appData"), "psychopy4", "electron-main.log");
-function _flog(...args) {
-  try {
-    const line = `[${new Date().toISOString()}] ${args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}\n`;
-    fs.appendFileSync(_logFile, line);
-    console.log(line.trim());
-  } catch (_) {}
-}
-_flog('=== Electron main started ===');
-_flog('node version:', process.version);
-_flog('appData:', app.getPath("appData"));
-_flog('__dirname:', __dirname);
-_flog('argv:', process.argv);
-global._flog = _flog;
-
-// ★ 捕获未处理异常 — 白屏根因诊断
-process.on('uncaughtException', (err) => { _flog('!!! uncaughtException:', err && err.stack ? err.stack : err); });
-process.on('unhandledRejection', (reason) => { _flog('!!! unhandledRejection:', reason && reason.stack ? reason.stack : reason); });
+const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
 
 // make sure psychopy4 folder exists before importing subpackages
 if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
@@ -121,58 +22,276 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const logging = loggingModule.default;
   const { UsageReport } = usageModule;
   const { appVersion, isDev } = versionModule;
-  // ★ HarmonyOS Python backend — real handlers via harmony-python.js
-  // Wrapped in try-catch so Python backend failure doesn't block Electron UI
+
+  // ★ Enable real Python backend (non-blocking, won't prevent window creation)
+  let pythonHandlers = {};
   try {
-    const harmonyMod = await import("./harmony-python.js");
-    harmonyMod.registerHarmonyPythonHandlers();
-    console.log('[D] harmony-python handlers registered');
-  } catch (harmonyErr) {
-    console.error('[!] Failed to load harmony-python.js:', harmonyErr?.message || harmonyErr);
-    console.error('[!] Stack:', harmonyErr?.stack?.substring(0, 500));
-    // Register ALL stubs matching preload.js API so frontend doesn't crash
-    // Liaison
-    ipcMain.handle("python.liaison.ready", () => false);
-    ipcMain.handle("python.liaison.send", () => { throw new Error("Python backend not available"); });
-    ipcMain.handle("python.liaison.start", () => false);
-    ipcMain.handle("python.liaison.stop", () => true);
-    ipcMain.handle("python.liaison.started", () => false);
-    // UV
-    ipcMain.handle("python.uv.exists", () => true);  // say yes so frontend doesn't try to install
-    ipcMain.handle("python.uv.folder", () => "/tmp/harmony-python");
-    ipcMain.handle("python.uv.executable", () => "python3");
-    ipcMain.handle("python.uv.install", () => true);  // pretend install succeeded
-    ipcMain.handle("python.uv.makeExecutable", () => "python3");
-    ipcMain.handle("python.uv.findPython", () => "python3");
-    ipcMain.handle("python.uv.getEnvironments", () => []);
-    // Venv
-    ipcMain.handle("python.venv.setup", () => ({ success: true }));
-    ipcMain.handle("python.venv.executable", () => "python3");
-    ipcMain.handle("python.venv.installPackage", () => true);
-    ipcMain.handle("python.venv.uninstallPackage", () => true);
-    ipcMain.handle("python.venv.getPackages", () => ({}));
-    ipcMain.handle("python.venv.getPackageDetails", () => ({}));
-    ipcMain.handle("python.venv.installAllDeps", () => false);
-    // Shell
-    ipcMain.handle("python.shell.list", () => []);
-    ipcMain.handle("python.shell.open", () => null);
-    ipcMain.handle("python.shell.send", () => "");
-    ipcMain.handle("python.shell.close", () => true);
-    // Scripts
-    ipcMain.handle("python.scripts.run", () => null);
-    ipcMain.handle("python.scripts.finished", () => true);
-    ipcMain.handle("python.scripts.stop", () => true);
-    // Terminal
-    ipcMain.handle("terminal.python.start", () => "stub-terminal-0");
-    ipcMain.handle("terminal.python.send", () => true);
-    ipcMain.handle("terminal.python.close", () => true);
-    ipcMain.handle("terminal.python.exec", () => "Python backend not available (stub mode)");
-    ipcMain.handle("terminal.python.diagnose", () => JSON.stringify({error: "harmony-python.js failed to load", stack: harmonyErr?.stack?.substring(0, 300)}, null, 2));
-    console.log('[D] Full stub Python handlers registered (fallback mode)');
+    const pythonModule = await import("./python/index.js");
+    pythonHandlers = pythonModule.handlers;
+    console.log('[D] Python backend loaded OK');
+  } catch (err) {
+    console.error('[D] Python backend FAILED to load:', err);
   }
-  // ★ psychojs browser runner IPC 由 harmony-python.js 独家注册（其行 660–692）
-  // 重复注册会抛 second handler 异常让主进程崩、后续 IPC 全废，故此处不注册
-  const pythonHandlers = {};
+  // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
+  // 在当前窗口 loadFile() 加载实验（最稳方案）
+  // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
+  // Read and parse XLSX conditions file, return JSON
+  ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
+    try {
+      var XLSX = require("xlsx");
+      function read(fp) { var wb = XLSX.readFile(fp); return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])); }
+      try { return read(filePath); }
+      catch (e1) {
+        // EPERM or path issues - try file dialog
+        console.warn("[readConditions] Direct read failed:", e1.message);
+        try {
+          var result = dialog.showOpenDialogSync({
+            title: "Select conditions file",
+            defaultPath: filePath,
+            filters: [{ name: "Conditions", extensions: ["xlsx","csv","xls"] }]
+          });
+          if (result && result.length > 0) return read(result[0]);
+          return "[]";
+        } catch (e2) {
+          // Final fallback: try fs read + manual parse
+          try {
+            var fs = require("fs");
+            var buf = fs.readFileSync(filePath);
+            var wb = XLSX.read(buf, {type: "buffer"});
+            return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+          } catch(e3) {
+            console.error("[readConditions] All methods failed");
+            return "[]";
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[psychojs-browser] readConditions failed:", err?.message || err);
+      return "[]";
+    }
+  });
+
+  // ★ Python-backed PsychoJS code generation
+  // Spawns Python to call psychopy.experiment.writeScript(target='PsychoJS')
+  // Falls back gracefully if Python is not available
+  ipcMain.handle("python.psychojs.generateJS", async (evt, psyexpPath, outputDir) => {
+    const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+    
+    // Try to find a Python executable
+    let pythonExe = null;
+    const candidates = [
+      path.join(__dirname, "..", "..", "python", "python.exe"),  // bundled
+      "D:\\PsychoPy\\python.exe",  // Windows dev
+      "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+      "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+      "/usr/bin/python3",  // Linux
+      "/system/bin/python3",
+    ];
+    for (const c of candidates) {
+      try {
+        if (fs.existsSync(c)) {
+          pythonExe = c;
+          break;
+        }
+      } catch(_) {}
+    }
+    // Also try `which python3`
+    if (!pythonExe) {
+      try {
+        pythonExe = proc.execSync("which python3", { timeout: 3000, encoding: 'utf8' }).trim();
+      } catch(_) {}
+    }
+    
+    if (!pythonExe || !fs.existsSync(pythonExe)) {
+      return { error: "No Python found", status: "no_python" };
+    }
+    
+    console.log("[generateJS] Using Python:", pythonExe);
+    console.log("[generateJS] Worker:", workerScript);
+    console.log("[generateJS] psyexp:", psyexpPath);
+    
+    // Use provided output dir or create a temp one
+    const outDir = outputDir || path.join(app.getPath("temp"), "psychopy-oh-gen-" + Date.now());
+    
+    return new Promise((resolve) => {
+      const args = [workerScript, "generate", psyexpPath, outDir];
+      const child = proc.spawn(pythonExe, args, {
+        cwd: path.dirname(workerScript),
+        env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+        timeout: 30000,
+      });
+      
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on('data', (d) => stdout += d.toString());
+      child.stderr.on('data', (d) => stderr += d.toString());
+      child.on('close', (code) => {
+        console.log(`[generateJS] Python exited code=${code}`);
+        if (stderr) console.log(`[generateJS] stderr: ${stderr.slice(0, 500)}`);
+        try {
+          const result = JSON.parse(stdout.trim().split('\n').pop());
+          if (result.status === 'ok') {
+            console.log(`[generateJS] Generated: ${result.experiment_name}, files:`, Object.keys(result.files));
+            resolve(result);
+          } else {
+            console.error('[generateJS] Error:', result.error);
+            resolve({ error: result.error || 'Unknown error', status: 'gen_failed', stderr });
+          }
+        } catch(e) {
+          console.error('[generateJS] Parse failed:', e.message, 'stdout:', stdout.slice(0, 200));
+          resolve({ error: 'Failed to parse Python output: ' + e.message, status: 'parse_failed', stdout, stderr });
+        }
+      });
+      child.on('error', (e) => {
+        console.error('[generateJS] Spawn error:', e.message);
+        resolve({ error: e.message, status: 'spawn_failed' });
+      });
+    });
+  });
+  
+  // ★ Read conditions via Python (more robust than xlsx npm package)
+  ipcMain.handle("python.psychojs.readConditionsPython", async (evt, filePath) => {
+    const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+    let pythonExe = null;
+    const candidates = [
+      path.join(__dirname, "..", "..", "python", "python.exe"),
+      "D:\\PsychoPy\\python.exe",
+      "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+      "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+      "/usr/bin/python3",
+      "/system/bin/python3",
+    ];
+    for (const c of candidates) {
+      try { if (fs.existsSync(c)) { pythonExe = c; break; } } catch(_) {}
+    }
+    if (!pythonExe) return null;
+    
+    return new Promise((resolve) => {
+      const child = proc.spawn(pythonExe, [workerScript, "conditions", filePath], {
+        env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+        timeout: 10000,
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on('data', (d) => stdout += d.toString());
+      child.stderr.on('data', (d) => stderr += d.toString());
+      child.on('close', () => {
+        try { resolve(JSON.parse(stdout.trim().split('\n').pop())); }
+        catch(_) { resolve(null); }
+      });
+      child.on('error', () => resolve(null));
+    });
+  });
+  
+  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir, psyexpPath) => {
+    console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir, "psyexpPath:", psyexpPath);
+    try {
+      delete require.cache[require.resolve("./psychojs-browser/index.cjs")];
+      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+      
+      // ★ If we have a .psyexp path, try Python generation first
+      if (psyexpPath && fs.existsSync(psyexpPath)) {
+        console.log("[psychojs-browser] Trying Python generation for:", psyexpPath);
+        const genResult = await new Promise((resolve) => {
+          const workerScript = path.join(__dirname, "python", "psychopy_worker.py");
+          
+          // Find Python
+          let pythonExe = null;
+          const pyCandidates = [
+            path.join(__dirname, "..", "..", "python", "python.exe"),
+            "D:\\PsychoPy\\python.exe",
+            "/data/service/hnp/python.org/python_3.12/bin/python3",  // HarmonyOS HNP
+            "/storage/Users/currentUser/.local/bin/python3",  // HarmonyOS user
+            "/usr/bin/python3",
+            "/system/bin/python3",
+          ];
+          for (const c of pyCandidates) {
+            try { if (fs.existsSync(c)) { pythonExe = c; break; } } catch(_) {}
+          }
+          if (!pythonExe) {
+            try { pythonExe = proc.execSync("which python3", { timeout: 3000, encoding: 'utf8' }).trim(); } catch(_) {}
+          }
+          
+          if (!pythonExe || !fs.existsSync(pythonExe)) {
+            console.log("[psychojs-browser] No Python found, falling back to manual exporter");
+            resolve(null);
+            return;
+          }
+          
+          const outDir = path.join(app.getPath("temp"), "psychopy-oh-gen-" + Date.now());
+          console.log("[psychojs-browser] Spawning Python:", pythonExe, workerScript);
+          
+          const child = proc.spawn(pythonExe, [workerScript, "generate", psyexpPath, outDir], {
+            cwd: path.dirname(workerScript),
+            env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
+            timeout: 30000,
+          });
+          
+          let stdout = "";
+          let stderr = "";
+          child.stdout.on('data', (d) => stdout += d.toString());
+          child.stderr.on('data', (d) => { stderr += d.toString(); console.log("[psychojs-browser] Python stderr:", d.toString().trim()); });
+          child.on('close', (code) => {
+            console.log(`[psychojs-browser] Python exited code=${code}`);
+            if (stderr) console.log(`[psychojs-browser] Python stderr: ${stderr.slice(0, 500)}`);
+            try {
+              const result = JSON.parse(stdout.trim().split('\n').pop());
+              if (result.status === 'ok') {
+                console.log(`[psychojs-browser] Python generated: ${result.experiment_name}`);
+                resolve(result);
+              } else {
+                console.error('[psychojs-browser] Python error:', result.error);
+                resolve(null);
+              }
+            } catch(e) {
+              console.error('[psychojs-browser] Parse failed:', e.message);
+              resolve(null);
+            }
+          });
+          child.on('error', (e) => {
+            console.error('[psychojs-browser] Spawn error:', e.message);
+            resolve(null);
+          });
+        });
+        
+        if (genResult && genResult.output_dir) {
+          // ★ Use the Python-generated directory directly
+          const url = await psychoJSBrowser.startServerFromDir(genResult.output_dir);
+          console.log("[psychojs-browser] Opened (Python-generated):", url);
+          return url;
+        }
+      }
+      
+      // Fallback: use the manual JS code path
+      const url = await psychoJSBrowser.startServer(
+        jsCode || "", expName || "experiment", conditionsJSON || "",
+        resourcesJSON || "", expDir || ""
+      );
+      console.log("[psychojs-browser] Opened in system browser:", url);
+      return url;
+    } catch (err) {
+      console.error("[psychojs-browser] Failed:", err?.message || err, err?.stack);
+      throw err;
+    }
+  });
+  // 保存实验 log（暂未启用）
+  ipcMain.handle("python.psychojs.saveLog", async (evt, logData, savePath) => {
+    const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+    return await psychoJSBrowser.saveLog(logData, savePath);
+  });
+  // ★ 停掉浏览器实验 server + 清理
+  ipcMain.handle("python.psychojs.browserStop", async (evt, address) => {
+    console.log("[psychojs-browser] browserStop called, address:", address);
+    try {
+      const psychoJSBrowser = require("./psychojs-browser/index.cjs");
+      await psychoJSBrowser.stopServer(address);
+      return true;
+    } catch (err) {
+      console.error("[psychojs-browser] stop failed:", err?.message || err);
+      return false;
+    }
+  });
+  // psychojs handlers are registered by python/index.js
   const { handlers: gitHandlers } = gitModule;
 
   console.log('[D] esm loaded isDev=' + isDev);
@@ -191,7 +310,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
 
   var svelte = {
     address: {
-      host: "127.0.0.1",
+      host: "localhost",
       port: 8003,
     },
     process: undefined
@@ -214,8 +333,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     prefs = {}
   }
 
-  // setup a clipboard (custom buffer, separate from electron's clipboard module)
-  let _clipboardBuffer = undefined
+  // setup a clipboard
+  clipboard = undefined
 
   // send usage stats
   let usageReport = new UsageReport()
@@ -243,113 +362,46 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   var started = false
 
   const createWindow = () => {
-  _flog('=== createWindow called ===');
   console.log('[D] createWindow loading builder');
   started = true;
 
-  const mimeTypes = {
-    '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
-    '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.woff2': 'font/woff2',
-    '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
-    '.wasm': 'application/wasm'
-  };
-  const distDir = path.join(__dirname, '../../dist');
-
-  const server = require('http').createServer((req, res) => {
-    const urlPath = req.url.split('?')[0];
-
-    // ★ API routes — handled in-process (no SvelteKit server on HarmonyOS)
-    if (urlPath === '/api/plugins') {
-      // Built-in plugin list (replaces psychopy.org/plugins.json which is unreachable on HarmonyOS)
-      const builtinPlugins = [
-        {name: 'PsychoPy', pipname: 'psychopy', icon: '/icons/plugin-psychopy.svg', homepage: 'https://psychopy.org', description: 'Core PsychoPy package', keywords: ['psychopy','experiment']},
-        {name: 'NumPy', pipname: 'numpy', icon: '/icons/plugin-numpy.svg', homepage: 'https://numpy.org', description: 'Scientific computing', keywords: ['numpy','math']},
-        {name: 'SciPy', pipname: 'scipy', icon: '/icons/plugin-scipy.svg', homepage: 'https://scipy.org', description: 'Scientific computing tools', keywords: ['scipy','math']},
-        {name: 'Matplotlib', pipname: 'matplotlib', icon: '/icons/plugin-matplotlib.svg', homepage: 'https://matplotlib.org', description: 'Plotting library', keywords: ['matplotlib','plot']},
-        {name: 'Pandas', pipname: 'pandas', icon: '/icons/plugin-pandas.svg', homepage: 'https://pandas.pydata.org', description: 'Data analysis toolkit', keywords: ['pandas','data']},
-        {name: 'Pillow', pipname: 'Pillow', icon: '/icons/plugin-pillow.svg', homepage: 'https://python-pillow.org', description: 'Image processing library', keywords: ['pillow','image']},
-        {name: 'OpenCV', pipname: 'opencv-python', icon: '/icons/plugin-opencv.svg', homepage: 'https://opencv.org', description: 'Computer vision library', keywords: ['opencv','vision']},
-        {name: 'Pyo', pipname: 'pyo', icon: '/icons/plugin-pyo.svg', homepage: 'https://belangeo.github.io/pyo/', description: 'Digital signal processing', keywords: ['pyo','audio']},
-        {name: 'Soundfile', pipname: 'soundfile', icon: '/icons/plugin-soundfile.svg', homepage: 'https://python-soundfile.readthedocs.io/', description: 'Audio library', keywords: ['soundfile','audio']},
-        {name: 'Pyglet', pipname: 'pyglet', icon: '/icons/plugin-pyglet.svg', homepage: 'https://pyglet.org', description: 'Windowing/multimedia library', keywords: ['pyglet','graphics']}
-      ];
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(builtinPlugins));
-      return;
+  const express = require('express');
+  const expressApp = express();
+  const distPath = path.join(__dirname, '../../dist');
+  expressApp.use(express.static(distPath, {
+    setHeaders: (res, p) => {
+      if (p.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+      if (p.endsWith('.ttf')) res.setHeader('Content-Type', 'font/ttf');
+      if (p.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+      if (p.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
+      if (p.endsWith('.css')) res.setHeader('Content-Type', 'text/css');
     }
-    if (urlPath === '/api/surveys') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ surveys: [] }));
-      return;
-    }
-
-    let filePath = distDir + urlPath;
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      const ext = path.extname(filePath);
-      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
-      res.end(fs.readFileSync(filePath));
-      return;
-    }
-    const seg = urlPath.split('/')[1] || '';
-    const pageDir = distDir + '/' + seg + '/index.html';
-    if (fs.existsSync(pageDir)) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(fs.readFileSync(pageDir));
-      return;
-    }
-    res.writeHead(404);
-    res.end();
+  }));
+  expressApp.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.includes('.')) return next();
+    const pageDir = path.join(distPath, req.path.split('/')[1] || '', 'index.html');
+    if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
+    next();
   });
-
-  server.on('error', (err) => {
-    _flog('!!! HTTP server error:', err && err.message);
-    console.error('[D] Server error:', err);
-  });
-  server.listen(8003, '127.0.0.1', () => {
-    _flog('HTTP server listening on 127.0.0.1:8003');
-    console.log('[D] HTTP server started on 127.0.0.1:8003');
-    openMainWindow();  
-  });
-  function openMainWindow() {
-    _flog('=== openMainWindow called ===');
+  
+  const server = expressApp.listen(8003, 'localhost', () => {
+    console.log('[D] Express started');
+    
     const mainWin = new BrowserWindow({
       width: 1600, height: 900, show: true,
       frame: true,
       webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
     mainWin.removeMenu();
-    // Register window immediately so showWindow can find it
-    windows[mainWin.webContents.id] = mainWin;
-    mainWin.webContents.on('console-message', (evt) => {
-      console.log('[RENDERER]', evt.message);
-    });
-    mainWin.webContents.on('did-fail-load', (evt, code, desc) => {
-      _flog('!!! did-fail-load:', code, desc);
-      console.error('[D] Window load failed:', code, desc);
-    });
-    _flog('openMainWindow: loadURL http://127.0.0.1:8003/builder');
-    mainWin.loadURL('http://127.0.0.1:8003/builder').then(() => {
-      _flog('openMainWindow: loadURL builder OK');
-      console.log('[D] loadURL initiated');
-    }).catch((err) => {
-      _flog('!!! openMainWindow loadURL error:', err && err.message);
-      console.error('[D] loadURL error:', err);
-      fallbackLoadFile(mainWin);
-    });
+    mainWin.loadURL('http://localhost:8003/builder');
+    
+    // Store window for IPC
     mainWin.webContents.once('did-finish-load', () => {
-      _flog('openMainWindow: did-finish-load builder UI');
-      console.log('[D] Window loaded builder UI');
+      windows[mainWin.webContents.id] = mainWin;
     });
+    
     svelte.process = { kill: () => server.close() };
-  }
-  function fallbackLoadFile(win) {
-    const fallbackPath = path.join(__dirname, '../../.svelte-kit/output/prerendered/pages/builder/index.html');
-    _flog('fallbackLoadFile:', fallbackPath, 'exists:', fs.existsSync(fallbackPath));
-    console.log('[D] Fallback loading file:', fallbackPath);
-    if (fs.existsSync(fallbackPath)) {
-      win.loadURL('file://' + fallbackPath);
-    }
-  }
+  });
 };/**
    * Open the default starting windows indicated by prefs
    */
@@ -392,9 +444,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     // open new windows in browser unless opened by electron
     win.webContents.setWindowOpenHandler(
       ({ url }) => {
-        // ★ HarmonyOS: multi-fallback openExternal
-        _flog('[openExternal] setWindowOpenHandler url:', url);
-        openExternalHarmony(url);
+        shell.openExternal(url);
+
         return { action: 'deny' }
       }
     )
@@ -477,7 +528,6 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(() => {
-    _flog('=== app.whenReady fired ===');
     createWindow();
 
     // On OS X it's common to re-create a window in the app when the
@@ -547,31 +597,12 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   const handlers = {
     electron: {
       windows: {
-        // [HarmonyOS-OH] Single-window mode: navigate instead of creating new windows
-        new: ipcMain.handle("electron.windows.new", async (evt, target) => {
-          let win = windows[evt.sender.id];
-          if (win && win.loadURL) {
-            let url = `http://${svelte.address.host}:${svelte.address.port}/${target || ''}`;
-            _flog('[HarmonyOS] windows.new navigating to:', url);
-            logging.log(`[HarmonyOS] windows.new: navigating single window to ${url}`);
-            await win.loadURL(url).catch(err => _flog('!!! windows.new loadURL error:', err && err.message));
-            return evt.sender.id;
-          }
-          // fallback to original behavior
-          return await newWindow(target);
-        }),
-        get: ipcMain.handle("electron.windows.get", (evt, target) => {
-          // [HarmonyOS-OH] Pure query: only return window if URL already matches
-          // Navigation side-effect belongs in windows.new, not here
-          let win = windows[evt.sender.id];
-          if (win && win.webContents && !win.isDestroyed()) {
-            let url = String(win.webContents.getURL());
-            if (url.includes(target)) {
-              return [evt.sender.id];
-            }
-          }
-          return [];
-        }),
+        new: ipcMain.handle("electron.windows.new", async (evt, target) => await newWindow(target)),
+        get: ipcMain.handle("electron.windows.get", (evt, target) => Object.keys(windows).filter(
+          id => windows[id] && typeof windows[id].isDestroyed === 'function' && !windows[id].isDestroyed()
+        ).filter(
+          id => String(windows[id].webContents.getURL()).includes(target)
+        )),
         send: ipcMain.handle("electron.windows.send", (evt, id, tag, data) => {
           if (windows[id]) windows[id].webContents.send(tag, data)
         }),
@@ -605,19 +636,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         }),
         navigate: ipcMain.handle("electron.windows.navigate", (evt, target) => {
           let win = windows[evt.sender.id]
-          if (win && win.loadURL) {
-            _flog('[HarmonyOS] windows.navigate to:', target);
-            win.loadURL(`http://127.0.0.1:8003/${target}`).then(() => {
-              _flog('[HarmonyOS] windows.navigate OK:', target);
-              console.log(`[D] Navigated to /${target}`);
-            }).catch((err) => {
-              _flog('!!! windows.navigate error:', target, err && err.message);
-              console.error(`[D] Navigate to /${target} failed:`, err);
-            });
-            return true;
-          }
-          _flog('!!! windows.navigate: no window for sender', evt.sender.id);
-          return false;
+          if (win && win.loadURL) win.loadURL(`http://localhost:8003/${target}`)
         }),
       },
       paths: {
@@ -633,37 +652,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       },
       files: {
         load: ipcMain.handle("electron.files.load", (evt, file) => fs.readFileSync(file, { encoding: 'utf8' })),
-        save: ipcMain.handle("electron.files.save", (evt, file, content) => {
-          try {
-            // Ensure parent directory exists
-            const parentDir = path.dirname(file);
-            if (!fs.existsSync(parentDir)) {
-              fs.mkdirSync(parentDir, { recursive: true });
-            }
-            fs.writeFileSync(file, content, { encoding: 'utf8', mode: 0o777 });
-            return true;
-          } catch (err) {
-            _flog('[files.save] Write failed:', err && err.message, 'for path:', file);
-            // Fallback: write to appData directory
-            try {
-              const fallbackDir = path.join(app.getPath('appData'), 'psychopy4', 'exports');
-              if (!fs.existsSync(fallbackDir)) {
-                fs.mkdirSync(fallbackDir, { recursive: true });
-              }
-              const fallbackPath = path.join(fallbackDir, path.basename(file));
-              fs.writeFileSync(fallbackPath, content, { encoding: 'utf8', mode: 0o777 });
-              _flog('[files.save] Fallback write succeeded at:', fallbackPath);
-              // Notify renderer about fallback
-              for (const win of BrowserWindow.getAllWindows()) {
-                win.webContents.send('stderr', `[files.save] Original path unwritable, saved to: ${fallbackPath}`);
-              }
-              return fallbackPath;
-            } catch (err2) {
-              _flog('[files.save] Fallback also failed:', err2 && err2.message);
-              throw err2;
-            }
-          }
-        }),
+        save: ipcMain.handle("electron.files.save", (evt, file, content) => fs.writeFileSync(file, content, { encoding: 'utf8', mode: 0o777 })),
         exists: ipcMain.handle("electron.files.exists", (evt, file) => fs.existsSync(file)),
         stat: ipcMain.handle("electron.files.stat", (evt, file) => {
           let stat = fs.statSync(file)
@@ -680,21 +669,18 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         )),
         showItemInFolder: ipcMain.handle("electron.files.showItemInFolder", (evt, folder) => shell.showItemInFolder(folder)),
         openPath: ipcMain.handle("electron.files.openPath", (evt, path) => shell.openPath(path)),
-        openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => {
-          _flog('[openExternal] IPC openExternal url:', url);
-          return openExternalHarmony(url);
-        })
+        openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => shell.openExternal(url))
       },
       clipboard: {
-        get: ipcMain.handle("electron.clipboard.get", (evt) => _clipboardBuffer),
-        set: ipcMain.handle("electron.clipboard.set", (evt, value) => _clipboardBuffer = value)
+        get: ipcMain.handle("electron.clipboard.get", (evt) => clipboard),
+        set: ipcMain.handle("electron.clipboard.set", (evt, value) => clipboard = value)
       },
       authenticatePavlovia: ipcMain.handle("electron.authenticatePavlovia", (evt, url) => authenticatePavlovia(url)),
       version: ipcMain.handle("electron.version", (evt) => appVersion),
       platform: ipcMain.handle("electron.platform", (evt) => process.platform),
       quit: ipcMain.handle("electron.quit", (evt) => app.quit())
     },
-    // python: pythonHandlers, // TODO: uncomment when Python backend is adapted
+    python: pythonHandlers,
     git: gitHandlers
   };
 

@@ -76,13 +76,14 @@ export struct WebPage {
   }
 
   aboutToAppear(): void {
-    hilog.info(this.domainId, this.logTag, 'aboutToAppear');
+    hilog.info(0x0000, 'testTag', 'aboutToAppear');
     const params = router.getParams() as Record<string, string>;
     this.webUrl = params.url ?? '';
+    hilog.info(0x0000, 'testTag', `webUrl: ${this.webUrl}`);
   }
 
   aboutToDisappear(): void {
-    hilog.info(this.domainId, this.logTag, 'aboutToDisappear');
+    hilog.info(0x0000, 'testTag', 'aboutToDisappear');
     if (this.webUrl) {
       this.controller.stop();
     }

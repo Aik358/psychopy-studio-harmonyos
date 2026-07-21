@@ -14,6 +14,7 @@
     import { getContext } from "svelte";
     import { electron, python } from "$lib/globals.svelte.js";
     import { IconButton, SwitchButton } from '$lib/utils/buttons';
+    import { t } from "$lib/i18n";
     import { UserCtrl, ProjectCtrl } from '$lib/pavlovia/pavlovia.svelte';
     import { Experiment } from "$lib/experiment";
     import { openIn } from "$lib/utils/views.svelte";
@@ -36,7 +37,7 @@
     <RibbonSection>
         <IconButton 
             icon="/icons/btn-hamburger.svg"
-            label="Menu"
+            label={t("tb.menu")}
             onclick={() => show.menu = true} 
             borderless
         />
@@ -44,37 +45,37 @@
             bind:shown={show.menu} 
         />
     </RibbonSection>
-    <RibbonSection label=File icon="/icons/rbn-file.svg">
+    <RibbonSection label={t("tb.file")} icon="/icons/rbn-file.svg">
         <IconButton 
             icon="/icons/btn-new.svg" 
-            label="New configuration" 
+            label={t("tb.newConfig")} 
             onclick={(evt) => fileNew()} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-open.svg" 
-            label="Open configuration" 
+            label={t("tb.openConfig")} 
             onclick={(evt) => fileOpen(true).catch(err => console.error(err))} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-save.svg" 
-            label="Save configuration" 
+            label={t("tb.saveConfig")} 
             onclick={fileSave}
             borderless
         />
         <IconButton 
             icon="/icons/btn-saveas.svg" 
-            label="Save configuration as"
+            label={t("tb.saveConfigAs")}
             onclick={fileSaveAs} 
             borderless
         />
     </RibbonSection>
 
-    <RibbonSection label=Selection icon="/icons/rbn-experiment.svg">
+    <RibbonSection label={t("tb.selection")} icon="/icons/rbn-experiment.svg">
         <SwitchButton 
-            labels={["Pilot", "Run"]} 
-            tooltip="Experiment will run in {current.runlist[current.selection]?.pilotMode ? "pilot" : "run"} mode"
+            labels={[t("tb.pilot"), t("tb.run")]} 
+            tooltip={t(current.runlist[current.selection]?.pilotMode ? "tip.pilotMode" : "tip.runMode")}
             bind:value={
                 () => current.runlist[current.selection]?.pilotMode,
                 (value) => current.runlist[current.selection]?.setPilotMode(value)
@@ -83,7 +84,7 @@
         />
         <IconButton 
             icon="/icons/btn-send{current.runlist[current.selection]?.file.ext === ".psyexp" ? "builder" : "coder"}.svg" 
-            label="Open selection in {current.runlist[current.selection]?.file.ext === ".psyexp" ? "Builder" : "Coder"}"
+            label={t("tb.openSelectionIn", { target: current.runlist[current.selection]?.file.ext === ".psyexp" ? t("tb.builderView") : t("tb.coderView") })}
             onclick={evt => openIn(
                 current.runlist[current.selection]?.file.file, 
                 current.runlist[current.selection]?.file.ext === ".psyexp" ? "builder" : "coder"
@@ -93,11 +94,11 @@
         />
     </RibbonSection>
 
-    <RibbonSection label=Run icon="/icons/btn-runpy.svg">
+    <RibbonSection label={t("tb.run")} icon="/icons/btn-runpy.svg">
         {#if python?.ready}
             <IconButton 
                 icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}py.svg" 
-                label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment locally" 
+                label={t(current.runlist[current.selection]?.pilotMode ? "tb.pilotLocal" : "tb.runLocal")} 
                 onclick={evt => current.runlist[current.selection]?.runPython()}
                 disabled={current.selection === undefined}
                 bind:awaiting={current.awaiting.runpy}
@@ -107,7 +108,7 @@
         {/if}
         <IconButton 
             icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg" 
-            label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment in browser" 
+            label={t(current.runlist[current.selection]?.pilotMode ? "tb.pilotBrowser" : "tb.runBrowser")} 
             onclick={(evt) => current.runlist[current.selection]?.runJS()}
             disabled={current.selection === undefined || !(current.runlist[current.selection] instanceof Experiment)}
             bind:awaiting={current.awaiting.runjs}
@@ -115,29 +116,29 @@
         />
     </RibbonSection>
 
-    <RibbonSection label=Pavlovia icon="/icons/rbn-pavlovia.svg">
+    <RibbonSection label={t("tb.pavlovia")} icon="/icons/rbn-pavlovia.svg">
         <UserCtrl />
     </RibbonSection>
 
     <RibbonGap></RibbonGap>
 
-    <RibbonSection label=Views icon="/icons/rbn-windows.svg">
+    <RibbonSection label={t("tb.views")} icon="/icons/rbn-windows.svg">
         <IconButton 
             icon="/icons/btn-builder.svg" 
-            label="Builder view" 
+            label={t("tb.builderView")} 
             onclick={(evt) => showWindow("builder")} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-coder.svg" 
-            label="Coder view" 
+            label={t("tb.coderView")} 
             onclick={(evt) => showWindow("coder")} 
             borderless
         />
         {#if electron}
             <IconButton 
                 icon="/icons/btn-runner.svg" 
-                label="Runner view" 
+                label={t("tb.runnerView")} 
                 onclick={(evt) => showWindow("runner")} 
                 borderless
                 disabled

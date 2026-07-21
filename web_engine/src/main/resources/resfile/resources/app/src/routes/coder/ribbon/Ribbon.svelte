@@ -22,6 +22,7 @@
     import Menu from "./Menu.svelte";
     import { getContext } from "svelte";
     import { IconButton, SwitchButton } from '$lib/utils/buttons';
+    import { t } from "$lib/i18n";
     import { UserCtrl } from '$lib/pavlovia/pavlovia.svelte';
     import { electron, python } from "$lib/globals.svelte";
 
@@ -39,7 +40,7 @@
     <RibbonSection>
         <IconButton 
             icon="/icons/btn-hamburger.svg"
-            label="Menu"
+            label={t("tb.menu")}
             onclick={() => show.menu = true} 
             borderless
         />
@@ -48,22 +49,22 @@
         />
     </RibbonSection>
     
-    <RibbonSection label=File icon="/icons/rbn-file.svg">
+    <RibbonSection label={t("tb.file")} icon="/icons/rbn-file.svg">
         <IconButton 
             icon="/icons/btn-new.svg" 
-            label="New file" 
+            label={t("tb.newFile")} 
             onclick={fileNew}
             borderless
         /> 
         <IconButton 
             icon="/icons/btn-open.svg" 
-            label="Open file" 
+            label={t("tb.openFile")} 
             onclick={fileOpen} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-save.svg" 
-            label="Save file" 
+            label={t("tb.saveFile")} 
             onclick={fileSave}
             borderless
             disabled={
@@ -73,41 +74,41 @@
         />
         <IconButton 
             icon="/icons/btn-saveas.svg" 
-            label="Save file as"
+            label={t("tb.saveFileAs")}
             onclick={fileSaveAs} 
             borderless
             disabled={Object.values(current.pages).length === 0}
         />
     </RibbonSection>
 
-    <RibbonSection label=Edit icon="/icons/rbn-edit.svg">
+    <RibbonSection label={t("tb.edit")} icon="/icons/rbn-edit.svg">
         <IconButton 
             icon="/icons/btn-undo.svg" 
-            label="Undo"
+            label={t("tb.undo")}
             onclick={undo} 
             disabled={!current.pages[current.tab]?.canUndo} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-redo.svg" 
-            label="Redo" 
+            label={t("tb.redo")} 
             onclick={redo} 
             disabled={!current.pages[current.tab]?.canRedo} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-find.svg" 
-            label="Find" 
+            label={t("tb.find")} 
             onclick={find}
             disabled={!current.pages[current.tab]?.editor}
             borderless
         />
     </RibbonSection>
 
-    <RibbonSection label=Experiment icon="/icons/rbn-experiment.svg">
+    <RibbonSection label={t("tb.experiment")} icon="/icons/rbn-experiment.svg">
         <SwitchButton 
-            labels={["Pilot", "Run"]} 
-            tooltip="Experiment will run in {current.pages[current.tab]?.pilotMode ? "pilot" : "run"} mode"
+            labels={[t("tb.pilot"), t("tb.run")]} 
+            tooltip={t(current.pages[current.tab]?.pilotMode ? "tip.pilotMode" : "tip.runMode")}
             bind:value={
                 () => current.pages[current.tab]?.pilotMode,
                 (value) => current.pages[current.tab].pilotMode = value
@@ -118,7 +119,7 @@
         {#if python?.ready}
             <IconButton 
                 icon="/icons/btn-send{current.pages[current.tab]?.pilotMode ? "pilot" : "run"}.svg" 
-                label="Send experiment to runner" 
+                label={t("tb.sendToRunner")} 
                 onclick={sendToRunner}
                 disabled={!current.pages[current.tab]?.file?.file}
                 borderless
@@ -126,10 +127,10 @@
         {/if}
     </RibbonSection>
     {#if python?.ready}
-        <RibbonSection label=Run icon="/icons/btn-runpy.svg">
+        <RibbonSection label={t("tb.run")} icon="/icons/btn-runpy.svg">
             <IconButton 
                 icon="/icons/btn-{current.pages[current.tab]?.pilotMode ? "pilot" : "run"}py.svg" 
-                label="{current.pages[current.tab]?.pilotMode ? "Pilot" : "Run"} experiment locally" 
+                label={t(current.pages[current.tab]?.pilotMode ? "tb.pilotLocal" : "tb.runLocal")} 
                 onclick={evt => runPython()}
                 disabled={!current.pages[current.tab]?.file?.file || current.pages[current.tab]?.file?.ext !== ".py"}
                 bind:awaiting={awaiting.runpy}
@@ -139,22 +140,22 @@
         </RibbonSection>
     {/if}
 
-    <RibbonSection label=Pavlovia icon="/icons/rbn-pavlovia.svg">
+    <RibbonSection label={t("tb.pavlovia")} icon="/icons/rbn-pavlovia.svg">
         <UserCtrl />
     </RibbonSection>
 
     <RibbonGap></RibbonGap>
 
-    <RibbonSection label=Views icon="/icons/rbn-windows.svg">
+    <RibbonSection label={t("tb.views")} icon="/icons/rbn-windows.svg">
         <IconButton 
             icon="/icons/btn-builder.svg" 
-            label="Builder view" 
+            label={t("tb.builderView")} 
             onclick={(evt) => showWindow("builder")} 
             borderless
         />
         <IconButton 
             icon="/icons/btn-coder.svg" 
-            label="Coder view" 
+            label={t("tb.coderView")} 
             onclick={(evt) => showWindow("coder")} 
             borderless
             disabled
@@ -162,7 +163,7 @@
         {#if electron}
             <IconButton 
                 icon="/icons/btn-runner.svg" 
-                label="Runner view" 
+                label={t("tb.runnerView")} 
                 onclick={(evt) => showWindow("runner")} 
                 borderless
             />

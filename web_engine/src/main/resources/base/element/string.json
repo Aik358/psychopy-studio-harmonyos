@@ -83,6 +83,46 @@
     {
       "name": "dialog_cancel_button",
       "value": "cancel"
+    },
+    {
+      "name": "distributed_datasync",
+      "value": "distributed_datasync requires user_grant permission"
+    },
+    {
+      "name": "screenshot_dialog_title",
+      "value": "Unable to access system screenshot"
+    },
+    {
+      "name": "screenshot_dialog_content",
+      "value": "You have disabled the screenshoot access permission. Go to Settings > Privacy & security > Screenshot and enable the screenshot access permission for label"
+    },
+    {
+      "name": "go_to_app_gallery",
+      "value": "Go to the app gallery to search"
+    },
+    {
+      "name": "download",
+      "value": "Download"
+    },
+    {
+      "name": "still_download",
+      "value": "Still want to download"
+    },
+    {
+      "name": "installation_not_supported",
+      "value": "Installation of this format file is not supported"
+    },
+    {
+      "name": "add_failed_tip",
+      "value": "Add failed"
+    },
+    {
+      "name": "file_name_str",
+      "value": "File Name:"
+    },
+    {
+      "name": "file_size_str",
+      "value": "File Size:"
     }
   ]
 }

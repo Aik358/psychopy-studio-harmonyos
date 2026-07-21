@@ -11,8 +11,9 @@
     
     // setup logging to app
     electron.windows.listen("uv", (evt, message) => status.logs += `${message}\n`)
-    // setup on initial load
-    setupPython()
+    // Defer to setupPython() — it handles both normal setup and tablet mode detection
+    // inside the IPC context where python.harmony / python.uv are guaranteed available.
+    setupPython();
 </script>
 
 

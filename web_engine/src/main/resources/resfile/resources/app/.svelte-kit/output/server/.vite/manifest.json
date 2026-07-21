@@ -25,10 +25,6 @@
     "file": "_app/immutable/assets/Theme.xy-dZZZ3.css",
     "src": "_Theme.xy-dZZZ3.css"
   },
-  "_TipsDialog.CMGGo0Wm.css": {
-    "file": "_app/immutable/assets/TipsDialog.CMGGo0Wm.css",
-    "src": "_TipsDialog.CMGGo0Wm.css"
-  },
   "_TipsDialog.js": {
     "file": "chunks/TipsDialog.js",
     "name": "TipsDialog",
@@ -38,8 +34,12 @@
       "_server.js"
     ],
     "css": [
-      "_app/immutable/assets/TipsDialog.CMGGo0Wm.css"
+      "_app/immutable/assets/TipsDialog.k0uOF901.css"
     ]
+  },
+  "_TipsDialog.k0uOF901.css": {
+    "file": "_app/immutable/assets/TipsDialog.k0uOF901.css",
+    "src": "_TipsDialog.k0uOF901.css"
   },
   "_client.js": {
     "file": "chunks/client.js",

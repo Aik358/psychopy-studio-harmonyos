@@ -1,6 +1,6 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, s as ensure_array_like, t as attr_class, v as getContext } from "../../../chunks/server.js";
-import { $ as python, A as IconButton, B as Icon, F as CompactButton, G as showWindow, J as store, K as consumeCurrentFile, P as Menu, U as openIn, W as showDevTools, X as electron$1, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, k as SwitchButton, l as CodeEditor, m as mime, n as prefs, o as SetupPython, p as browseFileSave, q as setActiveView, r as Script, s as CodeInput, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
+import { A as SwitchButton, J as showDevTools, P as t, Q as store, R as Menu, W as Icon, X as consumeCurrentFile, Y as showWindow, Z as setActiveView, c as CodeOutput, et as electron$1, f as Version, g as parsePath, h as mime, j as IconButton, l as CodeEditor, m as browseFileSave, n as prefs, o as SetupPython, p as browseFileOpen, q as openIn, r as Script, rt as python, s as CodeInput, t as Theme, u as setupPython, z as CompactButton } from "../../../chunks/Theme.js";
 import { C as Pane_resizer, D as Panel, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, m as ButtonTab, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
 import { t as Dialog_1 } from "../../../chunks/pluginManager.js";
 import path from "path-browserify";
@@ -172,26 +172,26 @@ function Menu_1($$renderer, $$props) {
 				},
 				children: ($$renderer) => {
 					SubMenu($$renderer, {
-						label: "File",
+						label: t("menu.file"),
 						icon: "/icons/rbn-file.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
 								icon: "/icons/btn-new.svg",
-								label: "New file",
+								label: t("file.new"),
 								shortcut: "new",
 								onclick: fileNew
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-open.svg",
-								label: "Open file",
+								label: t("file.open"),
 								shortcut: "open",
 								onclick: fileOpen
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-save.svg",
-								label: "Save file",
+								label: t("file.save"),
 								shortcut: "save",
 								onclick: fileSave,
 								disabled: Object.values(current.pages).length === 0 || !current.pages[current.tab]?.canUndo && current.pages[current.tab]?.file?.file
@@ -199,21 +199,21 @@ function Menu_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-saveas.svg",
-								label: "Save file as",
+								label: t("file.saveAs"),
 								shortcut: "saveAs",
 								onclick: fileSaveAs,
 								disabled: Object.values(current.pages).length === 0
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Reveal in file explorer",
+								label: t("file.reveal"),
 								onclick: revealFolder,
 								shortcut: "revealFolder",
 								disabled: current.pages[current.tab]?.file?.parent === void 0
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Close window",
+								label: t("file.close"),
 								onclick: close,
 								shortcut: "close"
 							});
@@ -222,14 +222,14 @@ function Menu_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-settings.svg",
-								label: "Preferences",
+								label: t("file.preferences"),
 								onclick: (evt) => {
 									show.prefsDlg = true;
 								}
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Reset preferences",
+								label: t("file.resetPrefs"),
 								onclick: (evt) => prefs.reset()
 							});
 							$$renderer.push(`<!---->`);
@@ -238,11 +238,11 @@ function Menu_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					SubMenu($$renderer, {
-						label: "Edit",
+						label: t("menu.edit"),
 						icon: "/icons/rbn-edit.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "Undo",
+								label: t("edit.undo"),
 								icon: "/icons/btn-undo.svg",
 								disabled: !current.pages[current.tab]?.canUndo,
 								onclick: undo,
@@ -250,7 +250,7 @@ function Menu_1($$renderer, $$props) {
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Redo",
+								label: t("edit.redo"),
 								icon: "/icons/btn-redo.svg",
 								onclick: redo,
 								disabled: !current.pages[current.tab]?.redo,
@@ -260,7 +260,7 @@ function Menu_1($$renderer, $$props) {
 							Separator($$renderer, {});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Find",
+								label: t("edit.find"),
 								icon: "/icons/btn-find.svg",
 								onclick: find,
 								disabled: !current.pages[current.tab]?.editor,
@@ -272,23 +272,23 @@ function Menu_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					SubMenu($$renderer, {
-						label: "View",
+						label: t("menu.view"),
 						icon: "/icons/rbn-windows.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "Show Builder",
+								label: t("view.showBuilder"),
 								onclick: (evt) => showWindow("builder")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Show Runner",
+								label: t("view.showRunner"),
 								onclick: (evt) => showWindow("runner")
 							});
 							$$renderer.push(`<!----> `);
 							Separator($$renderer, {});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Show developer tools",
+								label: t("view.devTools"),
 								onclick: showDevTools,
 								shortcut: "showDevTools"
 							});
@@ -300,18 +300,18 @@ function Menu_1($$renderer, $$props) {
 					if (electron$1) {
 						$$renderer.push("<!--[0-->");
 						SubMenu($$renderer, {
-							label: "Run",
+							label: t("menu.run"),
 							icon: "/icons/btn-runpy.svg",
 							children: ($$renderer) => {
 								Item($$renderer, {
-									label: "Toggle pilot mode",
+									label: t("run.togglePilot"),
 									onclick: togglePiloting,
 									shortcut: "togglePilot",
 									disabled: !current.pages[current.tab]
 								});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Send to Runner",
+									label: t("run.sendToRunner"),
 									icon: `/icons/btn-send${current.pages[current.tab]?.pilotMode ? "pilot" : "run"}.svg`,
 									onclick: sendToRunner,
 									shortcut: "sendToRunner",
@@ -321,7 +321,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: `${current.pages[current.tab]?.pilotMode ? "Pilot" : "Run"} in Python`,
+									label: t(current.pages[current.tab]?.pilotMode ? "run.pilotInPython" : "run.runInPython"),
 									icon: `/icons/btn-${current.pages[current.tab]?.pilotMode?.pilotMode ? "pilot" : "run"}py.svg`,
 									onclick: (evt) => runPython(),
 									shortcut: "runPython",
@@ -334,11 +334,11 @@ function Menu_1($$renderer, $$props) {
 					} else $$renderer.push("<!--[-1-->");
 					$$renderer.push(`<!--]--> `);
 					SubMenu($$renderer, {
-						label: "Tools",
+						label: t("menu.tools"),
 						icon: "/icons/btn-hamburger.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "Manage plugins and packages",
+								label: t("tools.plugins"),
 								icon: "/icons/btn-plugin.svg",
 								onclick: (evt) => show.pluginMgr = true,
 								disabled: !python?.ready
@@ -349,7 +349,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Open PsychoPy user folder",
+									label: t("tools.userFolder"),
 									onclick: (evt) => electron$1.paths.user().then((folder) => electron$1.files.openPath(folder))
 								});
 								$$renderer.push(`<!---->`);
@@ -358,7 +358,7 @@ function Menu_1($$renderer, $$props) {
 							if (python) {
 								$$renderer.push("<!--[0-->");
 								Item($$renderer, {
-									label: "Reinstall Python",
+									label: t("tools.reinstallPy"),
 									onclick: (evt) => setupPython("app", true)
 								});
 							} else $$renderer.push("<!--[-1-->");
@@ -368,20 +368,20 @@ function Menu_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					SubMenu($$renderer, {
-						label: "Help",
+						label: t("menu.help"),
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "PsychoPy Homepage",
+								label: t("help.homepage"),
 								onclick: (evt) => open("https://www.psychopy.org/")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Documentation",
+								label: t("help.docs"),
 								onclick: (evt) => open("https://www.psychopy.org/documentation")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Help Forum",
+								label: t("help.forum"),
 								onclick: (evt) => open("https://discourse.psychopy.org/")
 							});
 							$$renderer.push(`<!----> `);
@@ -391,7 +391,7 @@ function Menu_1($$renderer, $$props) {
 								$$renderer.push("<!--[0-->");
 								await_block($$renderer, electron$1.version(), () => {}, (version) => {
 									Item($$renderer, {
-										label: `PsychoPy ${stringify(version.major)}.${stringify(version.minor)}`,
+										label: t("help.aboutShort", { version: `${version.major}.${version.minor}` }),
 										disabled: true
 									});
 								});
@@ -410,7 +410,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Report bug",
+									label: t("help.reportBug"),
 									onclick: (evt) => show.bugReport = true
 								});
 								$$renderer.push(`<!---->`);
@@ -421,7 +421,7 @@ function Menu_1($$renderer, $$props) {
 						Separator($$renderer, {});
 						$$renderer.push(`<!----> `);
 						Item($$renderer, {
-							label: "Quit",
+							label: t("file.quit"),
 							onclick: quit,
 							shortcut: "quit"
 						});
@@ -496,7 +496,7 @@ function Ribbon_1($$renderer, $$props) {
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-hamburger.svg",
-								label: "Menu",
+								label: t("tb.menu"),
 								onclick: () => show.menu = true,
 								borderless: true
 							});
@@ -516,26 +516,26 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "File",
+						label: t("tb.file"),
 						icon: "/icons/rbn-file.svg",
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-new.svg",
-								label: "New file",
+								label: t("tb.newFile"),
 								onclick: fileNew,
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-open.svg",
-								label: "Open file",
+								label: t("tb.openFile"),
 								onclick: fileOpen,
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-save.svg",
-								label: "Save file",
+								label: t("tb.saveFile"),
 								onclick: fileSave,
 								borderless: true,
 								disabled: Object.values(current.pages).length === 0 || !current.pages[current.tab]?.canUndo && current.pages[current.tab]?.file?.file
@@ -543,7 +543,7 @@ function Ribbon_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-saveas.svg",
-								label: "Save file as",
+								label: t("tb.saveFileAs"),
 								onclick: fileSaveAs,
 								borderless: true,
 								disabled: Object.values(current.pages).length === 0
@@ -554,12 +554,12 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Edit",
+						label: t("tb.edit"),
 						icon: "/icons/rbn-edit.svg",
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-undo.svg",
-								label: "Undo",
+								label: t("tb.undo"),
 								onclick: undo,
 								disabled: !current.pages[current.tab]?.canUndo,
 								borderless: true
@@ -567,7 +567,7 @@ function Ribbon_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-redo.svg",
-								label: "Redo",
+								label: t("tb.redo"),
 								onclick: redo,
 								disabled: !current.pages[current.tab]?.canRedo,
 								borderless: true
@@ -575,7 +575,7 @@ function Ribbon_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-find.svg",
-								label: "Find",
+								label: t("tb.find"),
 								onclick: find,
 								disabled: !current.pages[current.tab]?.editor,
 								borderless: true
@@ -586,14 +586,14 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Experiment",
+						label: t("tb.experiment"),
 						icon: "/icons/rbn-experiment.svg",
 						children: ($$renderer) => {
 							var bind_get = () => current.pages[current.tab]?.pilotMode;
 							var bind_set = (value) => current.pages[current.tab].pilotMode = value;
 							SwitchButton($$renderer, {
-								labels: ["Pilot", "Run"],
-								tooltip: `Experiment will run in ${current.pages[current.tab]?.pilotMode ? "pilot" : "run"} mode`,
+								labels: [t("tb.pilot"), t("tb.run")],
+								tooltip: t(current.pages[current.tab]?.pilotMode ? "tip.pilotMode" : "tip.runMode"),
 								get value() {
 									return bind_get();
 								},
@@ -607,7 +607,7 @@ function Ribbon_1($$renderer, $$props) {
 								$$renderer.push("<!--[0-->");
 								IconButton($$renderer, {
 									icon: `/icons/btn-send${current.pages[current.tab]?.pilotMode ? "pilot" : "run"}.svg`,
-									label: "Send experiment to runner",
+									label: t("tb.sendToRunner"),
 									onclick: sendToRunner,
 									disabled: !current.pages[current.tab]?.file?.file,
 									borderless: true
@@ -621,12 +621,12 @@ function Ribbon_1($$renderer, $$props) {
 					if (python?.ready) {
 						$$renderer.push("<!--[0-->");
 						Section($$renderer, {
-							label: "Run",
+							label: t("tb.run"),
 							icon: "/icons/btn-runpy.svg",
 							children: ($$renderer) => {
 								IconButton($$renderer, {
 									icon: `/icons/btn-${current.pages[current.tab]?.pilotMode ? "pilot" : "run"}py.svg`,
-									label: `${current.pages[current.tab]?.pilotMode ? "Pilot" : "Run"} experiment locally`,
+									label: t(current.pages[current.tab]?.pilotMode ? "tb.pilotLocal" : "tb.runLocal"),
 									onclick: (evt) => runPython(),
 									disabled: !current.pages[current.tab]?.file?.file || current.pages[current.tab]?.file?.ext !== ".py",
 									cancel: (evt) => stopPython(),
@@ -645,7 +645,7 @@ function Ribbon_1($$renderer, $$props) {
 					} else $$renderer.push("<!--[-1-->");
 					$$renderer.push(`<!--]--> `);
 					Section($$renderer, {
-						label: "Pavlovia",
+						label: t("tb.pavlovia"),
 						icon: "/icons/rbn-pavlovia.svg",
 						children: ($$renderer) => {
 							UserCtrl($$renderer, {});
@@ -656,19 +656,19 @@ function Ribbon_1($$renderer, $$props) {
 					Gap($$renderer, {});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Views",
+						label: t("tb.views"),
 						icon: "/icons/rbn-windows.svg",
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-builder.svg",
-								label: "Builder view",
+								label: t("tb.builderView"),
 								onclick: (evt) => showWindow("builder"),
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-coder.svg",
-								label: "Coder view",
+								label: t("tb.coderView"),
 								onclick: (evt) => showWindow("coder"),
 								borderless: true,
 								disabled: true
@@ -678,7 +678,7 @@ function Ribbon_1($$renderer, $$props) {
 								$$renderer.push("<!--[0-->");
 								IconButton($$renderer, {
 									icon: "/icons/btn-runner.svg",
-									label: "Runner view",
+									label: t("tb.runnerView"),
 									onclick: (evt) => showWindow("runner"),
 									borderless: true
 								});

@@ -1,34 +1,10 @@
-/*
- * Copyright (c) 2023-2025 Haitai FangYuan Co., Ltd.
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this list of
- *    conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this list
- *    of conditions and the following disclaimer in the documentation and/or other materials
- *    provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its contributors may be used
- *    to endorse or promote products derived from this software without specific prior written
- *    permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (c) 2024 Huawei Device Co., Ltd. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 import { inject, injectable } from 'inversify';
 import { BusinessError } from '@ohos.base';
+import { deviceInfo } from '@kit.BasicServicesKit';
 import { window } from '@kit.ArkUI';
 import { BaseWindowAdapter } from '../common/BaseWindowAdapter';
 import LogUtil from '../utils/LogUtil';
@@ -59,7 +35,7 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
 
   @LogMethod
   createWindow(param: NewWindowParam) {
-    let activeContext = this.ctxAdapter.getActiveContext() as common.UIAbilityContext;
+    let activeContext = this.abilityManager.getProxy(param.parent_id)?.getWindowContext();
     if (!activeContext) {
       LogUtil.warn(TAG, 'Failed to get active context');
       return;
@@ -78,6 +54,9 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
       ctx: activeContext,
       decorEnabled: true
     };
+    if (param.display_id !== -1) {
+      config.displayId = param.display_id;
+    }
     window.createWindow(config, (err: BusinessError, data) => {
       if (err.code) {
         LogUtil.error(TAG, 'Failed to create window. Cause: ' + JSON.stringify(err));
@@ -137,6 +116,24 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
         LogUtil.error(TAG, 'Failed to register callback. Cause: ' + JSON.stringify(exception));
       }
 
+      try {
+        data.on('displayIdChange', (displayId) => {
+          this.nativeContext.OnWindowDisplayIdChange(param.window_id, displayId);
+        });
+      } catch (exception) {
+        LogUtil.info(TAG, `register displayIdChange listener fail, xcomponentId:${this.xcomponentId},
+                      exception: ${JSON.stringify(exception)}`);
+      }
+
+      try {
+        data.on('displayIdChange', (displayId) => {
+          this.nativeContext.OnWindowDisplayIdChange(param.window_id, displayId);
+        });
+      } catch (exception) {
+        LogUtil.error(TAG, `register displayIdChange listener fail, xcomponentId:${param.window_id},
+                      exception: ${JSON.stringify(exception)}`);
+      }
+
       let windowClass = data;
       this.cacheWindow(param.parent_id, param.window_id, windowClass);
 
@@ -150,14 +147,25 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
         }
       };
       let storage: LocalStorage = new LocalStorage(para);
-      windowClass.loadContent("pages/Index", storage, (err, data) => {
+      windowClass.loadContent(this.getContentPath(), storage, (err, data) => {
         let errCode: number = err.code;
         if (errCode) {
           LogUtil.error(TAG, 'Failed to load the content. Cause:' + JSON.stringify(err));
           return;
         }
+        if (deviceInfo.sdkApiVersion >= 15) {
+          this.nativeContext.RegisterWindowEventFilter(windowClass.getWindowProperties().id);
+        }
       })
     });
+  }
+
+  private getContentPath(): string {
+    if (this.nativeContext.IsSupportNodeHandleFeature()) {
+      return 'pages/NodeHandleWindow';
+    } else {
+      return 'pages/Index';
+    }
   }
 
   @LogMethod
@@ -171,7 +179,7 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
 
   @LogMethod
   showWindow(id: number) {
-    let windowClass = this.abilityManager.getProxy(id)?.getWindow();
+    let windowClass = this.systemFloatingWindowManager.getWindow(id);
     let promise = windowClass?.showWindow();
     promise?.then(() => {
         LogUtil.info(TAG, 'Succeeded in showing the window.');
@@ -182,7 +190,7 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
 
     @LogMethod
   hideWindow(id: number) {
-    let windowClass = this.abilityManager.getProxy(id)?.getWindow();
+    let windowClass = this.systemFloatingWindowManager.getWindow(id);
     let promise = windowClass?.minimize();
     promise?.then(() => {
         LogUtil.info(TAG, 'Succeeded in hiding the window.');
@@ -231,6 +239,21 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
   }
 
   @LogMethod
+  setEnabled(enable: boolean, id: number): boolean {
+    let windowClass = this.systemFloatingWindowManager.getWindow(id);
+    if (!windowClass) {
+      LogUtil.error(TAG, 'Failed to obtain the system float window.');
+      return false;
+    }
+    windowClass.setWindowTouchable(enable)
+      .catch((err: BusinessError) => {
+        LogUtil.error(TAG, 'Failed to set the window to be touchable. Cause:' + JSON.stringify(err));
+        return false;
+      });
+    return true;
+  }
+
+  @LogMethod
   setWindowLimits(minWidth: number,
                   minHeight: number,
                   maxWidth: number,
@@ -264,6 +287,38 @@ export class SystemFloatingWindowAdapter extends BaseWindowAdapter {
     }).catch((err: BusinessError) => {
       LogUtil.error(TAG, `startWindowMoving fail, error info: ${JSON.stringify(err)}`);
     });
+  }
+
+  @LogMethod
+  getOriginWindowId(windowId?: number): number {
+    if (!windowId) {
+      return -1;
+    }
+    try {
+      let window = this.systemFloatingWindowManager.getWindow(windowId);
+      if (window) {
+        return window.getWindowProperties().id;
+      }
+    } catch (err) {
+      let message = (err as BusinessError).message;
+      LogUtil.error(TAG, `getOriginWindowId failed, windowId:${windowId}, message:: ${message}`);
+    }
+    return -1;
+  }
+
+  @LogMethod
+  setWindowShadow(id: number, hasShadow: boolean) {
+    let windowClass = this.abilityManager.getProxy(id)?.getWindow();
+    if (windowClass === undefined) {
+      LogUtil.error(TAG, `setWindowShadow fail, window is not exist! windowId: ${id}, hasShadow: ${hasShadow}`);
+      return;
+    }
+    const radius: number = hasShadow ? 15 : 0;
+    if (deviceInfo.sdkApiVersion >= 17) {
+      windowClass.setWindowShadowRadius(radius);
+    } else {
+      LogUtil.error(TAG, 'setWindowShadow fail, sdkApiVersion is less than 17');
+    }
   }
 
   private adjustBounds(bounds: WindowBound): WindowBound {

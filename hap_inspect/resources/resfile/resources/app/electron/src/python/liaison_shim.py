@@ -1270,19 +1270,6 @@ def cmd_run(args, kwargs):
         result = func(*call_args, **resolved_kwargs)
         print(f"[liaison-shim] cmd_run result type={type(result).__name__}", flush=True)
     except Exception as e:
-        # TODO(2026-07-20): libsndfile.so is not yet bundled in the HAP.
-        # soundfile (pip package) needs this native C library to read .wav/.flac/.ogg.
-        # Once harmonybrew installs libsndfile AND the .so is placed in electron/libs/arm64-v8a/,
-        # remove this fallback so camera/microphone components load fully.
-        # Trace: camera/__init__.py → microphone/__init__.py → audiotools.py → soundfile → libsndfile.so
-        errStr = str(e)
-        if "libsndfile.so" in errStr or "sndfile library not found" in errStr.lower():
-            print(f"[liaison-shim] WARNING: libsndfile.so not available — "
-                  f"camera/microphone components skipped. {errStr[:120]}", flush=True)
-            _send_alert("8902", "WARNING",
-                "libsndfile.so not found. Camera and microphone components skipped. "
-                "Install via harmonybrew and bundle in HAP libs/arm64-v8a/ to enable.")
-            return {}  # ← fallback: return empty dict, don't crash
         print(f"[liaison-shim] cmd_run func call failed: {e}", flush=True)
         traceback.print_exc()
         raise

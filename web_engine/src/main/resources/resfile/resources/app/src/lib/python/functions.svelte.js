@@ -1,6 +1,7 @@
 import { status } from "./globals.svelte.js"
 import { electron, python } from "$lib/globals.svelte";
 import { Version, ppy2py } from "$lib/utils/versions.js";
+import { tabletMode } from "./tabletMode.svelte.js";
 
 // Guard: ensure setup only runs once per session
 var _setupCompleted = false;
@@ -75,6 +76,33 @@ export async function setupPython(version=undefined, forceReinstall=false) {
     status.message = "Looking for Python 3..."
     let hasPython = await python.uv.findPython(version).catch(() => false)
     if (!hasPython) {
+        // 检测是否为平板模式 — 鸿蒙设备无 Python 不应报错
+        let isHarmonyOS = false;
+        try {
+            isHarmonyOS = await python.harmony.isHarmonyOS();
+            console.log('[setupPython] hasPython=false, isHarmonyOS=', isHarmonyOS);
+        } catch(err) {
+            console.error('[setupPython] isHarmonyOS() failed:', err);
+        }
+        // 备选：通过 diagnose() 间接判断（部分 IPC 环境下 isHarmonyOS 不稳定）
+        if (!isHarmonyOS && python.harmony?.diagnose) {
+            try {
+                const diag = await python.harmony.diagnose();
+                console.log('[setupPython] diagnose=', diag);
+                if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+            } catch(err) {
+                console.error('[setupPython] diagnose() failed:', err);
+            }
+        }
+        if (isHarmonyOS) {
+            // 平板模式 — 优雅降级，不报错
+            console.log('[setupPython] Tablet mode detected (no Python on HarmonyOS), skipping setup');
+            tabletMode.active = true;
+            status.ready.resolve(true);
+            _setupCompleted = true;
+            _setupRunning = false;
+            return;
+        }
         status.message = "Python 3 not found"
         handleError(new Error(
             "Python 3.12+ is required. Install via HNP (HarmonyOS Native Package) or harmonybrew."
@@ -92,6 +120,31 @@ export async function setupPython(version=undefined, forceReinstall=false) {
             status.dlg.shown = true
             await installPython(version, true)
         } else if (setupResult && setupResult.missingPython) {
+            // 检测是否为平板模式 — 鸿蒙设备无 Python 不应报错
+            let isHarmonyOS = false;
+            try {
+                isHarmonyOS = await python.harmony.isHarmonyOS();
+                console.log('[setupPython] missingPython=true, isHarmonyOS=', isHarmonyOS);
+            } catch(err) {
+                console.error('[setupPython] isHarmonyOS() failed:', err);
+            }
+            if (!isHarmonyOS && python.harmony?.diagnose) {
+                try {
+                    const diag = await python.harmony.diagnose();
+                    console.log('[setupPython] diagnose=', diag);
+                    if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+                } catch(err) {
+                    console.error('[setupPython] diagnose() failed:', err);
+                }
+            }
+            if (isHarmonyOS) {
+                console.log('[setupPython] Tablet mode detected (missingPython on HarmonyOS), skipping setup');
+                tabletMode.active = true;
+                status.ready.resolve(true);
+                _setupCompleted = true;
+                _setupRunning = false;
+                return;
+            }
             handleError(new Error("Python not found on this system."))
             _setupRunning = false
             return

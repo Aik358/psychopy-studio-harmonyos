@@ -1,6 +1,6 @@
 import { i as onDestroy, l as on, o as tick } from "./internal.js";
 import { D as escape_html, E as attr, St as run, a as bind_props, b as setContext, d as spread_props, et as snapshot, f as stringify, i as await_block, l as props_id, m as html, n as attr_style, o as derived, r as attributes, s as ensure_array_like, t as attr_class, ut as ATTACHMENT_KEY, v as getContext, y as hasContext } from "./server.js";
-import { $ as python$1, B as Icon, C as Device, D as profiles, E as pending, F as CompactButton, H as openExternal, I as PanelButton, M as Dialog, N as DropdownButton, O as RadioButton, P as Menu, Q as projects$1, R as Button, T as Param, X as electron, Y as devices, Z as git$1, d as Version, f as browseFileOpen, g as writeFile, i as Experiment, j as MessageDialog, l as CodeEditor, n as prefs, p as browseFileSave, r as Script, z as Tooltip } from "./Theme.js";
+import { $ as devices, B as PanelButton, D as pending, E as Param, F as LANGS, H as Button, I as i18n, K as openExternal, L as DropdownButton, M as MessageDialog, N as Dialog, O as profiles, P as t, R as Menu, U as Tooltip, W as Icon, _ as writeFile, d as tabletMode, et as electron, f as Version, i as Experiment, k as RadioButton, l as CodeEditor, m as browseFileSave, n as prefs, nt as projects$1, p as browseFileOpen, r as Script, rt as python$1, tt as git$1, w as Device, z as CompactButton } from "./Theme.js";
 import { clsx } from "clsx";
 import path from "path-browserify";
 import { marked } from "marked";
@@ -11,6 +11,92 @@ function Panel($$renderer, $$props) {
 	$$renderer.push(`<div class="panel svelte-nal48f"><div class="pnl-title svelte-nal48f">${escape_html(title)}</div> <div class="pnl-content svelte-nal48f">`);
 	children?.($$renderer);
 	$$renderer.push(`<!----></div></div>`);
+}
+//#endregion
+//#region src/lib/python/TabletModeBanner.svelte
+function TabletModeBanner($$renderer, $$props) {
+	$$renderer.component(($$renderer) => {
+		let showDialog = false;
+		let $$settled = true;
+		let $$inner_renderer;
+		function $$render_inner($$renderer) {
+			if (tabletMode.active) {
+				$$renderer.push("<!--[0-->");
+				$$renderer.push(`<button class="tablet-banner svelte-1rua389" type="button"${attr("title", t("tablet.banner"))}>`);
+				Icon($$renderer, {
+					src: "/icons/sym-info.svg",
+					size: "1rem"
+				});
+				$$renderer.push(`<!----> <span class="tablet-label svelte-1rua389">${escape_html(t("tablet.banner"))}</span></button> `);
+				MessageDialog($$renderer, {
+					title: t("tablet.title"),
+					buttons: { OK: () => {} },
+					get shown() {
+						return showDialog;
+					},
+					set shown($$value) {
+						showDialog = $$value;
+						$$settled = false;
+					},
+					children: ($$renderer) => {
+						$$renderer.push(`<p>${escape_html(t("tablet.body"))}</p> <p class="tablet-suggestion svelte-1rua389">${escape_html(t("tablet.switchSuggestion"))}</p>`);
+					},
+					$$slots: { default: true }
+				});
+				$$renderer.push(`<!---->`);
+			} else $$renderer.push("<!--[-1-->");
+			$$renderer.push(`<!--]-->`);
+		}
+		do {
+			$$settled = true;
+			$$inner_renderer = $$renderer.copy();
+			$$render_inner($$inner_renderer);
+		} while (!$$settled);
+		$$renderer.subsume($$inner_renderer);
+	});
+}
+//#endregion
+//#region src/lib/i18n/LangSwitch.svelte
+function LangSwitch($$renderer, $$props) {
+	$$renderer.component(($$renderer) => {
+		$$renderer.push(`<div class="lang-switch svelte-1nrscb0" role="group" aria-label="Language"><!--[-->`);
+		const each_array = ensure_array_like(LANGS);
+		for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
+			let lang = each_array[$$index];
+			$$renderer.push(`<button${attr("aria-pressed", i18n.lang === lang.code)}${attr_class("svelte-1nrscb0", void 0, { "active": i18n.lang === lang.code })}>${escape_html(lang.label)}</button>`);
+		}
+		$$renderer.push(`<!--]--></div>`);
+	});
+}
+//#endregion
+//#region src/lib/utils/zoom.svelte.js
+var STORAGE_KEY = "psychopy.zoomLevel.v1";
+var MIN_ZOOM = 50;
+var MAX_ZOOM = 200;
+var DEFAULT_ZOOM = 100;
+function _readPersist() {
+	if (typeof localStorage === "undefined") return DEFAULT_ZOOM;
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw !== null) {
+			const val = parseInt(raw, 10);
+			if (!isNaN(val) && val >= MIN_ZOOM && val <= MAX_ZOOM) return val;
+		}
+	} catch (_) {}
+	return DEFAULT_ZOOM;
+}
+var zoom = { level: _readPersist() };
+//#endregion
+//#region src/lib/utils/ribbon/ZoomSlider.svelte
+function ZoomSlider($$renderer, $$props) {
+	$$renderer.component(($$renderer) => {
+		$$renderer.push(`<div class="zoom-slider svelte-pypdvo" title="Zoom">`);
+		Icon($$renderer, {
+			src: "/icons/btn-find.svg",
+			size: "14px"
+		});
+		$$renderer.push(`<!----> <input type="range" min="50" max="200"${attr("value", zoom.level)} class="svelte-pypdvo"/> <span class="zoom-label svelte-pypdvo">${escape_html(zoom.level)}%</span></div>`);
+	});
 }
 //#endregion
 //#region src/lib/utils/Frame.svelte
@@ -35,17 +121,23 @@ function Frame($$renderer, $$props) {
 		const each_array = ensure_array_like(views);
 		for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
 			let view = each_array[$$index];
-			$$renderer.push(`<button${attr_class("nav-btn svelte-158299m", void 0, { "active": currentView === view })}>${escape_html(view.charAt(0).toUpperCase() + view.slice(1))}</button>`);
+			$$renderer.push(`<button${attr_class("nav-btn svelte-158299m", void 0, { "active": currentView === view })}>${escape_html(t(`home.${view}`))}</button>`);
 		}
-		$$renderer.push(`<!--]--></nav> `);
+		$$renderer.push(`<!--]--> <div style="flex-grow:1; margin-left:auto;"></div> `);
+		ZoomSlider($$renderer, {});
+		$$renderer.push(`<!----> `);
+		LangSwitch($$renderer, {});
+		$$renderer.push(`<!----></nav> `);
 		if (ribbon) {
 			$$renderer.push("<!--[0-->");
 			ribbon($$renderer);
 			$$renderer.push(`<!---->`);
 		} else $$renderer.push("<!--[-1-->");
-		$$renderer.push(`<!--]--> <div id="content" class="svelte-158299m">`);
+		$$renderer.push(`<!--]--> <div id="content"${attr_style(`zoom: ${stringify(zoom.level / 100)};`)} class="svelte-158299m">`);
 		children($$renderer);
-		$$renderer.push(`<!----></div></div>`);
+		$$renderer.push(`<!----></div> `);
+		TabletModeBanner($$renderer, {});
+		$$renderer.push(`<!----></div>`);
 		bind_props($$props, { currentView });
 	});
 }
@@ -5759,7 +5851,10 @@ function Section($$renderer, $$props) {
 	$$renderer.push(`<!----> <div class="ribbon-section-label svelte-j7if95">`);
 	if (icon) {
 		$$renderer.push("<!--[0-->");
-		Icon($$renderer, { src: icon });
+		Icon($$renderer, {
+			src: icon,
+			size: "1rem"
+		});
 	} else {
 		$$renderer.push("<!--[-1-->");
 		$$renderer.push(`<div></div>`);

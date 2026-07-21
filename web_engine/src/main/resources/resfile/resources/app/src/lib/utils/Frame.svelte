@@ -3,6 +3,11 @@
     import { electron } from "$lib/globals.svelte";
     import { goto } from "$app/navigation";
     import { newWindow } from "$lib/utils/views.svelte";
+    import TabletModeBanner from "$lib/python/TabletModeBanner.svelte";
+    import LangSwitch from "$lib/i18n/LangSwitch.svelte";
+    import { t } from "$lib/i18n";
+    import { zoom } from "$lib/utils/zoom.svelte.js";
+    import ZoomSlider from "$lib/utils/ribbon/ZoomSlider.svelte";
 
     let {
         currentView = $bindable("builder"),
@@ -57,17 +62,21 @@
                 class:active={currentView === view}
                 onclick={() => switchView(view)}
             >
-                {view.charAt(0).toUpperCase() + view.slice(1)}
+                {t(`home.${view}`)}
             </button>
         {/each}
+        <div style="flex-grow:1; margin-left:auto;"></div>
+        <ZoomSlider />
+        <LangSwitch />
     </nav>
 
     {#if ribbon}
         {@render ribbon()}
     {/if}
-    <div id=content>
+    <div id=content style="zoom: {zoom.level / 100};">
         {@render children()}
     </div>
+    <TabletModeBanner />
 </div>
 
 <style>
@@ -98,7 +107,9 @@
 #view-nav {
     display: flex;
     flex-direction: row;
+    align-items: center;
     gap: 2px;
+    padding: 4px 16px;
     margin-left: 16px;
     -webkit-app-region: no-drag;
 }
@@ -110,6 +121,8 @@
     font-size: 12px;
     color: var(--outline);
     cursor: pointer;
+    white-space: nowrap;
+    min-width: fit-content;
     transition: background-color 0.2s, color 0.2s;
 }
 .nav-btn:hover {
@@ -151,12 +164,12 @@
     background-color: var(--crust);
     overflow: hidden;
 }
-.hover-indicator {
-    position: absolute;
-    left: 0; right: 0;
-    top: 0; bottom: 0;
-    background: linear-gradient(var(--blue) 0%, transparent 500%);
-    opacity: 10%;
-    z-index: 100;
-}
+    .hover-indicator {
+        position: absolute;
+        left: 0; right: 0;
+        top: 0; bottom: 0;
+        background: linear-gradient(var(--blue) 0%, transparent 500%);
+        opacity: 10%;
+        z-index: 100;
+    }
 </style>

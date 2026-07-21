@@ -41,7 +41,23 @@
               "ohos.want.action.viewData"
             ],
             "uris": []
+          },
+          {
+            "actions": [
+              "ohos.want.action.viewData"
+            ],
+            "uris": [
+              {
+                "scheme": "link"
+              }
+            ]
           }
+        ],
+        "metadata": [
+          {
+            "name": "ohos.ability.shortcuts",
+            "resource": "$profile:shortcuts_config"
+          },
         ],
       },
       {

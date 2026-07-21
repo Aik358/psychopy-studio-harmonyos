@@ -81,12 +81,8 @@ export async function openIn(file, target) {
             await goto(`/${target}`);
             return;
         } catch (_) {
-            // goto 失败兜底：windows.navigate（会触发 HTTP 重载）
+            // goto 失败 — 不 fallback 到 windows.navigate()，避免 HTTP 全量重载
         }
-        try {
-            await electron.windows.navigate(target);
-            return;
-        } catch (_) {}
         try {
             await electron.windows.new(target);
             return;
@@ -126,14 +122,7 @@ export async function showWindow(target) {
             await goto(`/${target}`)
             return
         } catch (_) {
-            // goto failed, fall through to navigate
-        }
-        // 兜底：windows.navigate（会触发 HTTP 整页重载）
-        try {
-            await electron.windows.navigate(target);
-            return;
-        } catch (_) {
-            // navigate failed, fall through to goto
+            // goto failed — do NOT fallback to windows.navigate() (triggers HTTP full reload)
         }
     }
     // fallback (browser/dev mode): SvelteKit goto

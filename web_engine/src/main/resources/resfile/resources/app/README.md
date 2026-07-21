@@ -1,82 +1,125 @@
-# PsychoPy Studio for HarmonyOS (Electron-OH)
+# PsychoPy Studio — HarmonyOS Port
 
-PsychoPy Studio 移植到鸿蒙 HarmonyOS PC，基于 Electron-OH (Chromium 132 + 鸿蒙适配)。
+[简体中文](./README-CN.md) | [Project Homepage](https://aik358.github.io/psychopy-studio-harmonyos/)
 
-## 架构
+## Overview
+
+**PsychoPy Studio OH** is a HarmonyOS port of the open-source [PsychoPy](https://www.psychopy.org/) experiment builder for psychology and neuroscience. It packages the Builder, Coder, and Runner as a native HAP via the **Electron-OH** runtime (Chromium 132, Electron 34.8.4).
+
+> **Current: v2026.1.2** — branch `2026.1.2` | Package: `com.a9iska.psychopy`
+
+## Status (2026-07-21)
+
+### Core Pipeline: ✅ Fully Working
+
+| Feature | Status |
+|---------|:------:|
+| Python 3.12.8 WebSocket liaison | ✅ |
+| psychopy-lib 2026.1.2 full import | ✅ |
+| Builder (35 components) → writeScript → Run-in-Browser | ✅ |
+| PsychoJS ESM experiment execution | ✅ |
+| Auto pip-install missing Python packages | ✅ |
+| File system access (Desktop/Documents/Downloads) | ✅ |
+| Python Terminal + diagnostics | ✅ |
+
+### Framework Upgrade: ✅ Electron 34.8.4
+
+| Item | Old | New |
+|------|-----|-----|
+| `libelectron.so` | ~153 MB (2025) | **159 MB (2026-06-26)** |
+| `libadapter.so` | ~1.5 MB | **5.2 MB** |
+| New adapters | — | EtsBridge, WebApp, NodeHandle, Popup, KVStore, CommandLine |
+| `libsndfile.so` | ❌ missing (soft-fail) | ✅ **bundled (v1.2.2)** |
+
+### UI: ✅ Chinese Localization + Tablet Mode
+
+| Feature | Status |
+|---------|:------:|
+| i18n framework (Svelte 5 runes, SSR-safe) | ✅ |
+| Menu / Ribbon / Dialog translation (zh_CN + en_US) | ✅ |
+| Language switcher in top-nav bar | ✅ |
+| Page zoom slider (50%–200%) | ✅ |
+| Tablet mode detection (HarmonyOS + no Python) | ✅ |
+| Tablet mode banner (bottom-right pill) | ✅ |
+| View switching bug fix (removed full-reload fallback) | ✅ |
+
+### AppGallery Publishing: ⏳ In Review
+
+| Item | Status |
+|------|:------:|
+| Package rename → `com.a9iska.psychopy` | ✅ |
+| Multi-size icons (48~1024px) | ✅ |
+| Chinese localization (zh_CN) | ✅ |
+| Privacy policy + attribution docs | ✅ |
+| ACL permission: ALLOW_WRITABLE_CODE_MEMORY | ⏳ under review |
+| Release signing + .app built | ⏳ pending ACL approval |
+
+## Architecture
 
 ```
-SvelteKit 前端 (contextBridge IPC)
-  → Electron-OH 主进程 (WebSocket JSON-RPC Liaison)
-    → Python 运行时 (system Python3)
-      → psychopy-lib 实验引擎
+┌─────────────────────────────────────────┐
+│  ArkUI → Electron-OH (Chromium 132)      │
+│  ┌─────────────────────────────────────┐ │
+│  │  harmony-python.js (main process)   │ │
+│  │  ├─ liaison_shim.py (WebSocket)     │ │
+│  │  ├─ psychopy-lib 2026.1.2           │ │
+│  │  ├─ PsychoJS HTTP server            │ │
+│  │  └─ SvelteKit frontend              │ │
+│  └─────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────┐ │
+│  │  System Python 3.12.8 (HNP)         │ │
+│  │  numpy / scipy / matplotlib / ...   │ │
+│  └─────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────┐ │
+│  │  Native libs (arm64-v8a)            │ │
+│  │  libelectron / libadapter           │ │
+│  │  libffmpeg / libsndfile / libc++    │ │
+│  └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
 ```
 
-## 版本: v0.1.5 (2026-07-11)
+## Known Issues
 
-### v0.1.5 更新
-- **PsychoJS Browser Runner**: 实验可通过系统浏览器运行（IIFE 桥接 + 本地库文件）
-- **跳过 DlgFromDict**: 本地浏览器模式自动跳过对话框，直接运行实验
-- **本地化依赖**: jQuery 3.6.0 / jQuery UI 1.12.1 / PreloadJS / PIXI.js 全部本地化，无需 CDN
-- **错误捕获**: HTML 模板添加 error/unhandledrejection 事件监听，出错时页面显示红色错误信息
-- **Vite build 重建**: 前端构建成功，dist 目录更新
+| Issue | Status |
+|-------|:------:|
+| Tablet mode crash (MatePad Edge) | ⚠️ need ACL permission |
+| Camera / Microphone | ⚠️ untested with new libsndfile |
+| Pavlovia OAuth | ⏳ pending |
+| Theme CSS may fail to load on HarmonyOS WebView | ⚠️ fallback variables in place |
 
-### v0.1.4 更新 (2026-06-25)
-- Electron-OH 路线确立，HAP 打包流程验证通过
-- SvelteKit 前端适配鸿蒙
-- Python Liaison 通信层 (WebSocket JSON-RPC)
+## Build Instructions
 
-### v0.1.3 更新 (2026-06-24)
-- ArkTS 原生方案废弃，回归 Electron-OH
-- 完整架构分析和移植路线图设计
-
-## 关键目录
-
-| 目录 | 用途 |
-|------|------|
-| `electron/src/` | Electron-OH 主进程 (main.js, preload.js, python/) |
-| `electron/src/psychojs-browser/` | PsychoJS 浏览器运行器 (index.cjs + lib/) |
-| `src/` | SvelteKit 前端源码 |
-| `dist/` | Vite 构建输出 |
-| `python/` | Python 运行时模块 (liaison, venv, shell, script, psychojs) |
-
-## PsychoJS Browser Runner
-
-`electron/src/psychojs-browser/index.cjs` 实现了实验在系统浏览器中运行的功能：
-
-1. 前端 `runJS()` 调用 `exportExperimentToJS()` 生成 experiment.js
-2. IPC `python.psychojs.browserRun` 将 JS 代码发送到主进程
-3. 主进程写入临时目录（HTML + JS + 库文件），启动 Express HTTP server
-4. `shell.openExternal` 打开系统浏览器访问 `http://127.0.0.1:PORT/`
-
-### IIFE 桥接
-PsychoJS IIFE 库导出命名空间对象 `{core, data, hardware, sound, util, visual}`，桥接脚本提取全局变量：
-```js
-window.PsychoJS = ns.core.PsychoJS;  // 构造函数
-window.util = ns.util;
-window.Scheduler = ns.util.Scheduler;
-window.visual = ns.visual;
-// ...
-```
-
-### 生成代码风格
-`psychojs-exporter.js` 生成 legacy-browsers 风格代码（无 import，全全局变量），使用 Scheduler 驱动帧循环。
-
-## 开发
+**Prerequisites:** DevEco Studio 6.1+, HarmonyOS device (ARM64).
 
 ```bash
-# 安装依赖
-npm install
-
-# 构建前端
-npx vite build
-
-# 启动 (鸿蒙)
-# 在 DevEco Studio 中打包 HAP
+git clone https://gitcode.com/A9iska/psychopy-oh.git
+cd psychopy-oh && git checkout 2026.1.2
+ohpm install
+cd web_engine/src/main/resources/resfile/resources/app
+npm install && npx vite build
+cd ../../../../../../../..
+# DevEco: File → Project Structure → Signing Configs → auto-sign → Apply
+# DevEco: Build → Build HAP(s)
 ```
 
-## 许可证
-GPL-3.0 (PsychoPy upstream)
+## Branches
 
-## 仓库
-- AtomGit: https://atomgit.com/A9iska/psychopy-oh
-- GitCode: https://gitcode.com/A9iska/psychopy-oh
+| Branch | Description |
+|--------|-------------|
+| `2026.1.2` | **Active** — Full pipeline, Electron 34.8.4, AppGallery prep |
+| `main` | Landing page + docs |
+| `v0.1.6` | Previous stable |
+
+## Attribution
+
+PsychoPy is © Open Science Tools Ltd / Jonathan Peirce, licensed under GPLv3.
+This HarmonyOS port is by [A9iska](https://gitcode.com/A9iska).
+Source: [https://gitcode.com/A9iska/psychopy-oh](https://gitcode.com/A9iska/psychopy-oh)
+
+## License
+
+GPL v3 — same as upstream PsychoPy.
+
+---
+
+> **Last updated: 2026-07-21**

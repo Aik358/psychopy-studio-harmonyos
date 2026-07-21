@@ -1,31 +1,6 @@
-/*
- * Copyright (c) 2023-2025 Haitai FangYuan Co., Ltd.
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this list of
- *    conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice, this list
- *    of conditions and the following disclaimer in the documentation and/or other materials
- *    provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its contributors may be used
- *    to endorse or promote products derived from this software without specific prior written
- *    permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+// Copyright (c) 2024 Huawei Device Co., Ltd. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 import { NativeContext, WindowBound } from '../interface/CommonInterface';
 import { AbilityManager } from '../common/AbilityManager';
@@ -37,12 +12,16 @@ import JsBindingUtils from '../utils/JsBindingUtils';
 import { MultiInputAdapter } from '../adapter/MultiInputAdapter';
 import { DragParamManager } from '../common/DragParamManager';
 import { window } from '@kit.ArkUI';
+import { CommandLineAdapter } from '../common/CommandLineAdapter';
 
 import { CommandType } from '../common/Constants';
 import { IMessageBoxParams } from '../adapter/DialogAdapter';
 import { MessageBox } from '../components/MessageBox';
 import { typeNode as TypedNode, NodeController, FrameNode } from '@ohos.arkui.node';
-import fs from '@ohos.file.fs';
+
+import { DeviceInfoAdapter } from '../adapter/DeviceInfoAdapter';
+import { NativeThemeAdapter } from '../adapter/NativeThemeAdapter'
+import { CmdArgsHelper } from '../utils/CmdArgsHelper';
 
 const TAG: string = 'WindowXComponentController';
 
@@ -52,7 +31,7 @@ interface ComponentConfig {
   uri: string,
   nativeContext: NativeContext,
   window?: window.Window,
-  electronRelaunchArgs: string[]
+  cmdArgs: string[]
 }
 
 class WindowXComponentController extends XComponentController {
@@ -71,14 +50,21 @@ class WindowNodeController extends NodeController {
   private xComponentController: XComponentController = new WindowXComponentController();
   private xComponent: TypedNode.XComponent | undefined = undefined;
   private config: ComponentConfig;
+  private deviceInfoAdapter: DeviceInfoAdapter | undefined = undefined;
+  private kBundleInstallDir = 'bundle-installation-dir';
+  private xRootNode: FrameNode | undefined = undefined;
 
   constructor(config: ComponentConfig) {
     super();
     this.config = config;
+    CommandLineAdapter.getInstance().appendArgs(this.config.cmdArgs);
+    CommandLineAdapter.getInstance().appendSwitch(this.kBundleInstallDir, getContext().resourceDir);
+    this.deviceInfoAdapter = Inject.get(DeviceInfoAdapter);
   }
 
   makeNode(uiContext: UIContext): FrameNode | null {
     let node = new FrameNode(uiContext);
+    this.xRootNode = node;
     this.xComponent = TypedNode.createNode(uiContext, "XComponent", {
       type: XComponentType.SURFACE,
       controller: this.xComponentController
@@ -92,7 +78,8 @@ class WindowNodeController extends NodeController {
       .renderFit(RenderFit.TOP_LEFT)
       .onLoad(() => {
         this.setDefaultBounds();
-        let vec_args = this.buildArgs();
+        let vec_args = CmdArgsHelper.buildArgs(this.config.uri, this.config.cmdArgs);
+        CmdArgsHelper.preProcessArgs(vec_args);
         this.config.nativeContext.runBrowser(vec_args);
         if (this.config.uri)
           this.config.nativeContext.ExecuteCommand(CommandType.kNewWindow, { url: this.config.uri, is_sync: true });
@@ -113,14 +100,19 @@ class WindowNodeController extends NodeController {
         height: prop.windowRect.height
       }
 
+      let statusBarHeight = 0;
+      if (this.deviceInfoAdapter?.isNormalWindowMode() && this.config.window) {
+        statusBarHeight = this.config.window.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM).topRect.height;
+      }
       let drawableRect: WindowBound = {
         left: prop.drawableRect.left,
-        top: prop.drawableRect.top,
+        top: prop.drawableRect.top + statusBarHeight,
         width: prop.drawableRect.width,
-        height: prop.drawableRect.height
+        height: prop.drawableRect.height - statusBarHeight
       }
 
-      this.config.nativeContext.OnWindowInitSize(windowRect, drawableRect);
+      let displayId = prop.displayId ?? ConfigData.INVALID_DISPLAY_ID;
+      this.config.nativeContext.OnWindowInitSize(windowRect, drawableRect, displayId);
     }
 
     let state = this.config.window?.getWindowStatus();
@@ -129,84 +121,14 @@ class WindowNodeController extends NodeController {
     }
   }
 
-  private buildArgs(): string[] {
-    // NOTE: resourceDir already points to .../resfile/
-    let resDir = '--bundle-installation-dir=' + getContext().resourceDir;
-    let vec_args = [resDir];
-    // 鈽?HarmonyOS hmdfs 涓?HAP 鍐?icudtl.dat 鐨勬枃浠舵弿杩扮鏃犳晥锛坺ip 褰掓。鍐呬笉鍙洿鎺ヨ闂級
-    // 澶氱骇 fallback: (1) 绯荤粺ICU 鈫?(2) HAP resfile ICU 鈫?(3) 涓嶄紶鍙傛暟璁〤hromium榛樿鎼滅储
-    // NOTE: resourceDir already points to .../resfile on device
-    let icuFile = getContext().resourceDir + '/icudtl.dat';
-    let icuFound = false;
-    LogUtil.info('WebWindow', 'resourceDir=' + getContext().resourceDir);
-    LogUtil.info('WebWindow', 'cacheDir=' + getContext().cacheDir);
-    // 方案1: 直接从 HAP resfile 复制 icudtl.dat 到 cache
-    try {
-      fs.copyFileSync(icuFile, getContext().cacheDir + '/icudtl.dat');
-      let stat = fs.statSync(getContext().cacheDir + '/icudtl.dat');
-      LogUtil.info('WebWindow', 'Copied icudtl.dat from HAP resfile, size=' + stat.size);
-      if (stat.size > 0) {
-        let icuF = fs.openSync(getContext().cacheDir + '/icudtl.dat', 0o0);
-        let icuFd: number = icuF.fd;
-        LogUtil.info('WebWindow', 'Using HAP ICU data fd=' + icuFd);
-        vec_args.push('--icu-data-dir=' + getContext().cacheDir);
-        vec_args.push('--icu-data-fd=' + icuFd);
-        icuFound = true;
+  disposeFrameNode () {
+      if (this.xRootNode !== null && this.xComponent !== null) {
+        this.xRootNode?.removeChild(this.xRootNode?.getChild(0));
+        this.xComponent?.dispose();
+        this.xRootNode?.dispose();
       }
-    } catch (e) {
-      LogUtil.error('WebWindow', 'HAP resfile ICU copy failed: ' + JSON.stringify(e) + ', path=' + icuFile);
-    }
-    // 方案2: 复制系统 ICU 到 cacheDir + 打开 FD 传给 Chromium 子线程
-    if (!icuFound) {
-      let cacheDir = getContext().cacheDir;
-      let dst = cacheDir + '/icudtl.dat';
-      const sysIcuPaths = [
-        '/system/usr/icu/icudt74l.dat',
-        '/system/usr/icu/icudt71l.dat',
-        '/system/usr/icu/icudtl.dat'
-      ];
-      for (let sysIcu of sysIcuPaths) {
-        try {
-          fs.copyFileSync(sysIcu, dst);
-          let stat = fs.statSync(dst);
-          LogUtil.info('WebWindow', 'Copied ICU from ' + sysIcu + ' to ' + dst + ' size=' + stat.size);
-          if (stat.size > 0) {
-            vec_args.push('--icu-data-dir=' + cacheDir);
-            // Open icudtl.dat and pass its fd number via --icu-data-fd
-            // This lets Chromium child threads (which use InitializeICUWithFileDescriptor) 
-            // access ICU data through a valid file descriptor instead of crashing
-            let icuFile = fs.openSync(dst, 0o0);
-            let icuFd: number = icuFile.fd;
-            LogUtil.info('WebWindow', 'Opened ICU data fd=' + icuFd);
-            vec_args.push('--icu-data-fd=' + icuFd);
-            icuFound = true;
-          }
-          break;
-        } catch (e) {
-          LogUtil.info('WebWindow', 'System ICU not available at ' + sysIcu + ': ' + JSON.stringify(e));
-        }
-      }
-    }
-    // 方案3: 直接用系统 ICU 目录
-    if (!icuFound) {
-      // nothing needed here
-      LogUtil.info('WebWindow', 'Using system ICU directory directly');
-    }
-    if (!icuFound) {
-      LogUtil.error('WebWindow', 'All ICU fallback paths failed; Chromium may crash');}
-    // GPU disable: libhvgr_v210.so SIGTRAP on MatePad Edge
-    vec_args.push('--disable-gpu');
-    vec_args.push('--disable-software-rasterizer');
-    vec_args.push('--disable-gpu-compositing');
-    vec_args.push('--disable-accelerated-2d-canvas');
-    vec_args.push('--disable-accelerated-video-decode');
-
-
-    this.config.electronRelaunchArgs.forEach((arg: string) => {
-      vec_args.push(arg);
-    });
-    return vec_args;
   }
+
 }
 
 @Component
@@ -214,8 +136,11 @@ export struct WebWindow {
   private static TAG: string = 'WebWindow';
   @LocalStorageLink('xcomponentId') xComponentId: string = '';
   @LocalStorageLink('startUri') startUri: string = '';
+  @LocalStorageLink('appId') appId: string = '';
   @LocalStorageLink('window') window: window.Window | undefined = undefined;
-  @LocalStorageLink('electronRelaunchArgs') electronRelaunchArgs: string[] = [];
+  @LocalStorageLink('cmdArgs') cmdArgs: string[] = [];
+  @LocalStorageLink('statusBarHeight') statusBarHeight: number = 0;
+  @LocalStorageLink('useDarkMode') useDarkMode: boolean = false;
   private XCOMPONENT_NAME: string = 'xcomponent';
   private MODULE_NAME: string = this.xComponentId + ':' + this.XCOMPONENT_NAME;
   private dragDropAdapter: DragDropAdapter = Inject.get(DragDropAdapter);
@@ -223,6 +148,8 @@ export struct WebWindow {
   private abilityManager = Inject.get(AbilityManager);
   private dragParamManager = Inject.get(DragParamManager);
   private nativeContext: NativeContext = JsBindingUtils.getNativeContext(ContextType.kMainProcess);
+  @State private bgColor: Color | string =
+    this.useDarkMode ? NativeThemeAdapter.DARK_BACKGROUND_COLOR : NativeThemeAdapter.LIGHT_BACKGROUND_COLOR;
 
   @State private messageBoxParams: IMessageBoxParams = {
     messageBoxSettings: undefined,
@@ -235,7 +162,7 @@ export struct WebWindow {
     uri: this.startUri,
     nativeContext: this.nativeContext,
     window: this.window,
-    electronRelaunchArgs: this.electronRelaunchArgs
+    cmdArgs: this.cmdArgs
   });
 
   private dialogController: CustomDialogController = new CustomDialogController({
@@ -276,6 +203,7 @@ export struct WebWindow {
 
   aboutToDisappear(): void {
     this.dragParamManager.removeDragContextData(this.xComponentId);
+    this.windowNodeController.disposeFrameNode();
   }
 
   build() {
@@ -307,6 +235,16 @@ export struct WebWindow {
             this.multiInputAdapter.OnPinchEvent("end", this.xComponentId, event);
           })
       )
+      .gesture(
+        GestureGroup(GestureMode.Exclusive,
+          TapGesture({ count: 2})
+            .onAction(() => {
+              // when double tap is triggered, we do nothing, because the event
+              // processing flow in Chromium will converts mouse and touch events to
+              // double tap events.
+            })
+        )
+      )
       .onDragEnter((event?: DragEvent) => {
         LogUtil.info(WebWindow.TAG, 'OhosDrag WebWindow onDragEnter xComponentId:' + this.xComponentId);
         this.dragDropAdapter.dragEnterData(this.xComponentId, (event as DragEvent).getSummary());
@@ -316,7 +254,9 @@ export struct WebWindow {
         let windowY = event?.getWindowY();
         windowX = vp2px(windowX);
         windowY = vp2px(windowY);
-        this.dragDropAdapter.dragMove(this.xComponentId, windowX, windowY);
+        this.dragDropAdapter.dragMove(this.xComponentId,
+                                      windowX,
+                                      windowY - this.statusBarHeight);
       })
       .onDragLeave(() => {
         LogUtil.info(WebWindow.TAG, 'OhosDrag WebWindow onDragLeave xComponentId:' + this.xComponentId);

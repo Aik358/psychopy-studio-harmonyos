@@ -79,7 +79,6 @@
         justify-items: start;
         gap: 0 .5rem;
         width: 100%;
-        white-space: nowrap;
         margin: 0;
         background-color: transparent;
         border: none;

@@ -3,6 +3,7 @@
     import { Icon } from "$lib/utils/icons";
     import { onMount, untrack } from "svelte";
     import { openExternal } from "$lib/utils/views.svelte";
+    import { t } from "$lib/i18n";
 
     let {
         id,
@@ -86,7 +87,7 @@
             <div class="btn-array extra">
                     {#if buttons.HELP}
                     <Button 
-                        label=Help
+                        label={t("dlg.help")}
                         onclick={() => {
                             openExternal(buttons.HELP);
                         }} 
@@ -98,7 +99,7 @@
             <div class="btn-array standard">
                 {#if buttons.YES}
                 <Button 
-                    label="Yes"
+                    label={t("dlg.yes")}
                     onclick={(evt) => {
                         buttons['YES'](evt);
                         shown = false;
@@ -110,7 +111,7 @@
                 {/if}
                 {#if buttons.NO}
                 <Button 
-                    label="No"
+                    label={t("dlg.no")}
                     onclick={(evt) => {
                         buttons['NO'](evt);
                         shown = false;
@@ -122,7 +123,7 @@
                 {/if}
                 {#if buttons.OK}
                 <Button 
-                    label="OK"
+                    label={t("dlg.ok")}
                     onclick={(evt) => {
                         buttons['OK'](evt);
                         shown = false;
@@ -134,7 +135,7 @@
                 {/if}
                 {#if buttons.APPLY}
                 <Button 
-                    label="Apply"
+                    label={t("dlg.apply")}
                     onclick={(evt) => {
                         buttons['APPLY'](evt); 
                     }} 
@@ -154,7 +155,7 @@
                 {/if}
                 {#if buttons.CANCEL}
                 <Button 
-                    label="Cancel"
+                    label={t("dlg.cancel")}
                     onclick={(evt) => {
                         buttons['CANCEL'](evt); 
                         shown = false;

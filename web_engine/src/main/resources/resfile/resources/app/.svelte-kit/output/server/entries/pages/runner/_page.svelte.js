@@ -1,6 +1,6 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, n as attr_style, s as ensure_array_like, v as getContext } from "../../../chunks/server.js";
-import { $ as python, A as IconButton, B as Icon, F as CompactButton, G as showWindow, J as store, K as consumeCurrentFile, O as RadioButton, P as Menu, R as Button, U as openIn, W as showDevTools, X as electron, Z as git, c as CodeOutput, d as Version, f as browseFileOpen, h as parsePath, i as Experiment, k as SwitchButton, n as prefs, o as SetupPython, p as browseFileSave, q as setActiveView, r as Script, t as Theme, u as setupPython } from "../../../chunks/Theme.js";
+import { A as SwitchButton, H as Button, J as showDevTools, P as t, Q as store, R as Menu, W as Icon, X as consumeCurrentFile, Y as showWindow, Z as setActiveView, c as CodeOutput, et as electron, f as Version, g as parsePath, i as Experiment, j as IconButton, k as RadioButton, m as browseFileSave, n as prefs, o as SetupPython, p as browseFileOpen, q as openIn, r as Script, rt as python, t as Theme, tt as git, u as setupPython, z as CompactButton } from "../../../chunks/Theme.js";
 import { C as Pane_resizer, D as Panel$1, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, f as UserCtrl, h as Page, i as Ribbon, n as Gap, o as PrefsDialog, r as Section, t as TipsDialog, v as SubMenu, w as Pane, y as Separator } from "../../../chunks/TipsDialog.js";
 import path from "path-browserify";
 //#region src/routes/runner/outputs/AlertsOutput.svelte
@@ -305,39 +305,39 @@ function Menu_1($$renderer, $$props) {
 				},
 				children: ($$renderer) => {
 					SubMenu($$renderer, {
-						label: "File",
+						label: t("menu.file"),
 						icon: "/icons/rbn-file.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
 								icon: "/icons/btn-new.svg",
-								label: "New file",
+								label: t("file.new"),
 								shortcut: "new",
 								onclick: fileNew
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-open.svg",
-								label: "Open file",
+								label: t("file.open"),
 								shortcut: "open",
 								onclick: fileOpen
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-save.svg",
-								label: "Save file",
+								label: t("file.save"),
 								shortcut: "save",
 								onclick: fileSave
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-saveas.svg",
-								label: "Save file as",
+								label: t("file.saveAs"),
 								shortcut: "saveAs",
 								onclick: fileSaveAs
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Close window",
+								label: t("file.close"),
 								onclick: close,
 								shortcut: "close"
 							});
@@ -346,14 +346,14 @@ function Menu_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
 								icon: "/icons/btn-settings.svg",
-								label: "Preferences",
+								label: t("file.preferences"),
 								onclick: (evt) => {
 									show.prefsDlg = true;
 								}
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Reset preferences",
+								label: t("file.resetPrefs"),
 								onclick: (evt) => prefs.reset()
 							});
 							$$renderer.push(`<!----> `);
@@ -362,7 +362,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Quit",
+									label: t("file.quit"),
 									onclick: quit,
 									shortcut: "quit"
 								});
@@ -374,23 +374,23 @@ function Menu_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					SubMenu($$renderer, {
-						label: "View",
+						label: t("menu.view"),
 						icon: "/icons/rbn-windows.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "Show Builder",
+								label: t("view.showBuilder"),
 								onclick: (evt) => showWindow("builder")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Show Coder",
+								label: t("view.showCoder"),
 								onclick: (evt) => showWindow("coder")
 							});
 							$$renderer.push(`<!----> `);
 							Separator($$renderer, {});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Show developer tools",
+								label: t("view.devTools"),
 								onclick: showDevTools,
 								shortcut: "showDevTools"
 							});
@@ -402,12 +402,12 @@ function Menu_1($$renderer, $$props) {
 					if (electron) {
 						$$renderer.push("<!--[0-->");
 						SubMenu($$renderer, {
-							label: "Run",
+							label: t("menu.run"),
 							icon: "/icons/btn-runpy.svg",
 							disabled: current.selection === void 0,
 							children: ($$renderer) => {
 								Item($$renderer, {
-									label: "Toggle pilot mode",
+									label: t("run.togglePilot"),
 									onclick: togglePiloting,
 									shortcut: "togglePilot",
 									disabled: current.selection === void 0
@@ -416,7 +416,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: `${current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} in Python`,
+									label: t(current.runlist[current.selection]?.pilotMode ? "run.pilotInPython" : "run.runInPython"),
 									icon: `/icons/btn-${current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}py.svg`,
 									onclick: (evt) => current.awaiting.runpy = current.runlist[current.selection]?.runPython(),
 									shortcut: "runPython",
@@ -424,7 +424,7 @@ function Menu_1($$renderer, $$props) {
 								});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: `${current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} in browser`,
+									label: t(current.runlist[current.selection]?.pilotMode ? "run.pilotInBrowser" : "run.runInBrowser"),
 									icon: `/icons/btn-${current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg`,
 									onclick: (evt) => current.awaiting.runjs = current.runlist[current.selection]?.runJS(),
 									shortcut: "runJS",
@@ -437,11 +437,11 @@ function Menu_1($$renderer, $$props) {
 					} else $$renderer.push("<!--[-1-->");
 					$$renderer.push(`<!--]--> `);
 					SubMenu($$renderer, {
-						label: "Tools",
+						label: t("menu.tools"),
 						icon: "/icons/btn-hamburger.svg",
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "Open device manager",
+								label: t("tools.deviceManager"),
 								icon: "/icons/btn-devices.svg",
 								onclick: (evt) => show.deviceMgrDlg = true
 							});
@@ -449,7 +449,7 @@ function Menu_1($$renderer, $$props) {
 							if (python?.ready) {
 								$$renderer.push("<!--[0-->");
 								Item($$renderer, {
-									label: "Manage plugins and packages",
+									label: t("tools.plugins"),
 									icon: "/icons/btn-plugin.svg",
 									onclick: (evt) => show.pluginMgr = true,
 									disabled: !python?.ready
@@ -461,7 +461,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Open PsychoPy user folder",
+									label: t("tools.userFolder"),
 									onclick: (evt) => electron.paths.user().then((folder) => electron.files.openPath(folder))
 								});
 								$$renderer.push(`<!---->`);
@@ -470,7 +470,7 @@ function Menu_1($$renderer, $$props) {
 							if (python) {
 								$$renderer.push("<!--[0-->");
 								Item($$renderer, {
-									label: "Reinstall Python",
+									label: t("tools.reinstallPy"),
 									onclick: (evt) => setupPython("app", true)
 								});
 							} else $$renderer.push("<!--[-1-->");
@@ -480,20 +480,20 @@ function Menu_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					SubMenu($$renderer, {
-						label: "Help",
+						label: t("menu.help"),
 						children: ($$renderer) => {
 							Item($$renderer, {
-								label: "PsychoPy Homepage",
+								label: t("help.homepage"),
 								onclick: (evt) => open("https://www.psychopy.org/")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Documentation",
+								label: t("help.docs"),
 								onclick: (evt) => open("https://www.psychopy.org/documentation")
 							});
 							$$renderer.push(`<!----> `);
 							Item($$renderer, {
-								label: "Help Forum",
+								label: t("help.forum"),
 								onclick: (evt) => open("https://discourse.psychopy.org/")
 							});
 							$$renderer.push(`<!----> `);
@@ -503,7 +503,7 @@ function Menu_1($$renderer, $$props) {
 								$$renderer.push("<!--[0-->");
 								await_block($$renderer, electron.version(), () => {}, (version) => {
 									Item($$renderer, {
-										label: `PsychoPy ${stringify(version.major)}.${stringify(version.minor)}`,
+										label: t("help.aboutShort", { version: `${version.major}.${version.minor}` }),
 										disabled: true
 									});
 								});
@@ -522,7 +522,7 @@ function Menu_1($$renderer, $$props) {
 								Separator($$renderer, {});
 								$$renderer.push(`<!----> `);
 								Item($$renderer, {
-									label: "Report bug",
+									label: t("help.reportBug"),
 									onclick: (evt) => show.bugReport = true
 								});
 								$$renderer.push(`<!---->`);
@@ -533,7 +533,7 @@ function Menu_1($$renderer, $$props) {
 						Separator($$renderer, {});
 						$$renderer.push(`<!----> `);
 						Item($$renderer, {
-							label: "Quit",
+							label: t("file.quit"),
 							onclick: quit,
 							shortcut: "quit"
 						});
@@ -600,7 +600,7 @@ function Ribbon_1($$renderer, $$props) {
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-hamburger.svg",
-								label: "Menu",
+								label: t("tb.menu"),
 								onclick: () => show.menu = true,
 								borderless: true
 							});
@@ -620,33 +620,33 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "File",
+						label: t("tb.file"),
 						icon: "/icons/rbn-file.svg",
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-new.svg",
-								label: "New configuration",
+								label: t("tb.newConfig"),
 								onclick: (evt) => fileNew(),
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-open.svg",
-								label: "Open configuration",
+								label: t("tb.openConfig"),
 								onclick: (evt) => fileOpen(true).catch((err) => console.error(err)),
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-save.svg",
-								label: "Save configuration",
+								label: t("tb.saveConfig"),
 								onclick: fileSave,
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-saveas.svg",
-								label: "Save configuration as",
+								label: t("tb.saveConfigAs"),
 								onclick: fileSaveAs,
 								borderless: true
 							});
@@ -656,14 +656,14 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Selection",
+						label: t("tb.selection"),
 						icon: "/icons/rbn-experiment.svg",
 						children: ($$renderer) => {
 							var bind_get = () => current.runlist[current.selection]?.pilotMode;
 							var bind_set = (value) => current.runlist[current.selection]?.setPilotMode(value);
 							SwitchButton($$renderer, {
-								labels: ["Pilot", "Run"],
-								tooltip: `Experiment will run in ${current.runlist[current.selection]?.pilotMode ? "pilot" : "run"} mode`,
+								labels: [t("tb.pilot"), t("tb.run")],
+								tooltip: t(current.runlist[current.selection]?.pilotMode ? "tip.pilotMode" : "tip.runMode"),
 								get value() {
 									return bind_get();
 								},
@@ -675,7 +675,7 @@ function Ribbon_1($$renderer, $$props) {
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: `/icons/btn-send${current.runlist[current.selection]?.file.ext === ".psyexp" ? "builder" : "coder"}.svg`,
-								label: `Open selection in ${current.runlist[current.selection]?.file.ext === ".psyexp" ? "Builder" : "Coder"}`,
+								label: t("tb.openSelectionIn", { target: current.runlist[current.selection]?.file.ext === ".psyexp" ? t("tb.builderView") : t("tb.coderView") }),
 								onclick: (evt) => openIn(current.runlist[current.selection]?.file.file, current.runlist[current.selection]?.file.ext === ".psyexp" ? "builder" : "coder"),
 								borderless: true,
 								disabled: !current.runlist[current.selection]
@@ -686,14 +686,14 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Run",
+						label: t("tb.run"),
 						icon: "/icons/btn-runpy.svg",
 						children: ($$renderer) => {
 							if (python?.ready) {
 								$$renderer.push("<!--[0-->");
 								IconButton($$renderer, {
 									icon: `/icons/btn-${current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}py.svg`,
-									label: `${current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment locally`,
+									label: t(current.runlist[current.selection]?.pilotMode ? "tb.pilotLocal" : "tb.runLocal"),
 									onclick: (evt) => current.runlist[current.selection]?.runPython(),
 									disabled: current.selection === void 0,
 									cancel: python.scripts.stop,
@@ -710,7 +710,7 @@ function Ribbon_1($$renderer, $$props) {
 							$$renderer.push(`<!--]--> `);
 							IconButton($$renderer, {
 								icon: `/icons/btn-${current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg`,
-								label: `${current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} experiment in browser`,
+								label: t(current.runlist[current.selection]?.pilotMode ? "tb.pilotBrowser" : "tb.runBrowser"),
 								onclick: (evt) => current.runlist[current.selection]?.runJS(),
 								disabled: current.selection === void 0 || !(current.runlist[current.selection] instanceof Experiment),
 								borderless: true,
@@ -728,7 +728,7 @@ function Ribbon_1($$renderer, $$props) {
 					});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Pavlovia",
+						label: t("tb.pavlovia"),
 						icon: "/icons/rbn-pavlovia.svg",
 						children: ($$renderer) => {
 							UserCtrl($$renderer, {});
@@ -739,19 +739,19 @@ function Ribbon_1($$renderer, $$props) {
 					Gap($$renderer, {});
 					$$renderer.push(`<!----> `);
 					Section($$renderer, {
-						label: "Views",
+						label: t("tb.views"),
 						icon: "/icons/rbn-windows.svg",
 						children: ($$renderer) => {
 							IconButton($$renderer, {
 								icon: "/icons/btn-builder.svg",
-								label: "Builder view",
+								label: t("tb.builderView"),
 								onclick: (evt) => showWindow("builder"),
 								borderless: true
 							});
 							$$renderer.push(`<!----> `);
 							IconButton($$renderer, {
 								icon: "/icons/btn-coder.svg",
-								label: "Coder view",
+								label: t("tb.coderView"),
 								onclick: (evt) => showWindow("coder"),
 								borderless: true
 							});
@@ -760,7 +760,7 @@ function Ribbon_1($$renderer, $$props) {
 								$$renderer.push("<!--[0-->");
 								IconButton($$renderer, {
 									icon: "/icons/btn-runner.svg",
-									label: "Runner view",
+									label: t("tb.runnerView"),
 									onclick: (evt) => showWindow("runner"),
 									borderless: true,
 									disabled: true

@@ -22,6 +22,7 @@
         {#if icon}
             <Icon 
                 src={icon}
+                size="1rem"
             />
         {:else}
             <div></div>
@@ -46,12 +47,14 @@
         grid-row-start: top;
     }
     .ribbon-section-label {
-        display: grid;
-        grid-template-columns: [icon] 1rem [label] min-content;
+        display: inline-flex;
+        flex-direction: row;
         gap: .5rem;
         align-items: center;
         position: absolute;
         bottom: 0;
+        white-space: nowrap;
+        max-width: max-content;
     }
     .ribbon-section:not(:first-child) {
         border-left: 1px solid var(--overlay)

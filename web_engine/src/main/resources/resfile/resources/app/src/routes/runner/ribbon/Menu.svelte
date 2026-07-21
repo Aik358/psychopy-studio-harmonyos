@@ -5,6 +5,7 @@
     import { BugReportDlg } from "$lib/dialogs/bugReport";
     import { prefs } from "$lib/preferences.svelte"; 
     import { electron, python } from "$lib/globals.svelte";
+    import { t } from "$lib/i18n";
     import { showDevTools } from "$lib/utils/views.svelte"
     import { setupPython } from "$lib/python";
     import { Version } from "$lib/utils/versions";
@@ -40,33 +41,33 @@
 <Menu 
     bind:shown={shown}
 >
-    <SubMenu label="File" icon="/icons/rbn-file.svg">
+    <SubMenu label={t("menu.file")} icon="/icons/rbn-file.svg">
         <MenuItem 
             icon="/icons/btn-new.svg" 
-            label="New file"
+            label={t("file.new")}
             shortcut="new"
             onclick={fileNew}
         />
         <MenuItem 
             icon="/icons/btn-open.svg" 
-            label="Open file" 
+            label={t("file.open")} 
             shortcut="open"
             onclick={fileOpen} 
         />
         <MenuItem 
             icon="/icons/btn-save.svg" 
-            label="Save file"
+            label={t("file.save")}
             shortcut="save"
             onclick={fileSave}
         />
         <MenuItem 
             icon="/icons/btn-saveas.svg" 
-            label="Save file as"
+            label={t("file.saveAs")}
             shortcut="saveAs"
             onclick={fileSaveAs} 
         />
         <MenuItem
-            label="Close window"
+            label={t("file.close")}
             onclick={close}
             shortcut="close"
         />
@@ -75,11 +76,11 @@
 
         <MenuItem
             icon="/icons/btn-settings.svg"
-            label="Preferences"
+            label={t("file.preferences")}
             onclick={(evt) => {show.prefsDlg = true}}
         />
         <MenuItem
-            label="Reset preferences"
+            label={t("file.resetPrefs")}
             onclick={evt => prefs.reset()}
         />
 
@@ -87,36 +88,36 @@
             <MenuSeparator />
 
             <MenuItem
-                label="Quit"
+                label={t("file.quit")}
                 onclick={quit}
                 shortcut="quit"
             />
         {/if}
     </SubMenu>
 
-    <SubMenu label="View" icon="/icons/rbn-windows.svg">
+    <SubMenu label={t("menu.view")} icon="/icons/rbn-windows.svg">
         <MenuItem 
-            label="Show Builder"
+            label={t("view.showBuilder")}
             onclick={evt => showWindow("builder")}
         />
         <MenuItem 
-            label="Show Coder"
+            label={t("view.showCoder")}
             onclick={evt => showWindow("coder")}
         />
 
         <MenuSeparator />
 
         <MenuItem 
-            label="Show developer tools"
+            label={t("view.devTools")}
             onclick={showDevTools}
             shortcut="showDevTools"
         />
     </SubMenu>
 
     {#if electron}
-        <SubMenu label="Run" icon="/icons/btn-runpy.svg" disabled={current.selection === undefined}>
+        <SubMenu label={t("menu.run")} icon="/icons/btn-runpy.svg" disabled={current.selection === undefined}>
             <MenuItem 
-                label="Toggle pilot mode"
+                label={t("run.togglePilot")}
                 onclick={togglePiloting}
                 shortcut="togglePilot"
                 disabled={current.selection === undefined}
@@ -125,14 +126,14 @@
             <MenuSeparator />
 
             <MenuItem 
-                label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} in Python" 
+                label={t(current.runlist[current.selection]?.pilotMode ? "run.pilotInPython" : "run.runInPython")} 
                 icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}py.svg" 
                 onclick={evt => current.awaiting.runpy = current.runlist[current.selection]?.runPython()}
                 shortcut="runPython"
                 disabled={current.selection === undefined}
             />
             <MenuItem 
-                label="{current.runlist[current.selection]?.pilotMode ? "Pilot" : "Run"} in browser" 
+                label={t(current.runlist[current.selection]?.pilotMode ? "run.pilotInBrowser" : "run.runInBrowser")} 
                 icon="/icons/btn-{current.runlist[current.selection]?.pilotMode ? "pilot" : "run"}js.svg" 
                 onclick={(evt) => current.awaiting.runjs = current.runlist[current.selection]?.runJS()}
                 shortcut="runJS"
@@ -141,15 +142,15 @@
         </SubMenu>
     {/if}
 
-    <SubMenu label="Tools" icon="/icons/btn-hamburger.svg">
+    <SubMenu label={t("menu.tools")} icon="/icons/btn-hamburger.svg">
         <MenuItem 
-            label="Open device manager"
+            label={t("tools.deviceManager")}
             icon="/icons/btn-devices.svg"
             onclick={evt => show.deviceMgrDlg = true}
         />
         {#if python?.ready}
             <MenuItem 
-                label="Manage plugins and packages"
+                label={t("tools.plugins")}
                 icon="/icons/btn-plugin.svg"
                 onclick={evt => show.pluginMgr = true}
                 disabled={!python?.ready}
@@ -160,7 +161,7 @@
             <MenuSeparator />
 
             <MenuItem 
-                label="Open PsychoPy user folder"
+                label={t("tools.userFolder")}
                 onclick={evt => electron.paths.user().then(
                     folder => electron.files.openPath(folder)
                 )}
@@ -168,30 +169,30 @@
         {/if}
         {#if python}
             <MenuItem 
-                label="Reinstall Python"
+                label={t("tools.reinstallPy")}
                 onclick={evt => setupPython("app", true)}
             />
         {/if}
     </SubMenu>
 
-    <SubMenu label="Help">
+    <SubMenu label={t("menu.help")}>
         <MenuItem 
-            label="PsychoPy Homepage"
+            label={t("help.homepage")}
             onclick={evt => open("https://www.psychopy.org/")}
         />
         <MenuItem 
-            label="Documentation"
+            label={t("help.docs")}
             onclick={evt => open("https://www.psychopy.org/documentation")}
         />
         <MenuItem 
-            label="Help Forum"
+            label={t("help.forum")}
             onclick={evt => open("https://discourse.psychopy.org/")}
         />
         <MenuSeparator />
         {#if electron}
             {#await electron.version() then version}
                 <MenuItem
-                    label="PsychoPy {version.major}.{version.minor}"
+                    label={t("help.aboutShort", { version: `${version.major}.${version.minor}` })}
                     disabled
                 />
             {/await}
@@ -204,7 +205,7 @@
                 <MenuSeparator />
                 
                 <MenuItem
-                    label="Report bug"
+                    label={t("help.reportBug")}
                     onclick={evt => show.bugReport = true}
                 />
             {/if}
@@ -213,7 +214,7 @@
         <MenuSeparator />
 
         <MenuItem
-            label="Quit"
+            label={t("file.quit")}
             onclick={quit}
             shortcut="quit"
         />
