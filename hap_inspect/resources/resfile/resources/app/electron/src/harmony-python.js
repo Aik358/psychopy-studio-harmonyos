@@ -994,6 +994,26 @@ function listShells() {
 // ── Register IPC handlers ───────────────────────────────────
 
 export function registerHarmonyPythonHandlers() {
+  // ── 安全注册：先移除 python/index.js 可能已注册的同名 handler ──
+  // ipcMain.handle() 对同一事件名注册两次会抛异常，导致后续 handler 全部不注册。
+  // 解决方案：所有 handle 调用前先 removeHandler，确保不会重复注册。
+  const _channelsToClear = [
+    "python.liaison.start", "python.liaison.stop", "python.liaison.send",
+    "python.liaison.started", "python.liaison.ready",
+    "python.venv.setup", "python.venv.executable", "python.venv.installPackage",
+    "python.venv.uninstallPackage", "python.venv.getPackages", "python.venv.getPackageDetails",
+    "python.uv.folder", "python.uv.executable", "python.uv.exists",
+    "python.uv.install", "python.uv.makeExecutable", "python.uv.findPython",
+    "python.uv.getEnvironments",
+    "python.shell.list", "python.shell.send", "python.shell.open", "python.shell.close",
+    "python.scripts.run", "python.scripts.finished", "python.scripts.stop",
+    "python.psychojs.run", "python.psychojs.stop",
+  ];
+  for (const ch of _channelsToClear) {
+    try { ipcMain.removeHandler(ch); } catch (_) {}
+  }
+  logging.log("[harmony-python] Cleared " + _channelsToClear.length + " potentially duplicate handlers");
+
   // ── HarmonyOS runtime discovery (tablet detection, Python setup) ──
   ipcMain.handle("python.harmony.isHarmonyOS", () => Harmony.isHarmonyOS());
   ipcMain.handle("python.harmony.strategy", () => Harmony.getPythonStrategy());
