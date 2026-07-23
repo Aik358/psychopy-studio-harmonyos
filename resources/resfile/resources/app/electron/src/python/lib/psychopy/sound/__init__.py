@@ -44,7 +44,10 @@ After importing sound, the sound lib and driver being used will be stored as::
 
 import sys
 from .audiodevice import *
-from .audioclip import *  # import objects related to AudioClip
+try:
+    from .audioclip import *  # import objects related to AudioClip
+except Exception:
+    pass  # HARMONYOS-ADAPTATION: libsndfile may be unavailable
 from . import microphone, sound
 from .sound import Sound
 

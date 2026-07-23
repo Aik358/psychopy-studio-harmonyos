@@ -1203,6 +1203,12 @@ class FontFinder:
 class FontInfo():
     def __init__(self, fp, face=None):
         if face is None:
+            if ft is None:
+                self.path = str(fp)
+                self.family = os.path.basename(fp)
+                self.style = ""
+                self.label = os.path.basename(fp)
+                return
             face = ft.Face(str(fp))
         self.path = fp
         self.family = unicode(face.family_name)

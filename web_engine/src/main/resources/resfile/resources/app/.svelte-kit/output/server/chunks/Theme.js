@@ -851,8 +851,9 @@ var zh_CN_default = {
 	"home.failedSetup": "初始化失败：",
 	"home.tryAgain": "重试？",
 	"tablet.banner": "正在以平板模式运行",
+	"tablet.modeLabel": "平板模式",
 	"tablet.title": "平板模式",
-	"tablet.body": "您正在鸿蒙平板或平板模式下运行本应用。您可以编辑实验并在浏览器中运行。依赖 Python 的功能（本地实验执行、外接设备连接、设备管理器等）在平板模式下不可用。如需完整功能，请在电脑模式或桌面设备上运行本应用。",
+	"tablet.body": "您正在鸿蒙平板或平板模式下运行本应用。您可以编辑实验并在浏览器中运行。依赖 Python 的功能（本地实验执行、外接设备连接、设备管理器等）在平板模式下默认不可用；若已注入内嵌 HNP Python 则可启用。如需完整功能，请在电脑模式或桌面设备上运行本应用。",
 	"tablet.switchSuggestion": "在支持的设备（如 MatePad Edge）上，可在系统设置中切换至电脑模式以解锁完整功能。",
 	"comp.getMore": "获取更多…",
 	"comp.reload": "重新加载组件",
@@ -9665,6 +9666,20 @@ function handleError(err) {
 	console.error(err);
 	status.ready.reject(err);
 }
+async function isTabletRuntime() {
+	try {
+		return !!await python.tablet();
+	} catch (_) {
+		return false;
+	}
+}
+async function isBundleMode() {
+	try {
+		return await python.mode() === "bundle";
+	} catch (_) {
+		return false;
+	}
+}
 async function installPython(version = void 0, forceReinstall = false) {
 	status.message = "Installing packages (this may take a few minutes)...";
 	status.dlg.message = "### Welcome to PsychoPy for HarmonyOS\n\nThis is a one-time setup. We're installing the required Python packages:\n\n- **PsychoPy** — experiment engine\n- **NumPy / SciPy** — scientific computing\n- **Matplotlib / Pillow** — graphics\n- **Pandas / OpenPyXL** — data & spreadsheets\n- **SoundFile** — audio support\n\nPlease wait while packages download and install. Progress details are shown below.";
@@ -9707,8 +9722,8 @@ async function setupPython(version = void 0, forceReinstall = false) {
 		} catch (err) {
 			console.error("[setupPython] diagnose() failed:", err);
 		}
-		if (isHarmonyOS) {
-			console.log("[setupPython] Tablet mode detected (no Python on HarmonyOS), skipping setup");
+		if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+			console.log("[setupPython] Tablet mode detected (no Python), skipping setup");
 			tabletMode.active = true;
 			status.ready.resolve(true);
 			_setupCompleted = true;
@@ -9742,8 +9757,8 @@ async function setupPython(version = void 0, forceReinstall = false) {
 			} catch (err) {
 				console.error("[setupPython] diagnose() failed:", err);
 			}
-			if (isHarmonyOS) {
-				console.log("[setupPython] Tablet mode detected (missingPython on HarmonyOS), skipping setup");
+			if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+				console.log("[setupPython] Tablet mode detected (missingPython), skipping setup");
 				tabletMode.active = true;
 				status.ready.resolve(true);
 				_setupCompleted = true;
@@ -9927,17 +9942,21 @@ function PythonErrors($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
 		let errors = [];
 		let showDlg = false;
-		python.output.stderr.listen((evt, message) => errors.push({
-			dismiss: new Promise((resolve, reject) => setTimeout(resolve, 5e3)),
+		const DISMISS_MS = 15e3;
+		const pushError = (message) => errors.push({
+			dismiss: new Promise((resolve) => setTimeout(resolve, DISMISS_MS)),
 			content: message
-		}));
-		python.liaison.listen("error", (evt, message) => errors.push({
-			dismiss: new Promise((resolve, reject) => setTimeout(resolve, 5e3)),
-			content: message
-		}));
+		});
+		python.output.stderr.listen((evt, message) => pushError(message));
+		python.liaison.listen("error", (evt, message) => pushError(message));
 		let $$settled = true;
 		let $$inner_renderer;
 		function $$render_inner($$renderer) {
+			if (errors.length > 0) {
+				$$renderer.push("<!--[0-->");
+				$$renderer.push(`<button class="err-reopen svelte-a627u5">⚠ ${escape_html(errors.length)} 条 Python 错误 · 点击查看</button>`);
+			} else $$renderer.push("<!--[-1-->");
+			$$renderer.push(`<!--]--> `);
 			MessageArray($$renderer, {
 				children: ($$renderer) => {
 					$$renderer.push(`<!--[-->`);
@@ -9970,7 +9989,7 @@ function PythonErrors($$renderer, $$props) {
 					$$settled = false;
 				},
 				children: ($$renderer) => {
-					$$renderer.push(`<div class="output-container">`);
+					$$renderer.push(`<p class="log-hint svelte-a627u5">完整错误日志已自动保存到沙箱：<br/> <code class="svelte-a627u5">/data/storage/el2/base/files/psychopy4/.logs/python-errors.log</code><br/> 可用 <code class="svelte-a627u5">hdc file recv</code> 取出（即使界面卡死也不会丢）。</p> <div class="output-container">`);
 					CodeOutput($$renderer, { value: errors.map((err) => err.content.error).join("\n") });
 					$$renderer.push(`<!----></div>`);
 				},
@@ -10593,15 +10612,15 @@ var Experiment = class {
 		await python.liaison.send(version, {
 			command: "try",
 			args: ["prefs.setDevicesFile", path.join(await electron.paths.user(), "devices.json")]
-		}, 1e4).catch((err) => console.error("Failed to set devices file:", err));
+		}, 18e4).catch((err) => console.error("Failed to set devices file:", err));
 		await python.liaison.send(version, {
 			command: "init",
 			args: ["currentExperiment", "psychopy.experiment:Experiment"]
-		}, 1e4).catch((reason) => console.error(reason));
+		}, 18e4).catch((reason) => console.error(reason));
 		await python.liaison.send(version, {
 			command: "run",
 			args: ["currentExperiment.loadFromXML", snapshot(this.file.file)]
-		}, 1e4).catch((reason) => console.error(reason));
+		}, 18e4).catch((reason) => console.error(reason));
 		let script = await python.liaison.send(version, {
 			command: "run",
 			args: ["currentExperiment.writeScript"],
@@ -10610,11 +10629,15 @@ var Experiment = class {
 				modular: true,
 				expPath: this.file.file
 			}
-		}, 1e4).catch((reason) => console.error(reason));
+		}, 18e4).catch((reason) => console.error(reason));
 		if (typeof script === "string") {
 			let savedPath = await electron.files.save(targetFile, script);
 			if (typeof savedPath === "string") targetFile = savedPath;
-		} else console.error(script);
+			console.log(`[writeScript] Experiment compiled and saved to ${targetFile}`);
+		} else {
+			console.error("[writeScript] Python did not return a script:", script);
+			alert(`实验未能编译为 .${target === "PsychoJS" ? "js" : "py"} 文件。\nPython 后端未返回脚本（可能超时或报错）。\n请打开开发者工具 (Ctrl+Shift+I) 查看控制台详情，或改用"运行于浏览器"（PsychoJS）。`);
+		}
 		return targetFile;
 	}
 	/**
@@ -10727,8 +10750,9 @@ var Experiment = class {
 			}
 			console.log(`[PsychoJS Browser] JS length: ${finalJSCode.length}, resources: ${resourceFiles.length}`);
 			console.log(`[PsychoJS Browser] Calling python.psychojs.browserRun...`);
-			const result = await python.psychojs.browserRun(finalJSCode, expName, conditionsJSON, officialJSPath ? JSON.stringify(resourceFiles) : "", officialJSPath ? expDir : "");
+			const result = await python.psychojs.browserRun(finalJSCode, expName, conditionsJSON, officialJSPath ? JSON.stringify(resourceFiles) : "", officialJSPath ? expDir : "", this.file?.path);
 			console.log(`[PsychoJS Browser] Result:`, result);
+			if (result && typeof electron?.files?.openExternal === "function") await electron.files.openExternal(result);
 		} catch (err) {
 			console.error(`[PsychoJS Browser] ERROR:`, err);
 			alert(`[PsychoJS Browser] Failed: ${err?.message || err}\nCheck console (Ctrl+Shift+I) for details.`);

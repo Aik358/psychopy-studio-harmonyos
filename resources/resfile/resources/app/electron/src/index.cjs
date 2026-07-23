@@ -640,6 +640,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     const mainWin = new BrowserWindow({
       width: 1600, height: 900, show: true,
       frame: true,
+      backgroundColor: '#1e1e2e',  // HarmonyOS: dark status bar / chrome
       webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
     mainWin.removeMenu();
@@ -692,6 +693,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       width: 1600,
       height: 900,
       show: true,
+      // HarmonyOS: windowInfo required for proper multi-window support
+      windowInfo: { type: 'mainWindow' },
       webPreferences: {
         preload: path.join(__dirname, 'preload.js')
       }

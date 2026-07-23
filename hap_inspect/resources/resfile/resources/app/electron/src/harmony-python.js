@@ -289,6 +289,9 @@ function readPythonMode() {
       }
     } catch (_) {}
   }
+  // If system HNP Python is available, default to dev mode;
+  // otherwise fall back to bundle (tablet without Python).
+  if (systemPythonAvailable()) return "dev";
   return "bundle";
 }
 
@@ -1275,6 +1278,72 @@ export function registerHarmonyPythonHandlers() {
       logging.error(`Failed to start liaison: ${err}`);
       return false;
     }
+  });
+
+// ── HarmonyOS hardware device enumeration via Chromium Web API ──────
+  const _HW_WEBAPI_MAP = { camera: 'videoinput', microphone: 'audioinput', speaker: 'audiooutput' };
+
+  async function _enumerateHardwareDevices(target) {
+    const targetLower = (target || '').toLowerCase();
+    let webKind = null;
+    for (const [hw, kind] of Object.entries(_HW_WEBAPI_MAP)) {
+      if (targetLower.includes(hw)) { webKind = kind; break; }
+    }
+    if (!webKind) return null;
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return null;
+    try {
+      const raw = await win.webContents.executeJavaScript(String.raw`
+        (async () => {
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.filter(d => d.kind === '${webKind}').map(d => ({
+              deviceId: d.deviceId, kind: d.kind, label: d.label, groupId: d.groupId
+            }));
+          } catch(e) { return []; }
+        })()
+      `);
+      if (!raw || !raw.length) return [];
+      return raw.map((d, i) => ({
+        deviceName: d.label || String.raw`Device ${i + 1}`,
+        deviceId: d.deviceId,
+        kind: d.kind,
+      }));
+    } catch (_) { return []; }
+  }
+
+  ipcMain.handle("electron.hardware.enumerateDevices", async () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return [];
+    try {
+      return await win.webContents.executeJavaScript(String.raw`
+        (async () => {
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.map(d => ({deviceId: d.deviceId, kind: d.kind, label: d.label, groupId: d.groupId}));
+          } catch(e) { return []; }
+        })()
+      `);
+    } catch (_) { return []; }
+  });
+
+  ipcMain.handle("electron.hardware.requestPermission", async (evt, type) => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return false;
+    const constraints = type === 'camera'
+      ? { video: true, audio: false }
+      : { audio: true, video: false };
+    try {
+      return await win.webContents.executeJavaScript(String.raw`
+        (async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia(${JSON.stringify(constraints)});
+            stream.getTracks().forEach(t => t.stop());
+            return true;
+          } catch(e) { return false; }
+        })()
+      `);
+    } catch (_) { return false; }
   });
 
   ipcMain.handle("python.liaison.stop", async () => {

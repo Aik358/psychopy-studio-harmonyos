@@ -640,6 +640,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     const mainWin = new BrowserWindow({
       width: 1600, height: 900, show: true,
       frame: true,
+      backgroundColor: '#1e1e2e',  // HarmonyOS: dark status bar / chrome
       webPreferences: { preload: path.join(__dirname, 'preload.js') }
     });
     mainWin.removeMenu();
@@ -692,6 +693,8 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
       width: 1600,
       height: 900,
       show: true,
+      // HarmonyOS: windowInfo required for proper multi-window support
+      windowInfo: { type: 'mainWindow' },
       webPreferences: {
         preload: path.join(__dirname, 'preload.js')
       }
@@ -749,40 +752,13 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
    * @param {string} pattern Regex pattern we expect to be able to use to get the auth code
    */
   async function authenticatePavlovia(url) {
-    // create window
-    let win = new BrowserWindow({
-      icon: favicon,
-      width: 980,
-      height: 720,
-      show: true
-    });
-    win.removeMenu();
-    // Clear all storage data to force fresh login
-    await win.webContents.session.clearStorageData({
-      storages: ['cookies', 'localstorage', 'sessionstorage', 'cachestorage', 'websql', 'indexdb']
-    });
-    // load auth url
-    win.loadURL(url);
-    // construct promise for the auth code
-    let code = Promise.withResolvers()
-    // on navigate, resolve if we have a code
-    win.webContents.on("did-navigate", (evt, url) => {
-      // search the URL for the auth code
-      let params = new URLSearchParams(
-        url.replace(/https:\/\/.*?(?=\?)/, "")
-      )
-      // if we got one...
-      if (params.get("code")) {
-        // resolve the promise
-        code.resolve(
-          params.get("code")
-        )
-        // close the window
-        win.close()
-      }
-    })
-
-    return code.promise
+    // HarmonyOS: child BrowserWindows do not display; open in system browser.
+    // The OAuth callback flow cannot intercept URL params from the system browser,
+    // so we return a dummy code — the user will need to authenticate manually via
+    // the Pavlovia website in their system browser.
+    try { shell.openExternal(url); } catch (e) { console.error('[auth] openExternal failed', e); }
+    // Return empty promise so the UI doesn't hang
+    return Promise.resolve(null);
   }
 
 

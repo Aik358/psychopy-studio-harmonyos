@@ -787,7 +787,7 @@ var options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\r\n<html lang=\"zh-CN\">\r\n	<head>\r\n		<meta charset=\"utf-8\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Nunito.css\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Noto.css\" />\r\n		<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/JetBrainsMono.css\" />\r\n		<link rel=\"icon\" type=\"image/x-icon\" href=\"" + assets + "/branding/favicon.svg\" />\r\n		<link rel=\"stylesheet\" href=\"" + assets + "/style.css\" />\r\n		<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n		<base target=\"_blank\">\r\n		" + head + "\r\n	</head>\r\n	<body data-sveltekit-preload-data=\"hover\" style=\"font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans SC', 'Microsoft YaHei', sans-serif;\">\r\n		<div style=\"display: contents\">\r\n			" + body + "\r\n		</div>\r\n	</body>\r\n</html>\r\n",
 		error: error_template_default
 	},
-	version_hash: "58u7un"
+	version_hash: "1k2f4dw"
 };
 async function get_hooks() {
 	let handle;

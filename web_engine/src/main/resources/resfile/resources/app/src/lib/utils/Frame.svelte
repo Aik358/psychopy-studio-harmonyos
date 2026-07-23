@@ -91,6 +91,7 @@
     grid-template: min-content min-content 1fr / 1fr;
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--crust);
 }
 #titlebar {
     display: flex;

@@ -27,7 +27,7 @@ function TabletModeBanner($$renderer, $$props) {
 					src: "/icons/sym-info.svg",
 					size: "1rem"
 				});
-				$$renderer.push(`<!----> <span class="tablet-label svelte-1rua389">${escape_html(t("tablet.banner"))}</span></button> `);
+				$$renderer.push(`<!----> <span class="tablet-label svelte-1rua389">${escape_html(t("tablet.modeLabel"))}</span></button> `);
 				MessageDialog($$renderer, {
 					title: t("tablet.title"),
 					buttons: { OK: () => {} },

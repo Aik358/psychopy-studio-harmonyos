@@ -52,7 +52,11 @@ const electron = {
   authenticatePavlovia: (url) => ipcRenderer.invoke("electron.authenticatePavlovia", url).then(resp => resp),
   version: () => ipcRenderer.invoke("electron.version").then(resp => resp),
   platform: () => ipcRenderer.invoke("electron.platform").then(resp => resp),
-  quit: () => ipcRenderer.invoke("electron.quit")
+  quit: () => ipcRenderer.invoke("electron.quit"),
+  hardware: {
+    enumerateDevices: () => ipcRenderer.invoke("electron.hardware.enumerateDevices"),
+    requestPermission: (type) => ipcRenderer.invoke("electron.hardware.requestPermission", type),
+  },
 };
 // IMPORTANT: Electron-OH only honours the FIRST 3 contextBridge.exposeInMainWorld
 // calls; any 4th/5th call (terminal, git) is silently dropped. So we nest terminal
@@ -301,7 +305,9 @@ window.addEventListener('DOMContentLoaded', () => {
           if (!targetOk) {
             append('[mode] ⚠ ' + (m === 'dev' ? '电脑模式(系统 Python)' : '平板模式(内嵌 Python)') + ' 来源当前不可用：切过去暂时跑不了 Python 命令，但仍是无 Python 的平板模式（浏览器实验可用），注入/就绪后即可恢复。', 'var(--yellow,#f9e2af)');
           }
-          append('[mode] 已保存，下次运行命令即生效（无需重启）。注意：若启动时设了 PSYCHOPY_MODE 环境变量，它会优先于此处设置。', 'var(--overlay,#6c7086)');
+          append('[mode] 已保存，正在刷新以应用平板模式...', 'var(--overlay,#6c7086)');
+          // Reload page so setupPython re-runs with the new mode
+          setTimeout(() => location.reload(), 500);
         } catch (e) {
           append('[mode] error: ' + (e && e.message ? e.message : String(e)), 'var(--red,#f38ba8)');
         }
