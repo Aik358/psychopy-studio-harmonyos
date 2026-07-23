@@ -630,6 +630,9 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     if (fs.existsSync(pageDir)) return res.sendFile(pageDir);
     next();
   });
+
+  // HarmonyOS: plugin registry not available → return empty list gracefully
+  expressApp.get('/api/plugins', (req, res) => res.json([]));
   
   const server = expressApp.listen(8003, 'localhost', () => {
     console.log('[D] Express started');

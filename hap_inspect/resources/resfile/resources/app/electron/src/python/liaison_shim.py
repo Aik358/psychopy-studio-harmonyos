@@ -1182,15 +1182,15 @@ def _import_target(target_str):
     # Check _registry first (objects registered via cmd_init)
     if module_name in _registry:
         obj = _registry[module_name]
-        if attr_name:
-            return getattr(obj, attr_name)
-        return obj
+    else:
+        # Try to import as Python module
+        obj = importlib.import_module(module_name)
 
-    # Try to import as Python module
-    mod = importlib.import_module(module_name)
+    # Walk chained attributes: "FontFinder.getSystemFonts" -> FontFinder -> getSystemFonts
     if attr_name:
-        return getattr(mod, attr_name)
-    return mod
+        for part in attr_name.split("."):
+            obj = getattr(obj, part)
+    return obj
 
 def cmd_exists(args, kwargs):
     try:
@@ -1254,6 +1254,9 @@ _SAFE_FALLBACK_TARGETS = {
     "psychopy.experiment:getDeviceProfiles",
 }
 
+# Flag: show aggregated alert only once per liaison session
+_psychopy_fallback_alerted = False
+
 # API version alias map: old frontend name 鈫?actual 2025.2.4 function
 _API_ALIASES = {
     "psychopy.experiment:getElementProfiles": "psychopy.experiment.getAllComponents",
@@ -1269,12 +1272,20 @@ def cmd_run(args, kwargs):
         func = _import_target(target)
         print(f"[liaison-shim] cmd_run resolved func={func!r}", flush=True)
     except (ImportError, AttributeError) as e:
+        if target in _SAFE_FALLBACK_TARGETS or target.startswith("psychopy."):
+            global _psychopy_fallback_alerted
+            print(f"[liaison-shim] psychopy not available, returning empty for: {target} ({e})", flush=True)
+            if not _psychopy_fallback_alerted:
+                _psychopy_fallback_alerted = True
+                _send_alert("8901", "WARNING",
+                    "Some PsychoPy features are unavailable on this device.\n"
+                    "Hardware backends (camera, microphone, serial, etc.) and fonts\n"
+                    "are not yet adapted for this platform.\n\n"
+                    "warning 有待适配"
+                )
+            return {}
         print(f"[liaison-shim] cmd_run _import_target failed: {e}", flush=True)
         traceback.print_exc()
-        if target in _SAFE_FALLBACK_TARGETS or target.startswith("psychopy."):
-            print(f"[liaison-shim] psychopy not available, returning empty for: {target}", flush=True)
-            _send_alert("8901", "WARNING", f"PsychoPy not installed 鈥?using built-in components. Install psychopy for full features.")
-            return {}
         raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
     if not callable(func):

@@ -1361,7 +1361,7 @@ export function registerHarmonyPythonHandlers() {
     if (!fs.existsSync(py)) return [];
     try {
       const ver = proc.execSync(`"${py}" --version`, { env: getPythonEnv(), encoding: "utf8", timeout: 10000 }).trim();
-      return [{ name: "system", path: py, version: ver }];
+      return [{ name: "system", path: py, version: ver, executable: py, psychopyVersion: ver }];
     } catch (err) {
       const msg = `[uv.getEnvironments] Failed to probe Python: ${err.message}`;
       output("stderr", { error: msg });
@@ -1497,9 +1497,11 @@ export function registerHarmonyPythonHandlers() {
     return ok;
   });
   ipcMain.handle("python.venv.getPackages", () => {
+    let pythonPath;
+    try { pythonPath = getPython(); } catch (_) { return {}; }
     const pyEnv = getPythonEnv();
     try {
-      const resp = proc.execSync(`"${getPython()}" -m pip list --format json`, { timeout: 15000, encoding: "utf8", env: pyEnv });
+      const resp = proc.execSync(`"${pythonPath}" -m pip list --format json`, { timeout: 15000, encoding: "utf8", env: pyEnv });
       const arr = JSON.parse(resp);
       // Convert array [{name, version}, ...] to object {name: version} for frontend compat
       const packages = {};
@@ -1515,22 +1517,26 @@ export function registerHarmonyPythonHandlers() {
     }
   });
   ipcMain.handle("python.venv.getPackageDetails", async (evt, venv, name) => {
-    // 真行为：用 pip show 拿包详情，错误真出到 terminal
+    // HarmonyOS: check Python availability first, return safe structure so UI doesn't crash
+    let pythonPath;
+    try { pythonPath = getPython(); } catch (_) {
+      return { info: { name, description: "Python not available on this device" } };
+    }
     const pyEnv = getPythonEnv();
     try {
-      const resp = proc.execSync(`"${getPython()}" -m pip show ${name}`, { timeout: 15000, encoding: "utf8", env: pyEnv });
-      // pip show 输出 KV 行，转对象
+      const resp = proc.execSync(`"${pythonPath}" -m pip show ${name}`, { timeout: 15000, encoding: "utf8", env: pyEnv });
+      // pip show returns KV lines, convert to object
       const details = {};
       for (const line of resp.split("\n")) {
         const m = line.match(/^([\w-]+):\s*(.*)$/);
         if (m) details[m[1].toLowerCase()] = m[2];
       }
-      return details;
+      return { info: details };
     } catch (err) {
       const msg = `[venv.getPackageDetails] pip show ${name} failed: ${err.stderr || err.message}`;
       output("stderr", { error: msg });
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", msg);
-      return {};
+      return { info: { name, description: `Failed to load: ${err.stderr || err.message}` } };
     }
   });
 
