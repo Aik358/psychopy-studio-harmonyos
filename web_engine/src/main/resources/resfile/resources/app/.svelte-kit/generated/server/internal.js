@@ -26,7 +26,7 @@ export const options = {
 		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\r\n<html lang=\"zh-CN\">\r\n\t<head>\r\n\t\t<meta charset=\"utf-8\" />\r\n\t\t<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Nunito.css\" />\r\n\t\t<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/Noto.css\" />\r\n\t\t<link rel=\"preload\" as=\"style\" href=\"" + assets + "/fonts/JetBrainsMono.css\" />\r\n\t\t<link rel=\"icon\" type=\"image/x-icon\" href=\"" + assets + "/branding/favicon.svg\" />\r\n\t\t<link rel=\"stylesheet\" href=\"" + assets + "/style.css\" />\r\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\r\n\t\t<base target=\"_blank\">\r\n\t\t" + head + "\r\n\t</head>\r\n\t<body data-sveltekit-preload-data=\"hover\" style=\"font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans SC', 'Microsoft YaHei', sans-serif;\">\r\n\t\t<div style=\"display: contents\">\r\n\t\t\t" + body + "\r\n\t\t</div>\r\n\t</body>\r\n</html>\r\n",
 		error
 	},
-	version_hash: "17cace2"
+	version_hash: "1amhteh"
 };
 
 export async function get_hooks() {

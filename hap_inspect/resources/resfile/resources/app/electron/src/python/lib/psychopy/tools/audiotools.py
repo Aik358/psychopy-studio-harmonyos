@@ -106,7 +106,7 @@ sampleRateLabels = {
 try:
     import soundfile as sf
     AUDIO_SUPPORTED_CODECS = [s.lower() for s in sf.available_formats().keys()]
-except ImportError:
+except (ImportError, OSError):
     AUDIO_SUPPORTED_CODECS = []
 
 

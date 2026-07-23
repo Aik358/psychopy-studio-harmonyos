@@ -3,6 +3,7 @@ import { getVenv } from "./venv.js";
 import logging from "../logging.js";
 import { output, decoder, getSafeAddress } from "./utils.js";
 import { appVersion } from "../version.js";
+import { getWebSocket } from "./ws_polyfill.js";
 import path from "path";
 
 
@@ -57,7 +58,10 @@ export class Liaison {
             setTimeout(reject, 10000)
         })
         // create websocket connection
-        this.socket = new WebSocket(`ws://${this.address}`);
+        // Use getWebSocket() so we work even when Electron-OH's main process
+        // lacks a global WebSocket (Problem C). No external deps required.
+        const WS = getWebSocket();
+        this.socket = new WS(`ws://${this.address}`);
         // resolve/reject on open/error
         this.socket.onopen = this.open.resolve
         this.socket.onerror = this.open.reject

@@ -1,5 +1,6 @@
 <script>
-    import EntryPoint from './EntryPoint.svelte'   
+    import EntryPoint from './EntryPoint.svelte';
+    import { t } from "$lib/i18n";
     import { Menu, MenuItem, SubMenu } from '$lib/utils/menu';
     import Tooltip from '$lib/utils/tooltip/Tooltip.svelte';
     import { getContext } from "svelte";
@@ -84,13 +85,13 @@
     {#if element.settings}
         <MenuItem
             icon="/icons/btn-edit.svg"
-            label="Routine settings"
+            label={t("routine.settings")}
             onclick={(evt) => show.settingsDlg = true}
         />
     {/if}
     <MenuItem
         icon="/icons/sym-dot-{element.disabled ? "blue" : "light"}.svg"
-        label="{element.disabled ? "Enable" : "Disable"} Routine"
+        label={t(element.disabled ? "routine.enableRoutine" : "routine.disableRoutine")}
         onclick={(evt) => {
             // update history
             current.experiment.history.update(`${element.disabled ? "enable" : "disable"} ${element.name}`);
@@ -104,12 +105,12 @@
     />
     <MenuItem 
         icon="/icons/btn-copy.svg"
-        label="Copy Routine"
+        label={t("routine.copyRoutine")}
         onclick={evt => copyRoutine(element)}
     />
     <MenuItem 
         icon="/icons/btn-delete.svg"
-        label="Remove Routine"
+        label={t("routine.removeRoutine")}
         onclick={removeRoutine}
     />
 </Menu>

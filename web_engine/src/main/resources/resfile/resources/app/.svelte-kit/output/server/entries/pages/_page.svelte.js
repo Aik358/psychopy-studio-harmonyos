@@ -1,6 +1,6 @@
 import { D as escape_html, E as attr, i as await_block } from "../../chunks/server.js";
 import { o as asset } from "../../chunks/client.js";
-import { P as t, W as Icon, et as electron, t as Theme } from "../../chunks/Theme.js";
+import { F as t, G as Icon, t as Theme, tt as electron } from "../../chunks/Theme.js";
 //#region src/routes/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {

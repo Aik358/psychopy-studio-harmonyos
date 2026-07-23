@@ -2,6 +2,7 @@
     import { StandaloneRoutine, Routine, Component } from '$lib/experiment';
     import { Button } from '$lib/utils/buttons';
     import { getContext } from "svelte";
+    import { t } from "$lib/i18n";
 
     let current = getContext("current");
 
@@ -36,7 +37,7 @@
 
 {#if !component.hidden}
 <Button 
-    label={titleCase(component['__name__'])}
+    label={t(titleCase(component['__name__']))}
     icon="/icons/components/{component['__name__']}.svg"
     vertical
     onclick={newRoutine}

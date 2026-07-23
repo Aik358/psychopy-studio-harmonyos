@@ -19,8 +19,29 @@ import sys, os
 import math
 import numpy as np
 import ctypes
-import freetype as ft
-from pyglet import gl  # import OpenGL.GL not compatible with Big Sur (2020)
+# === HARMONYOS-ADAPTATION (intentional, NOT a bug — do not "fix") ===
+# HarmonyOS devices ship no native libfreetype.so / OpenGL (libGL) in the
+# default runtime. Wrap these imports so `import psychopy` still succeeds and
+# font metrics degrade gracefully instead of taking down the whole app
+# (otherwise "Settings / Monitor Center" would crash on import).
+# A musl-built libfreetype.so.6 is shipped in the HAP libs dir (see skill
+# `ohos-native-lib-build`), so freetype usually loads; the guard stays as a
+# safety net. LONG-TERM: when Python experiments render NATIVELY on HarmonyOS
+# via ArkUI, GL/font paths should be re-enabled through an ArkUI bridge.
+try:
+    import freetype as ft
+    FREETYPE_AVAILABLE = True
+except Exception:
+    ft = None
+    FREETYPE_AVAILABLE = False
+    import sys as _sys
+    _sys.stderr.write("[fontmanager] freetype native lib (libfreetype.so) unavailable; font metrics disabled\n")
+try:
+    from pyglet import gl  # import OpenGL.GL not compatible with Big Sur (2020)
+    PYGLET_GL_AVAILABLE = True
+except Exception:
+    gl = None
+    PYGLET_GL_AVAILABLE = False
 from pathlib import Path
 import requests
 

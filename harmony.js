@@ -78,17 +78,50 @@ export function isHarmonyOS() {
 
   try {
     const uname = proc.execSync("uname -a", { timeout: 3000, encoding: "utf8" });
-    if (/harmony|hongmeng|ohos/i.test(uname)) {
+    if (/harmony|hongmeng|ohos|openharmony/i.test(uname)) {
       _isHarmonyOS = true;
       return true;
     }
   } catch (_) {}
 
-  for (const hint of ["/system/etc/ohos.conf", "/ohos", "/system/ohos"]) {
-    if (fs.existsSync(hint)) {
-      _isHarmonyOS = true;
-      return true;
-    }
+  // HNP (HarmonyOS Native Package) directory — unique to HarmonyOS. The system
+  // Python this app targets lives under /data/service/hnp/, so its existence is
+  // a very strong OpenHarmony signal (Electron-OH reports process.platform as
+  // "linux", so the uname/file checks above are often not enough on device).
+  if (fs.existsSync("/data/service/hnp")) {
+    _isHarmonyOS = true;
+    return true;
+  }
+
+  // File-based markers — peek content so we don't false-positive on generic
+  // Linux (e.g. /etc/os-release exists on desktop Linux too).
+  for (const hint of [
+    "/system/etc/ohos.conf",
+    "/ohos",
+    "/system/ohos",
+    "/system/build.prop",
+    "/etc/os-release",
+  ]) {
+    try {
+      if (fs.existsSync(hint)) {
+        if (hint.endsWith("build.prop") || hint.endsWith("os-release")) {
+          const txt = fs.readFileSync(hint, "utf8");
+          if (/harmony|openharmony|ohos|hongmeng/i.test(txt)) {
+            _isHarmonyOS = true;
+            return true;
+          }
+        } else {
+          _isHarmonyOS = true;
+          return true;
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Runtime env markers set by the Electron-OH / ArkTS host (defensive).
+  if (process.env && (process.env.OHOS || process.env.HARMONYOS || process.env.ELECTRON_OH)) {
+    _isHarmonyOS = true;
+    return true;
   }
 
   _isHarmonyOS = false;
@@ -177,6 +210,38 @@ export function getPythonVersion(pythonPath) {
 }
 
 /**
+ * Check whether a Python executable both exists on disk and can actually be
+ * executed by this (sandboxed) process. Returns why it failed (EPERM/sandbox)
+ * so the UI can show a concrete permission error instead of "not found".
+ *
+ * @param {string} pythonPath
+ * @returns {{exists:boolean, executable:boolean, error:?string}}
+ */
+export function checkPythonExecutable(pythonPath) {
+  const result = { exists: false, executable: false, error: null };
+  if (!pythonPath) return result;
+  try { result.exists = fs.existsSync(pythonPath); } catch (_) { return result; }
+  if (!result.exists) return result;
+  // Explicit execute-permission check (catches sandbox/EPERM on /data/service/hnp)
+  try {
+    fs.accessSync(pythonPath, fs.constants.X_OK);
+  } catch (e) {
+    result.error = "no execute permission: " + (e && e.message ? e.message : String(e));
+    return result;
+  }
+  try {
+    const v = proc
+      .execSync(`"${pythonPath}" --version`, { timeout: 5000, encoding: "utf8" })
+      .trim();
+    result.executable = v.startsWith("Python");
+    if (!result.executable) result.error = "version check returned: " + v;
+  } catch (e) {
+    result.error = "exec failed: " + (e && e.message ? e.message : String(e));
+  }
+  return result;
+}
+
+/**
  * Check which packages are installed in the given Python environment.
  * @param {string} pythonPath
  * @returns {object} { packageName: version, ... }
@@ -240,6 +305,7 @@ export function diagnosePythonEnvironment() {
     python: null,           // path to python executable
     pythonVersion: null,    // version string
     pythonOk: false,        // version >= 3.9
+    pythonExecError: null,  // why a found Python could not be exec'd (EPERM/sandbox)
     harmonybrew: null,      // path to harmonybrew
     packages: {},           // { name: version }
     missingRequired: [],    // required packages not found
@@ -266,6 +332,26 @@ export function diagnosePythonEnvironment() {
     if (diag.pythonVersion) {
       const parts = diag.pythonVersion.split(".").map(Number);
       diag.pythonOk = parts[0] >= 3 && parts[1] >= 9;
+    }
+  } else {
+    // Python wasn't auto-discovered — explain WHY so the on-device Diagnose
+    // button can report a sandbox/permission problem (Problem D) instead of a
+    // silent "not found".
+    for (const p of HARMONY_PYTHON_PATHS) {
+      try {
+        if (fs.existsSync(p)) {
+          const chk = checkPythonExecutable(p);
+          if (chk.error) { diag.pythonExecError = `${p}: ${chk.error}`; break; }
+        }
+      } catch (_) {}
+    }
+    if (!diag.pythonExecError) {
+      try {
+        const w = proc.execSync("which python3", { timeout: 3000, encoding: "utf8" }).trim();
+        diag.pythonExecError = `python3 present at ${w} but unusable`;
+      } catch (_) {
+        diag.pythonExecError = "no Python3 found on PATH or known HNP/user paths";
+      }
     }
   }
 

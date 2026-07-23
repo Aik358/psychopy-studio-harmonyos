@@ -1,6 +1,6 @@
 <script>
     import { electron, python } from "$lib/globals.svelte";
-    import { newWindow } from "$lib/utils/views.svelte";
+    import { newWindow, showWindow } from "$lib/utils/views.svelte";
     import { Button } from "$lib/utils/buttons";
     import { Icon } from "$lib/utils/icons";
     import { asset } from "$app/paths";
@@ -47,7 +47,7 @@
             <button 
                 class=view
                 aria-label="runner"
-                onclick={evt => newWindow("runner")}
+                onclick={evt => showWindow("runner")}
             >
                 <h3>{t("home.runner")}</h3>
                 <Icon 

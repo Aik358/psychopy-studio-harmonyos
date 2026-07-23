@@ -1,7 +1,187 @@
 const path = require('node:path');
 const fs = require("fs");
 const proc = require("child_process");
-const { app, dialog, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, dialog, BrowserWindow, ipcMain, shell, systemPreferences } = require('electron');
+
+// ── Problem B: surface main-process registration status + logs to the UI ──
+// Electron-OH logs go to hilog (not visible on PC), so we (a) expose a
+// python.health() IPC that reports what was registered, and (b) forward every
+// console.log/error line to the renderer via the "app-log" channel.
+const _registration = {
+  electron: true,
+  pythonBackend: false,
+  harmony: false,
+  terminal: false,
+  git: false,
+  errors: []
+};
+ipcMain.handle("python.health", () => ({ ..._registration, time: Date.now() }));
+
+// ── Unified diagnostic (Problem B: merge the two Terminal buttons) ──────────
+// Both the top-bar Terminal button (terminal.python.diagnose) and the floating
+// >_ panel's Diagnose button (python.harmony.diagnose) delegate to this single
+// builder, so they always "hear the same content": handler-registration health
+// + the full Python environment diagnosis. It lazily imports harmony.js on click
+// (never at module-load), so even if that import chain breaks again this handler
+// stays registered — no more "No handler registered for terminal.python.diagnose".
+async function _buildUnifiedDiagnose() {
+  const lines = [];
+  lines.push("=== handler registration ===");
+  lines.push(JSON.stringify({ ..._registration, time: Date.now() }, null, 2));
+  lines.push("");
+  lines.push("=== python environment ===");
+  try {
+    const Harmony = await import("./harmony.js");
+    const diag = Harmony.diagnosePythonEnvironment();
+    lines.push(`HarmonyOS: ${diag.isHarmonyOS}`);
+    lines.push(`Python path: ${diag.python || "(not found)"}`);
+    lines.push(`Python version: ${diag.pythonVersion || "(unknown)"}`);
+    lines.push(`Python OK (>=3.9): ${diag.pythonOk}`);
+    lines.push(`pip available: ${diag.pipAvailable}`);
+    lines.push(`venv available: ${diag.venvAvailable}`);
+    lines.push(`recommendation: ${diag.recommendation}`);
+    lines.push(`canProceed: ${diag.canProceed}`);
+    if (diag.missingRequired && diag.missingRequired.length) {
+      lines.push(`missing required: ${diag.missingRequired.map(m => m.import).join(", ")}`);
+    }
+    if (diag.pythonExecError) lines.push(`exec error: ${diag.pythonExecError}`);
+    if (diag.harmonybrew) lines.push(`harmonybrew: ${diag.harmonybrew}`);
+  } catch (err) {
+    lines.push("(python environment diagnose unavailable: " +
+      (err && err.message ? err.message : String(err)) + ")");
+  }
+  return lines.join("\n");
+}
+// Registered unconditionally here (NOT inside the fragile harmony import block),
+// so the top-bar Terminal button always has a handler.
+ipcMain.handle("terminal.python.diagnose", () => _buildUnifiedDiagnose());
+
+function _broadcastLog(text) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    try { win.webContents.send("app-log", text); } catch (_) {}
+  }
+}
+const _origLog = console.log.bind(console);
+const _origErr = console.error.bind(console);
+console.log = (...args) => {
+  _origLog(...args);
+  try { _broadcastLog(args.map(a => (a && a.stack) ? a.stack : (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); } catch (_) {}
+};
+console.error = (...args) => {
+  _origErr(...args);
+  try { _broadcastLog(args.map(a => (a && a.stack) ? a.stack : (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')); } catch (_) {}
+};
+
+// HarmonyOS platform detection (mirrors harmony.js env checks; no async import)
+function isHarmonyPlatform() {
+  return process.platform === "harmony" || process.platform === "ohos" ||
+    !!(process.env && (process.env.OHOS || process.env.HARMONYOS || process.env.ELECTRON_OH));
+}
+
+// Open a URL for the user. On HarmonyOS we open with the SYSTEM browser
+// (shell.openExternal) using the device's real network IP — the PsychoJS
+// runner is served from an HTTP server bound to 0.0.0.0, so the device IP
+// reaches it from the external browser. (127.0.0.1 from a separate system
+// browser process is unreliable here, and the in-app window did not display
+// on this platform, so the system browser is now the primary path.) The
+// in-app window is kept only as a last-resort fallback.
+let _externalWin = null;
+
+function getDeviceIP() {
+  try {
+    var os = require('os');
+    var ifaces = os.networkInterfaces();
+    for (var name in ifaces) {
+      var list = ifaces[name];
+      if (!list) continue;
+      for (var i = 0; i < list.length; i++) {
+        var addr = list[i];
+        if (addr.family === 'IPv4' && !addr.internal) return addr.address;
+      }
+    }
+  } catch (e) {}
+  return "127.0.0.1";
+}
+
+function externalUrl(url) {
+  try {
+    return String(url).replace(/127\.0\.0\.1|localhost/gi, getDeviceIP());
+  } catch (e) { return url; }
+}
+
+function openBrowserUrl(url) {
+  const target = String(url);
+  if (isHarmonyPlatform()) {
+    // Primary: system browser on the device network IP (server binds 0.0.0.0).
+    try {
+      shell.openExternal(externalUrl(target));
+      return true;
+    } catch (e) {
+      console.error("[openBrowserUrl] system browser failed, falling back to in-app window:", e?.message);
+    }
+    // Fallback: in-app window (same-process loopback reachable).
+    try {
+      if (!_externalWin || _externalWin.isDestroyed()) {
+        _externalWin = new BrowserWindow({
+          width: 1200, height: 850, show: false,
+          webPreferences: { contextIsolation: true, nodeIntegration: false, webSecurity: true }
+        });
+        _externalWin.once("ready-to-show", () => {
+          try { _externalWin.show(); _externalWin.focus(); } catch (e) {}
+        });
+        _externalWin.on("closed", () => { if (_externalWin && _externalWin.isDestroyed()) _externalWin = null; });
+        _externalWin.webContents.on("did-fail-load", (ev, code, desc, failedUrl) => {
+          console.error("[openBrowserUrl] did-fail-load:", code, desc, failedUrl);
+        });
+      }
+      _externalWin.loadURL(target);
+      return true;
+    } catch (e) {
+      console.error("[openBrowserUrl] in-app window failed:", e?.message);
+    }
+    return false;
+  }
+  // Non-HarmonyOS: just use the system browser.
+  try {
+    shell.openExternal(target);
+    return true;
+  } catch (e) {
+    console.error("[openBrowserUrl] shell.openExternal failed:", e);
+    return false;
+  }
+}
+
+// Request one-time OS access to Desktop / Documents / Downloads so bare fs can
+// read/write them without a file picker. HarmonyOS only shows the system popup
+// ONCE; if it was already consumed/denied, this returns false and the caller
+// should guide the user to Settings (see openApplicationInfoEntry).
+// Real API on Electron-HarmonyOS (per official docs / ohos_electron_hap):
+//   systemPreferences.requestDirectoryPermission("")  // "" => all three dirs
+async function requestDirectoryPermission() {
+  try {
+    console.log("[permissions] requesting Desktop/Documents/Downloads access...");
+    const ok = await systemPreferences.requestDirectoryPermission("");
+    console.log("[permissions] requestDirectoryPermission('') =>", ok);
+    return ok;
+  } catch (e) {
+    console.warn("[permissions] requestDirectoryPermission failed:", e?.message);
+    return false;
+  }
+}
+
+// Jump to the app's Settings > Permissions page. Needed when the one-time
+// popup was already dismissed/denied and the user must re-grant manually.
+async function openApplicationInfoEntry() {
+  try {
+    if (typeof systemPreferences?.openApplicationInfoEntry === "function") {
+      await systemPreferences.openApplicationInfoEntry();
+      return true;
+    }
+  } catch (e) {
+    console.warn("[permissions] openApplicationInfoEntry failed:", e?.message);
+  }
+  return false;
+}
 
 // make sure psychopy4 folder exists before importing subpackages
 if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
@@ -26,44 +206,104 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   // ★ Enable real Python backend (non-blocking, won't prevent window creation)
   let pythonHandlers = {};
   try {
+    // Use the official python/index.js (same as desktop PsychoPy Studio)
+    // This registers liaison, uv, venv, shell, scripts, psychojs handlers
     const pythonModule = await import("./python/index.js");
     pythonHandlers = pythonModule.handlers;
+    _registration.pythonBackend = true;
     console.log('[D] Python backend loaded OK');
   } catch (err) {
+    _registration.errors.push('python.backend: ' + (err && err.message ? err.message : String(err)));
     console.error('[D] Python backend FAILED to load:', err);
+  }
+  // ★ HarmonyOS tablet detection + terminal — registered here, NOT via harmony-python.js
+  //    harmony-python.js overrides/replaces handlers that python/index.js already set up,
+  //    and its import chain is fragile. By registering these directly, the official
+  //    Python liaison (via python/liaison.js) remains intact.
+  try {
+    const Harmony = await import("./harmony.js");
+    ipcMain.handle("python.harmony.isHarmonyOS", () => Harmony.isHarmonyOS());
+    // Same unified content as the top-bar Terminal button (see _buildUnifiedDiagnose).
+    ipcMain.handle("python.harmony.diagnose", () => _buildUnifiedDiagnose());
+    ipcMain.handle("python.harmony.strategy", () => Harmony.getPythonStrategy());
+    ipcMain.handle("python.harmony.nativePython", () => Harmony.findNativePython());
+    ipcMain.handle("python.harmony.pythonVersion", () => {
+      const p = Harmony.findNativePython();
+      return p ? Harmony.getPythonVersion(p) : null;
+    });
+    ipcMain.handle("python.harmony.guidance", () => {
+      const d = Harmony.diagnosePythonEnvironment();
+      return Harmony.generateSetupGuidance(d);
+    });
+
+    // NOTE: terminal.python.start/send/close/exec are owned by harmony-python.js
+    // (registered in registerHarmonyPythonHandlers, using the bundle-aware
+    //  getPython() + getPythonEnv()). Registering them here too would cause a
+    //  duplicate-handler throw and abort that module's later registrations.
+    // terminal.python.diagnose is registered unconditionally at module top
+    // (see _buildUnifiedDiagnose) so it survives even if this harmony block fails.
+    _registration.harmony = true;
+    _registration.terminal = true;
+    console.log('[D] HarmonyOS handlers registered OK (direct, no harmony-python.js)');
+  } catch (err) {
+    _registration.errors.push('harmony.terminal: ' + (err && err.message ? err.message : String(err)));
+    console.error('[D] HarmonyOS handlers FAILED:', err);
+  }
+  // ★ 注册 harmony-python.js 的 handler（python.status / python.mode.set /
+  //   terminal.python.exec / python.uv.* / python.venv.* / python.liaison.* 等）。
+  //   这些此前因 registerHarmonyPythonHandlers() 从未被调用而全部未注册，
+  //   导致前端报 "No handler registered"。harmony-python.js 内部已对可能重名的
+  //   channel 做 removeHandler 兜底；python.harmony.* 与 python.psychojs.*
+  //   的重名项已在 harmony-python.js 中删除，由本文件直接注册，避免重复注册抛异常。
+  try {
+    const harmonyPy = await import("./harmony-python.js");
+    if (typeof harmonyPy.registerHarmonyPythonHandlers === "function") {
+      harmonyPy.registerHarmonyPythonHandlers();
+      _registration.terminal = true;
+      console.log('[D] harmony-python.js handlers registered OK');
+    } else {
+      throw new Error("registerHarmonyPythonHandlers not exported from harmony-python.js");
+    }
+  } catch (err) {
+    _registration.errors.push('harmony-python: ' + (err && err.message ? err.message : String(err)));
+    console.error('[D] harmony-python.js handlers FAILED:', err);
   }
   // psychoJS browser runner IPC (惰性加载，不阻塞主进程启动)
   // 在当前窗口 loadFile() 加载实验（最稳方案）
   // ★ 浏览器实验运行：起本地 HTTP server → shell.openExternal → 系统浏览器打开
   // Read and parse XLSX conditions file, return JSON
+  // ★ 回退顺序修正（修复"授权后仍弹窗手选"回归）：
+  //   直读(XLSX.readFile) → buffer 兜底(fs.readFileSync+XLSX.read) → 最后才弹窗手选。
+  //   原顺序把阻塞弹窗排在第二，导致授权后本可裸读的文件仍被弹窗打断。
   ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
     try {
       var XLSX = require("xlsx");
-      function read(fp) { var wb = XLSX.readFile(fp); return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])); }
-      try { return read(filePath); }
-      catch (e1) {
-        // EPERM or path issues - try file dialog
-        console.warn("[readConditions] Direct read failed:", e1.message);
-        try {
-          var result = dialog.showOpenDialogSync({
-            title: "Select conditions file",
-            defaultPath: filePath,
-            filters: [{ name: "Conditions", extensions: ["xlsx","csv","xls"] }]
-          });
-          if (result && result.length > 0) return read(result[0]);
-          return "[]";
-        } catch (e2) {
-          // Final fallback: try fs read + manual parse
-          try {
-            var fs = require("fs");
-            var buf = fs.readFileSync(filePath);
-            var wb = XLSX.read(buf, {type: "buffer"});
-            return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
-          } catch(e3) {
-            console.error("[readConditions] All methods failed");
-            return "[]";
-          }
+      var fs = require("fs");
+      function readPath(fp) { var wb = XLSX.readFile(fp); return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])); }
+      function readBuf(fp) { var buf = fs.readFileSync(fp); var wb = XLSX.read(buf, {type: "buffer"}); return JSON.stringify(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])); }
+
+      // 1) 直读（路径方式）
+      try { return readPath(filePath); }
+      catch (e1) { console.warn("[readConditions] readFile failed:", filePath, "->", e1?.message); }
+
+      // 2) buffer 兜底（同一文件，绕过某些路径/编码问题）
+      try { return readBuf(filePath); }
+      catch (e2) { console.warn("[readConditions] buffer read failed:", filePath, "->", e2?.message); }
+
+      // 3) 最后才弹窗让用户手选（真正的 last resort）
+      try {
+        var result = dialog.showOpenDialogSync({
+          title: "Select conditions file",
+          defaultPath: filePath,
+          filters: [{ name: "Conditions", extensions: ["xlsx","csv","xls"] }]
+        });
+        if (result && result.length > 0) {
+          try { return readPath(result[0]); } catch(_) { return readBuf(result[0]); }
         }
+        return "[]";
+      } catch (e3) {
+        console.error("[readConditions] dialog failed:", e3?.message);
+        return "[]";
       }
     } catch (err) {
       console.error("[psychojs-browser] readConditions failed:", err?.message || err);
@@ -186,7 +426,6 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir, psyexpPath) => {
     console.log("[psychojs-browser] browserRun called, jsCode length:", jsCode?.length, "expName:", expName, "expDir:", expDir, "psyexpPath:", psyexpPath);
     try {
-      delete require.cache[require.resolve("./psychojs-browser/index.cjs")];
       const psychoJSBrowser = require("./psychojs-browser/index.cjs");
       
       // ★ If we have a .psyexp path, try Python generation first
@@ -219,9 +458,14 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           }
           
           const outDir = path.join(app.getPath("temp"), "psychopy-oh-gen-" + Date.now());
+          // Write the already-built ESM experiment.js to a temp file so the
+          // Python worker can assemble the directory without depending on a
+          // fragile headless psychopy compile.
+          const jsTmp = path.join(app.getPath("temp"), "psychopy-oh-js-" + Date.now() + ".js");
+          try { fs.writeFileSync(jsTmp, jsCode || "", "utf8"); } catch (_) {}
           console.log("[psychojs-browser] Spawning Python:", pythonExe, workerScript);
           
-          const child = proc.spawn(pythonExe, [workerScript, "generate", psyexpPath, outDir], {
+          const child = proc.spawn(pythonExe, [workerScript, "generate", psyexpPath, outDir, jsTmp], {
             cwd: path.dirname(workerScript),
             env: { ...process.env, PSYCHOPY_NO_GUI: '1', MPLBACKEND: 'Agg' },
             timeout: 30000,
@@ -258,6 +502,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
           // ★ Use the Python-generated directory directly
           const url = await psychoJSBrowser.startServerFromDir(genResult.output_dir);
           console.log("[psychojs-browser] Opened (Python-generated):", url);
+          openBrowserUrl(url);
           return url;
         }
       }
@@ -268,6 +513,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         resourcesJSON || "", expDir || ""
       );
       console.log("[psychojs-browser] Opened in system browser:", url);
+      openBrowserUrl(url);
       return url;
     } catch (err) {
       console.error("[psychojs-browser] Failed:", err?.message || err, err?.stack);
@@ -293,6 +539,7 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   });
   // psychojs handlers are registered by python/index.js
   const { handlers: gitHandlers } = gitModule;
+  if (gitModule && gitModule.handlers) _registration.git = true;
 
   console.log('[D] esm loaded isDev=' + isDev);
   console.log('[D] __dirname=' + __dirname);
@@ -394,7 +641,19 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
     });
     mainWin.removeMenu();
     mainWin.loadURL('http://localhost:8003/builder');
-    
+
+    // Route ANY window.open(...) (e.g. Psychopy homepage, Help, Pavlovia links
+    // in the menu) to the system browser via shell.openExternal. On HarmonyOS
+    // an Electron child window created by window.open does not display, so we
+    // deny the in-app window and open the URL in the OS default browser
+    // instead. This reuses the same main-process shell.openExternal that already
+    // works for "Run in browser" (electron.files.openExternal).
+    mainWin.webContents.setWindowOpenHandler(({ url }) => {
+      try { shell.openExternal(url); }
+      catch (e) { console.error('[mainWin] openExternal failed for', url, e); }
+      return { action: 'deny' };
+    });
+
     // Store window for IPC
     mainWin.webContents.once('did-finish-load', () => {
       windows[mainWin.webContents.id] = mainWin;
@@ -529,6 +788,9 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(() => {
     createWindow();
+    // Request Desktop/Documents/Downloads access on HarmonyOS (popup shows once).
+    // Fire-and-forget: grant applies to later fs reads (e.g. run-in-browser).
+    requestDirectoryPermission();
 
     // On OS X it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
@@ -669,11 +931,16 @@ if (!fs.existsSync(path.join(app.getPath("appData"), "psychopy4"))) {
         )),
         showItemInFolder: ipcMain.handle("electron.files.showItemInFolder", (evt, folder) => shell.showItemInFolder(folder)),
         openPath: ipcMain.handle("electron.files.openPath", (evt, path) => shell.openPath(path)),
-        openExternal: ipcMain.handle("electron.files.openExternal", (evt, url) => shell.openExternal(url))
+        openExternal: ipcMain.handle("electron.files.openExternal", async (evt, url) => {
+          return openBrowserUrl(url);
+        })
       },
       clipboard: {
         get: ipcMain.handle("electron.clipboard.get", (evt) => clipboard),
         set: ipcMain.handle("electron.clipboard.set", (evt, value) => clipboard = value)
+      },
+      permissions: {
+        openSettings: ipcMain.handle("electron.permissions.openSettings", () => openApplicationInfoEntry())
       },
       authenticatePavlovia: ipcMain.handle("electron.authenticatePavlovia", (evt, url) => authenticatePavlovia(url)),
       version: ipcMain.handle("electron.version", (evt) => appVersion),

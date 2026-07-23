@@ -1,5 +1,6 @@
 <script>
     import { LoopInitiator } from '$lib/experiment/flow.svelte.js';
+    import { t } from "$lib/i18n";
     import { ParamsNotebook } from '$lib/paramCtrls/index.js';
     import { Menu, MenuItem } from '$lib/utils/menu';
     import { Button } from '$lib/utils/buttons';
@@ -34,7 +35,7 @@
 >
     <!-- button to open add Loop menu -->
     <Button 
-        label="Add Loop"
+        label={t("flow.addLoop")}
         icon="/icons/btn-loop.svg"
         tooltip="Add a loop to the experiment flow"
         onclick={() => showMenu = true}
@@ -48,13 +49,13 @@
     >
         {#await pending.loops}
             <MenuItem 
-                label="Loading loops..."
+                label={t("flow.loadingLoops")}
             />
         {:then loops}
             {#each Object.entries(loops) as [loopType, loopProfile]}
                 {#if !loopProfile.hidden}
                     <MenuItem 
-                        label="New {loopProfile.label?.toLowerCase?.() || loopType}..."
+                        label={t("flow.newLoopNamed", { type: loopProfile.label?.toLowerCase?.() || loopType })}
                         onclick={() => {
                             // create blank Loop
                             current.inserting = new LoopInitiator(loopType)
@@ -72,7 +73,7 @@
     {#if current.inserting instanceof LoopInitiator}
     <Dialog 
         id=new-loop 
-        title="New loop"
+        title={t("flow.newLoop")}
         bind:shown={showDialog} 
         onopen={() => current.inserting.restore.set()}
         buttons={{

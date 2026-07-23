@@ -2,6 +2,7 @@
     import { mapping } from "./ctrls";
     import Tooltip from "$lib/utils/tooltip/Tooltip.svelte";
     import { current } from "../../routes/builder/globals.svelte";
+    import { t } from "$lib/i18n";
 
     let {
         name,
@@ -114,13 +115,13 @@
             onfocusin={(evt) => showTooltip = true}
             onfocusout={(evt) => showTooltip = false}
         >
-            {param.label ? param.label : name}
+            {param.label ? t(param.label) : name}
             {#if param.hint}
                 <Tooltip
                     bind:shown={showTooltip}
                     position=bottom
                 >
-                    {param.hint}
+                    {t(param.hint)}
                 </Tooltip>
             {/if}
         </label>

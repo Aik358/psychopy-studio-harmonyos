@@ -17,6 +17,7 @@ import { createRequire } from "module";
 import { app, ipcMain, BrowserWindow } from "electron";
 import logging from "./logging.js";
 import { output, decoder } from "./python/utils.js";
+import * as Harmony from "./harmony.js";
 
 // ESM polyfill for __dirname (Node 20.x)
 const __filename = fileURLToPath(import.meta.url);
@@ -211,18 +212,167 @@ const HARMONY_SITE_PACKAGES = [
   "/data/data/com.example.electron/files/python/lib/python3.12/site-packages",
 ];
 
+// ── 运行模式（两个相互独立的概念，切勿混为一谈）──────────
+//   ① 运行时形态(form factor)—— 由「设备上有没有系统 Python」决定：
+//        · 平板模式(tablet)：无系统 Python（如鸿蒙平板/手机）。App 仍可用，
+//          仅浏览器运行实验；Python 不可用时【自然回落到无 Python 状态】，
+//          右下角提示应为「平板模式」，绝不应显示「找不到 Python」。
+//        · 电脑模式(pc)：存在系统 HNP Python，可跑完整 Python 功能。
+//   ② Python 来源(source)—— bundle / dev，仅决定「有 Python 时从哪来」：
+//        · bundle = 打进 HAP 的内嵌 HNP Python（自包含、系统签名可执行挂载）。
+//          ⚠️ 内嵌 HNP 当前仍属【探索阶段、尚未真正跑通】，只是「平板模式下可选的
+//             Python 来源之一」，不是平板模式的必要条件——平板模式即使没有它也能以
+//             无 Python 姿态正常运行（浏览器实验可用）。
+//        · dev = 系统 HNP Python（那台电脑上官方分发的系统 Python 运行时）。
+// 切换逻辑：终端「平板/电脑」按钮切换的是【运行时形态】；bundle HNP 是否就绪只影响
+// 「平板模式下能否额外获得 Python」，不影响「是否处于平板模式」。绝不因 bundle 不可用而报错。
+
+function getUserDataPythonRoot() {
+  try {
+    const ud = app.getPath("userData");
+    if (!ud) return null;
+    const cands = [
+      path.join(ud, "python", "bin", "python3.12"),
+      path.join(ud, "python", "bin", "python3"),
+    ];
+    for (const p of cands) {
+      try { if (fs.existsSync(p) && fs.statSync(p).isFile()) return p; } catch (_) {}
+    }
+  } catch (_) {}
+  return null;
+}
+
+function getBundledPythonRoot() {
+  const candidates = [];
+  if (process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, "python", "bin", "python3.12"));
+    candidates.push(path.join(process.resourcesPath, "python", "bin", "python3"));
+  }
+  // 可写沙箱（PoC / 开发期注入）：app 的 userData/python —— 不碰只读的已装包
+  const udRoot = getUserDataPythonRoot();
+  if (udRoot) candidates.push(udRoot);
+  // fallback: __dirname = resources/app/electron/src -> ../../.. /python
+  candidates.push(path.join(__dirname, "..", "..", "..", "python", "bin", "python3.12"));
+  candidates.push(path.join(__dirname, "..", "..", "..", "python", "bin", "python3"));
+  for (const p of candidates) {
+    try { if (fs.existsSync(p) && fs.statSync(p).isFile()) return p; } catch (_) {}
+  }
+  return null;
+}
+
+function getBundledSitePackages() {
+  const root = getBundledPythonRoot();
+  if (!root) return null;
+  // root = .../python/bin/python3.12  ->  .../python/lib/python3.12/site-packages
+  return path.join(path.dirname(path.dirname(root)), "lib", "python3.12", "site-packages");
+}
+
+// 模式持久化文件（位于可写 userData 目录）
+function pythonModeFile() {
+  try {
+    return path.join(app.getPath("userData"), "python_mode.json");
+  } catch (_) {
+    return null;
+  }
+}
+
+// 解析当前模式：环境变量(显式调试) > 持久化选择 > 默认 bundle
+function readPythonMode() {
+  const envMode = process.env.PSYCHOPY_MODE;
+  if (envMode === "dev" || envMode === "bundle") return envMode;
+  const f = pythonModeFile();
+  if (f) {
+    try {
+      if (fs.existsSync(f)) {
+        const m = JSON.parse(fs.readFileSync(f, "utf8")).mode;
+        if (m === "dev" || m === "bundle") return m;
+      }
+    } catch (_) {}
+  }
+  return "bundle";
+}
+
+function writePythonMode(mode) {
+  if (mode !== "dev" && mode !== "bundle") return false;
+  const f = pythonModeFile();
+  if (!f) return false;
+  try {
+    fs.writeFileSync(f, JSON.stringify({ mode, updatedAt: new Date().toISOString() }, null, 2));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getPythonMode() {
+  return readPythonMode();
+}
+
+// 系统 HNP python 是否可用（供 UI 判断能否启用电脑模式）
+function systemPythonAvailable() {
+  const envPy = process.env.PSYCHOPY_PYTHON;
+  if (envPy && fs.existsSync(envPy)) return true;
+  for (const p of HARMONY_PYTHON_PATHS) {
+    try { if (fs.existsSync(p)) return true; } catch (_) {}
+  }
+  try {
+    const base = "/data/service/hnp/python.org";
+    if (fs.existsSync(base)) {
+      for (const d of fs.readdirSync(base)) {
+        if (fs.existsSync(path.join(base, d, "bin", "python3"))) return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
 function getPythonEnv() {
   const existingPath = process.env.PYTHONPATH || "";
-  const extraPaths = HARMONY_SITE_PACKAGES.filter(p => {
-    try { return fs.existsSync(p); } catch (_) { return false; }
-  });
+  const mode = getPythonMode();
+  const extraPaths = [];
+
+  if (mode === "bundle") {
+    // 平板模式：严格只用包内依赖，保证自包含与可确定性
+    const bundledSP = getBundledSitePackages();
+    if (bundledSP) {
+      try { if (fs.existsSync(bundledSP)) extraPaths.push(bundledSP); } catch (_) {}
+    }
+    // 包内纯 Python 包目录（psychopy 源码、websockets、jedi 等）
+    const bundledLib = path.join(__dirname, "python", "lib");
+    if (fs.existsSync(bundledLib)) extraPaths.push(bundledLib);
+  } else {
+    // 电脑模式：使用系统 HNP python 的 site-packages（brew 自签名包）
+    for (const p of HARMONY_SITE_PACKAGES) {
+      try { if (fs.existsSync(p)) extraPaths.push(p); } catch (_) {}
+    }
+  }
   const pythonpath = [...extraPaths, ...existingPath.split(':').filter(Boolean)].join(':');
   // HarmonyBrew Cellar 的 C 库（libsndfile 等）加进 LD_LIBRARY_PATH
   // 动态扫描 Cellar 目录，不硬编码版本号
   const realHome = os.homedir();
-  const hbLibPaths = [
-    path.join(realHome, ".harmonybrew", "lib"),
-  ];
+  const hbLibPaths = [];
+  // 显式指定 libsndfile 所在目录（必须是【可执行挂载点】，不能是 noexec 的 userData）。
+  // 把 libsndfile.so.1 打进 HAP 的 native libs 目录（与 libelectron.so 同级，已签名、可 exec）
+  // 后，部署时设 PSYCHOPY_SNDFILE_LIBDIR=/.../libs/arm64-v8a 即可被 Python 子进程 dlopen 找到。
+  if (process.env.PSYCHOPY_SNDFILE_LIBDIR) {
+    hbLibPaths.push(process.env.PSYCHOPY_SNDFILE_LIBDIR);
+  }
+  // 通用 HAP 原生 C 库目录（libsndfile / libfreetype / 后续扩展均放此处，随 HAP 签名安装）。
+  // 统一加入 LD_LIBRARY_PATH：任意 .so 丢进该目录即可被 Python 子进程 dlopen 找到（零配置）。
+  // 原因：鸿蒙上很多 Python 包（soundfile→libsndfile、freetype→libfreetype、Pillow→libjpeg…）
+  // 运行时要 dlopen 一个系统没有的原生 .so；最稳的做法是把这些 .so 打包进 HAP 的可执行挂载点，
+  // 再把目录注入 LD_LIBRARY_PATH，而不是依赖用户去设环境变量。
+  for (const libDir of [
+    "/data/storage/el1/bundle/libs/arm64-v8a",
+    "/data/storage/el1/bundle/libs/arm64",
+    "/data/storage/el1/bundle/electron/libs/arm64-v8a",
+    "/data/storage/el1/bundle/electron/libs/arm64",
+  ]) {
+    try {
+      if (fs.existsSync(libDir) && !hbLibPaths.includes(libDir)) hbLibPaths.push(libDir);
+    } catch (_) {}
+  }
+  hbLibPaths.push(path.join(realHome, ".harmonybrew", "lib"));
   // Scan libsndfile Cellar for available versions
   try {
     const cellarDir = path.join(realHome, ".harmonybrew", "Cellar", "libsndfile");
@@ -280,6 +430,30 @@ let _processCounter = 0;
 function findPython() {
   if (_pythonPath) return _pythonPath;
 
+  // 严格按当前运行模式查找，不做跨模式自动降级
+  const mode = getPythonMode();
+
+  if (mode === "bundle") {
+    // 平板模式：仅使用包内自包含 Python，保持自包含/可确定性
+    const bundled = getBundledPythonRoot();
+    if (bundled) {
+      try {
+        const ver = proc.execSync(`"${bundled}" --version`, { timeout: 5000, encoding: "utf8" }).trim();
+        logging.log(`[python] bundle mode: using bundled Python ${bundled} (${ver})`);
+        _pythonPath = bundled;
+        return bundled;
+      } catch (e) {
+        logging.error(`[python] bundled Python present but failed --version: ${bundled}: ${e?.message || e}`);
+        return null; // 不降级：包内解释器损坏，明确失败
+      }
+    }
+    // 平板模式运行时：内嵌 HNP 未就绪只代表「平板模式下暂无 Python 来源」，
+    // 不代表出错——App 仍以无 Python 的平板模式正常运行（浏览器实验可用）。
+    logging.log("[python] tablet runtime: bundled HNP not found (exploratory) — running as tablet without Python");
+    return null; // 不自动切换到电脑模式；平板模式无需 Python 也能运行
+  }
+
+  // 电脑模式：仅使用系统 HNP python（软件自检环节检测到的系统 Python）
   const envPy = process.env.PSYCHOPY_PYTHON;
   if (envPy && fs.existsSync(envPy)) {
     _pythonPath = envPy;
@@ -534,7 +708,11 @@ async function startLiaison() {
     // activate plugins
     var hasPlugins = await sendLiaison({command: "exists", args: ["psychopy.plugins:activatePlugins"]}, 10000).catch(() => false);
     if (hasPlugins) {
-      await sendLiaison({command: "run", args: ["psychopy.plugins:activatePlugins"]}, undefined).catch(() => {});
+      // Bounded timeout: plugin activation can hang on some platforms, which
+      // would block startLiaison forever and freeze any caller that awaits
+      // setupPython (e.g. exporting to .py/.js). 30s is plenty; on timeout we
+      // simply skip plugins instead of hanging the whole app.
+      await sendLiaison({command: "run", args: ["psychopy.plugins:activatePlugins"]}, 30000).catch(() => {});
     }
 
     logging.log("[startLiaison] Liaison services initialized");
@@ -993,10 +1171,105 @@ function listShells() {
 // ── Register IPC handlers ───────────────────────────────────
 
 export function registerHarmonyPythonHandlers() {
+  // ── 安全注册：先移除 python/index.js 可能已注册的同名 handler ──
+  // ipcMain.handle() 对同一事件名注册两次会抛异常，导致后续 handler 全部不注册。
+  // 解决方案：所有 handle 调用前先 removeHandler，确保不会重复注册。
+  const _channelsToClear = [
+    "python.liaison.start", "python.liaison.stop", "python.liaison.send",
+    "python.liaison.started", "python.liaison.ready",
+    "python.venv.setup", "python.venv.executable", "python.venv.installPackage",
+    "python.venv.uninstallPackage", "python.venv.getPackages", "python.venv.getPackageDetails",
+    "python.uv.folder", "python.uv.executable", "python.uv.exists",
+    "python.uv.install", "python.uv.makeExecutable", "python.uv.findPython",
+    "python.uv.getEnvironments",
+    "python.shell.list", "python.shell.send", "python.shell.open", "python.shell.close",
+    "python.scripts.run", "python.scripts.finished", "python.scripts.stop",
+    "python.psychojs.run", "python.psychojs.stop",
+  ];
+  for (const ch of _channelsToClear) {
+    try { ipcMain.removeHandler(ch); } catch (_) {}
+  }
+  logging.log("[harmony-python] Cleared " + _channelsToClear.length + " potentially duplicate handlers");
+
+  // ── 运行模式切换（平板模式 / 电脑模式，显式切换，不自动降级）──
+  ipcMain.handle("python.mode", () => getPythonMode());
+  ipcMain.handle("python.bundle.available", () => !!getBundledPythonRoot());
+  ipcMain.handle("python.system.available", () => systemPythonAvailable());
+  ipcMain.handle("python.status", () => {
+    // formFactor：运行时形态，由「设备上有没有系统 Python」推导，与 bundle 内嵌 HNP 无关：
+    //   pc     —— 存在系统 HNP python（电脑模式）
+    //   tablet —— 无系统 Python（平板模式，可无 Python 运行；右下角提示应为「平板模式」）
+    const _systemAvailable = systemPythonAvailable();
+    return {
+      mode: getPythonMode(),
+      formFactor: _systemAvailable ? "pc" : "tablet",
+      tablet: !_systemAvailable,                 // 平板形态因子（独立，不依赖 bundle）
+      deviceClass: _systemAvailable ? "pc" : "tablet",
+      bundleModeExploratory: true,               // 内嵌 HNP 仍属探索阶段，非平板模式必要条件
+      // 若启动时设了 PSYCHOPY_MODE=dev|bundle，它会永久压过持久化文件，UI 切换栏失效
+      envMode: process.env.PSYCHOPY_MODE || null,
+      envLocked: process.env.PSYCHOPY_MODE === "dev" || process.env.PSYCHOPY_MODE === "bundle",
+      bundleAvailable: !!getBundledPythonRoot(), // 仅「平板模式下可选的 Python 来源」是否就绪
+      systemAvailable: _systemAvailable,
+      pythonPath: (() => { try { return findPython(); } catch (_) { return null; } })(),
+      userData: (() => { try { return app.getPath("userData"); } catch (_) { return null; } })(),
+    };
+  });
+  // 平板形态因子（独立判定，不依赖 bundle 内嵌 HNP 是否就绪）：
+  // 无系统 Python 即视为平板模式运行时。供前端/终端在「Python 不可用时」仍正确显示「平板模式」。
+  ipcMain.handle("python.tablet", () => !systemPythonAvailable());
+  ipcMain.handle("python.mode.set", (event, mode) => {
+    if (mode !== "dev" && mode !== "bundle") {
+      return { ok: false, error: "invalid mode" };
+    }
+    const ok = writePythonMode(mode);
+    // 切换模式后强制下次重新解析 Python 路径
+    _pythonPath = null;
+    return {
+      ok,
+      mode: getPythonMode(),
+      status: {
+        bundleAvailable: !!getBundledPythonRoot(),
+        systemAvailable: systemPythonAvailable(),
+      },
+    };
+  });
+  // NOTE: python.harmony.* (isHarmonyOS/strategy/nativePython/pythonVersion/
+  //   diagnose/guidance) 由 index.cjs 直接注册，避免重复注册抛异常；此处不注册。
+  ipcMain.handle("python.harmony.autoInstall", async () => {
+    try {
+      const diag = Harmony.diagnosePythonEnvironment();
+      if (!diag.python || !diag.pythonOk) {
+        return { success: false, error: "No suitable Python found", diag };
+      }
+      const { default: proc } = await import("child_process");
+      const packages = diag.missingRequired || [];
+      const results = [];
+      for (const pkg of packages) {
+        try {
+          const args = ["-m", "pip", "install", "--no-input", "--quiet", pkg];
+          proc.execSync([diag.python, ...args].join(" "), { timeout: 120000, encoding: "utf8" });
+          results.push({ package: pkg, status: "ok" });
+        } catch (e) {
+          results.push({ package: pkg, status: "failed", error: String(e?.message || e).slice(0, 200) });
+        }
+      }
+      return { success: results.every(r => r.status === "ok"), results, diag };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
+  });
+
   // Liaison
   ipcMain.handle("python.liaison.start", async () => {
     try {
-      await startLiaison();
+      // Defense-in-depth: never let startLiaison hang the caller (and thus the
+      // renderer awaiting setupPython) forever. If it doesn't finish in 45s, bail
+      // so the export/run flow fails gracefully instead of freezing the UI.
+      await Promise.race([
+        startLiaison(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("startLiaison timed out (45s)")), 45000))
+      ]);
       return true;
     } catch (err) {
       logging.error(`Failed to start liaison: ${err}`);
@@ -1112,9 +1385,15 @@ export function registerHarmonyPythonHandlers() {
         output("stdout", `[setup] PsychoPy ${pv} is importable ✓`);
         for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `PsychoPy ${pv} ✓`);
       } catch (e) {
-        output("stderr", { error: `[setup] PsychoPy NOT importable. Run "pip install psychopy" to install.` });
-        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `PsychoPy not found ✗`);
-        return { success: false, missingPsychopy: true };
+        const raw = (e.stderr || e.message || String(e));
+        const m = raw.match(/No module named '([^']+)'/);
+        const missing = m ? m[1] : "psychopy";
+        const hint = missing === "psychopy"
+          ? `pip install psychopy`
+          : `pip install ${missing}`;
+        output("stderr", { error: `[setup] PsychoPy NOT importable (missing module '${missing}'). Run: ${hint}` });
+        for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", `PsychoPy not found ✗ (missing ${missing})`);
+        return { success: false, missingPsychopy: true, missingModule: missing };
       }
       return { success: true };
     } catch (err) {
@@ -1125,25 +1404,50 @@ export function registerHarmonyPythonHandlers() {
     }
   });
 
+  // 非阻塞执行 pip 子命令：用 spawn 替代 execSync，实时把 stdout/stderr 推到前端，
+  // 避免主线程被 pip install 阻塞（原先 execSync 会卡死整个 UI，且 --quiet 下完全看不到进度）。
+  // 行为与原先一致，只是不再冻界面、且进度可见。
+  function pipSpawn(py, args, pyEnv, timeoutMs) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+      let child;
+      try {
+        child = proc.spawn(py, args, { env: pyEnv, timeout: timeoutMs });
+      } catch (err) {
+        output("stderr", { error: `spawn failed: ${err.message}` });
+        return finish(false);
+      }
+      // Route pip output to the "uv" progress channel, NOT "stderr"/"stdout".
+      // "stderr" is reserved for real Python errors (PythonErrors.svelte popup);
+      // pip writes routine warnings/progress to stderr, so forwarding it there
+      // would spam "Python error" popups on every package install/reinstall.
+      child.stdout.on("data", d => output("uv", d.toString()));
+      child.stderr.on("data", d => output("uv", d.toString()));
+      child.on("error", err => { output("uv", `[spawn error] ${err.message}`); finish(false); });
+      child.on("close", code => finish(code === 0));
+    });
+  }
+
   // Install all core PsychoPy dependencies in one go
   ipcMain.handle("python.venv.installAllDeps", async () => {
     const py = getPython();
     const pyEnv = getPythonEnv();
-    const deps = ["psychopy==2026.1.2", "numpy", "scipy", "matplotlib", "pandas",
+    const deps = ["numpy", "scipy", "matplotlib", "pandas",
       "openpyxl", "pillow", "websockets", "soundfile", "imageio",
-      "imageio-ffmpeg", "markdown-it-py", "packaging",
+      "imageio-ffmpeg", "markdown-it-py", "packaging", "freetype-py",
+      "pyusb", "pyserial",  // 眼动仪/脑电帽硬件通信：pyusb 运行时加载 libusb-1.0.so（已交叉编译打进 HAP libs），pyserial 纯 Python（依赖 /dev/tty* 串口设备）
     ];
     const welcome = "PsychoPy 2026.1.2 — Environment Setup\n========================================\n";
     output("stdout", welcome);
     for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", welcome);
     let installed = 0, skipped = 0, failed = 0;
     for (const name of deps) {
-      // Check if already installed (skip if version matches)
+      // Check if already installed (skip if present)
+      const pkgName = name.split("==")[0];
       let alreadyInstalled = false;
       try {
-        const pkgName = name.split("==")[0];
-        proc.execSync(`"${py}" -m pip show "${pkgName}"`, { timeout: 10000, encoding: "utf8", env: pyEnv });
-        alreadyInstalled = true;
+        alreadyInstalled = await pipSpawn(py, ["-m", "pip", "show", pkgName], pyEnv, 15000);
       } catch (_) {}
       
       if (alreadyInstalled) {
@@ -1158,15 +1462,14 @@ export function registerHarmonyPythonHandlers() {
       const progress = `[${installed}/${deps.length - skipped}] Installing ${name}...`;
       output("stdout", progress);
       for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", progress + "\n");
-      try {
-        proc.execSync(`"${py}" -m pip install "${name}" --no-input --quiet`, { timeout: 180000, env: pyEnv });
+      const ok = await pipSpawn(py, ["-m", "pip", "install", name, "--no-input"], pyEnv, 180000);
+      if (ok) {
         const okMsg = `  ✓ ${name} installed`;
         output("stdout", okMsg);
         for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", okMsg + "\n");
-      } catch (err) {
+      } else {
         failed++;
-        const errStr = (err.stderr || err.message || "").substring(0, 120);
-        const failMsg = `  ✗ ${name} FAILED: ${errStr}`;
+        const failMsg = `  ✗ ${name} FAILED (see output above)`;
         output("stderr", { error: failMsg });
         for (const win of BrowserWindow.getAllWindows()) win.webContents.send("uv", failMsg + "\n");
       }
@@ -1179,24 +1482,19 @@ export function registerHarmonyPythonHandlers() {
   ipcMain.handle("python.venv.executable", () => getPython());
   ipcMain.handle("python.venv.installPackage", async (evt, venv, name) => {
     const pyEnv = getPythonEnv();
-    const cmd = `"${getPython()}" -m pip install ${name} --no-input`;
     output("stdout", `Installing ${name}...\n`);
-    try {
-      const result = proc.execSync(cmd, { timeout: 120000, encoding: "utf8", env: pyEnv });
-      output("stdout", result + "\n");
-      return true;
-    } catch (err) {
-      const msg = err.stderr || err.stdout || err.message || String(err);
-      output("stderr", `pip install failed: ${msg}\n`);
-      return false;
+    const ok = await pipSpawn(getPython(), ["-m", "pip", "install", name, "--no-input"], pyEnv, 180000);
+    if (ok) {
+      output("stdout", `✓ ${name} installed\n`);
+    } else {
+      output("stderr", `pip install failed: ${name}\n`);
     }
+    return ok;
   });
   ipcMain.handle("python.venv.uninstallPackage", async (evt, venv, name) => {
     const pyEnv = getPythonEnv();
-    try {
-      proc.execSync(`"${getPython()}" -m pip uninstall -y ${name}`, { timeout: 30000, env: pyEnv });
-      return true;
-    } catch (_) { return false; }
+    const ok = await pipSpawn(getPython(), ["-m", "pip", "uninstall", "-y", name], pyEnv, 60000);
+    return ok;
   });
   ipcMain.handle("python.venv.getPackages", () => {
     const pyEnv = getPythonEnv();
@@ -1351,113 +1649,13 @@ export function registerHarmonyPythonHandlers() {
     }
   });
 
-  ipcMain.handle("terminal.python.diagnose", async () => {
-    // ★ diagnose 主动启动 liaison，不被动等前端调 liaison.ready
-    // 前端 diagnose 是入口，一次调用触发 liaison 起来，_liaisonReady 置 true，后续功能不再 stub
-    if (!_liaisonReady) {
-      try {
-        logging.log("[diagnose] Auto-starting liaison...");
-        await startLiaison();
-        logging.log(`[diagnose] startLiaison returned, _liaisonReady=${_liaisonReady}, _liaisonAddress=${_liaisonAddress}`);
-      } catch (err) {
-        logging.error(`[diagnose] Auto-start liaison failed: ${err?.message || err}`);
-        logging.error(`[diagnose] Stack: ${err?.stack?.substring(0, 300)}`);
-      }
-    }
-    const pythonPath = findPython();
-    const diag = {
-      python: pythonPath || "NOT FOUND",
-      version: null,
-      psychopy: null,
-      packages: {},
-      liaison: _liaisonReady ? "running" : "not started",
-      liaisonAddress: _liaisonAddress,
-      harmonyPaths: HARMONY_PYTHON_PATHS.map(p => ({ path: p, exists: fs.existsSync(p) })),
-    };
+    // NOTE: terminal.python.diagnose is owned by index.cjs (registered
+  // unconditionally at module top, delegating to _buildUnifiedDiagnose) so the
+  // top-bar Terminal button and the >_ panel Diagnose always show the same
+  // merged content. Re-registering it here would throw a duplicate-handler
+  // error and abort the rest of registerHarmonyPythonHandlers.
 
-    if (!pythonPath) {
-      return JSON.stringify(diag, null, 2);
-    }
 
-    try {
-      diag.version = proc.execSync(`"${pythonPath}" --version`, { timeout: 5000, encoding: "utf8" }).trim();
-    } catch (_) {}
-
-    try {
-      diag.psychopy = proc.execSync(`"${pythonPath}" -c "import psychopy; print(psychopy.__version__)"`, { timeout: 10000, encoding: "utf8", env: getPythonEnv() }).trim();
-    } catch (e) {
-      diag.psychopy = `NOT AVAILABLE: ${e.message?.substring(0, 80) || e}`;
-    }
-
-    // Check key packages using a temp script file
-    // Step 1: find_spec (safe, no import, no SECCOMP risk)
-    // Step 2: try import for version (may fail for numpy/scipy due to OpenBLAS SECCOMP)
-    const keyPkgs = ['psychopy', 'numpy', 'scipy', 'matplotlib', 'PIL', 'pandas', 'websockets',
-      'openpyxl', 'soundfile', 'imageio', 'imageio-ffmpeg', 'markdown_it', 'packaging'];
-    const pyEnv = getPythonEnv();
-    const checkScript = [
-      'import importlib.util as u',
-      'pkgs = ' + JSON.stringify(keyPkgs),
-      'for pkg in pkgs:',
-      '    spec = u.find_spec(pkg)',
-      '    if spec is None:',
-      '        print(pkg + "=MISSING")',
-      '    else:',
-      '        try:',
-      '            m = __import__(pkg)',
-      '            v = getattr(m, "__version__", "found")',
-      '            print(pkg + "=" + str(v))',
-      '        except Exception as e:',
-      '            print(pkg + "=FOUND(import_err:" + str(e)[:50] + ")")',
-    ].join('\n');
-    const tmpCheck = path.join(os.tmpdir(), '_psychopy_check.py');
-    try { fs.writeFileSync(tmpCheck, checkScript, 'utf8'); } catch (_) {}
-    try {
-      const output = proc.execSync(`"${pythonPath}" "${tmpCheck}"`, { timeout: 15000, encoding: "utf8", env: pyEnv }).trim();
-      for (const line of output.split('\n')) {
-        const idx = line.indexOf('=');
-        if (idx > 0) {
-          const pkg = line.substring(0, idx);
-          const ver = line.substring(idx + 1);
-          if (pkg) diag.packages[pkg] = ver;
-        }
-      }
-    } catch (_) {
-      // If the script itself crashes (e.g. SECCOMP kills the process),
-      // run find_spec only without any import
-      const safeScript = [
-        'import importlib.util as u',
-        'pkgs = ' + JSON.stringify(keyPkgs),
-        'for pkg in pkgs:',
-        '    spec = u.find_spec(pkg)',
-        '    print(pkg + "=" + ("FOUND" if spec else "MISSING"))',
-      ].join('\n');
-      try { fs.writeFileSync(tmpCheck, safeScript, 'utf8'); } catch (_) {}
-      try {
-        const output2 = proc.execSync(`"${pythonPath}" "${tmpCheck}"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim();
-        for (const line of output2.split('\n')) {
-          const idx = line.indexOf('=');
-          if (idx > 0) {
-            const pkg = line.substring(0, idx);
-            const ver = line.substring(idx + 1);
-            if (pkg) diag.packages[pkg] = ver;
-          }
-        }
-      } catch (_) {
-        for (const pkg of keyPkgs) diag.packages[pkg] = "CHECK_FAILED";
-      }
-    }
-
-    // Show Python sys.path for debugging
-    try {
-      diag.sysPath = proc.execSync(`"${pythonPath}" -c "import sys; print('\\n'.join(sys.path))"`, { timeout: 5000, encoding: "utf8", env: pyEnv }).trim().split('\n');
-    } catch (_) {
-      diag.sysPath = [];
-    }
-    diag.pythonpath = pyEnv.PYTHONPATH;
-
-    return JSON.stringify(diag, null, 2);
-  });
 
   // ── PsychoJS inline server ──────────────────────────────────
   const _psychojsServers = {};
@@ -1797,92 +1995,13 @@ export function registerHarmonyPythonHandlers() {
     return false;
   });
 
-  ipcMain.handle("python.psychojs.browserRun", async (evt, jsCode, expName, conditionsJSON, resourcesJSON, expDir) => {
-    try {
-      var url = await _psychojsStartServer(jsCode, expName, conditionsJSON, resourcesJSON, expDir);
-      // Open in system browser — try multiple approaches
-      var opened = false;
+  // NOTE: python.psychojs.browserRun 由 index.cjs 直接注册，避免重复注册抛异常。
 
-      // 1) Try Electron shell.openExternal
-      try {
-        const { shell: esh } = require_("electron");
-        var shellResult = esh.openExternal(url);
-        if (shellResult) {
-          opened = true;
-          logging.log("browserRun: opened via shell.openExternal");
-        } else {
-          logging.log("browserRun: shell.openExternal returned falsy, falling through");
-        }
-      } catch (e) {
-        logging.log("browserRun: shell.openExternal failed: " + (e && e.message));
-      }
+  // NOTE: python.psychojs.saveLog 由 index.cjs 直接注册，避免重复注册抛异常。
 
-      // 2) Try NAPI bindings (may not be ready yet)
-      if (!opened) {
-        try {
-          if (typeof globalThis.ExternalProtocolAdapter !== 'undefined' && globalThis.ExternalProtocolAdapter.OpenExternal) {
-            globalThis.ExternalProtocolAdapter.OpenExternal(url);
-            opened = true;
-            logging.log("browserRun: opened via ExternalProtocolAdapter");
-          } else if (typeof globalThis.FileManagerAdapter !== 'undefined' && globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser) {
-            globalThis.FileManagerAdapter.OpenUrlInDefaultBrowser(url);
-            opened = true;
-            logging.log("browserRun: opened via FileManagerAdapter");
-          }
-        } catch (e) {
-          logging.log("browserRun: NAPI failed: " + (e && e.message));
-        }
-      }
+  // NOTE: python.psychojs.browserStop 由 index.cjs 直接注册，避免重复注册抛异常。
 
-      // 3) Fallback: aa start system command
-      if (!opened) {
-        try {
-          proc.execSync('aa start -a MainAbility -b com.huawei.hwbrowser --ps uri "' + url + '"', { timeout: 5000 });
-          opened = true;
-          logging.log("browserRun: opened via aa start");
-        } catch (e) {
-          logging.log("browserRun: aa start failed: " + (e && e.message));
-        }
-      }
-
-      if (!opened) {
-        logging.error("browserRun: ALL open methods failed");
-      }
-      return { url: url };
-    } catch (err) {
-      logging.error('browserRun failed: ' + (err && (err.stack || err.message || String(err))));
-      return { error: String(err) };
-    }
-  });
-
-  ipcMain.handle("python.psychojs.saveLog", async (evt, logData, savePath) => {
-    try {
-      const dir = path.dirname(savePath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(savePath, typeof logData === "string" ? logData : JSON.stringify(logData, null, 2), "utf8");
-      return true;
-    } catch (err) {
-      logging.error(`saveLog failed: ${err}`);
-      return false;
-    }
-  });
-
-  ipcMain.handle("python.psychojs.browserStop", (evt, address) => {
-    var s = _psychojsServers[address || ""];
-    if (s) { try { s.server.close(); } catch(_){} try { fs.rmSync(s.dir,{recursive:true,force:true}); } catch(_){} delete _psychojsServers[address]; return true; }
-    return false;
-  });
-
-  ipcMain.handle("python.psychojs.readConditions", async (evt, filePath) => {
-    try {
-      if (!fs.existsSync(filePath)) return null;
-      const content = fs.readFileSync(filePath, "utf8");
-      try { return JSON.parse(content); } catch (_) { return content; }
-    } catch (err) {
-      logging.error(`readConditions failed: ${err}`);
-      return null;
-    }
-  });
+  // NOTE: python.psychojs.readConditions 由 index.cjs 直接注册，避免重复注册抛异常。
 
   logging.log("HarmonyOS Python handlers registered");
 }

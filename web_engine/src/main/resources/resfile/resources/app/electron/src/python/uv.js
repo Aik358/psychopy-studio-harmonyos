@@ -2,10 +2,26 @@ import { app } from 'electron';
 import { platform , arch } from "process";
 import path from "path";
 import fs from "fs";
-import unzip from "extract-zip";
-import { extract as untar } from "tar";
 import { execSync, execTracked, output } from "./utils.js";
 import { appVersion } from "../version.js";
+// HarmonyOS: use the system HNP Python instead of a uv-managed one.
+// harmony.js does NOT import uv.js, so this creates no circular dependency.
+// harmony.js lives in src/ (one level up from src/python/), hence "../harmony.js".
+import * as Harmony from "../harmony.js";
+
+// extract-zip 和 tar 改为懒加载 — 鸿蒙 Electron-OH 的 node_modules 可能不完整。
+// 顶层静态 import 会导致整个 python/index.js 模块链加载失败。
+// uv.js 的下载/解压功能在鸿蒙上不走 uv 路径，但 import 链必须不断。
+async function _unzip(zipfile, opts) {
+    const mod = await import("extract-zip");
+    const fn = mod.default || mod;
+    return fn(zipfile, opts);
+}
+async function _untar(opts) {
+    const mod = await import("tar");
+    const fn = mod.extract || mod.default?.extract || mod;
+    return fn(opts);
+}
 
 
 export class UV {
@@ -109,13 +125,13 @@ export class UV {
                     // extract file
                     if (path.extname(zipfile) === ".zip") {
                         // extract zip file...
-                        await unzip(zipfile, {
+                        await _unzip(zipfile, {
                             dir: this.folder
                         })
                     }
                     if (path.extname(zipfile) === ".gz") {
                         // extract tar.gz file...
-                        untar({
+                        await _untar({
                             file: zipfile,
                             cwd: this.folder,
                             strip: 1,
@@ -181,6 +197,16 @@ export class UV {
         // strip * if present
         if (psychopyVersion.match(/\d+\.\d+\.\*/)) {
             psychopyVersion = psychopyVersion.match(/\d+\.\d+/)[0]
+        }
+        // On HarmonyOS, prefer the system HNP Python (e.g.
+        // /data/service/hnp/python.org/python_3.12/bin/python3) over a
+        // uv-managed environment, which is never downloaded on device.
+        // Returning the native path here makes the WHOLE backend chain
+        // (PythonVenv.executable -> venv.setup -> liaison.spawn) use the
+        // system interpreter, which is exactly the project goal.
+        if (Harmony.isHarmonyOS()) {
+            const native = Harmony.findNativePython();
+            if (native) return native;
         }
         // get specific folder for this version
         let folder = path.join(

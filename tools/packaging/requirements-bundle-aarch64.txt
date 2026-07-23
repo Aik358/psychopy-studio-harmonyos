@@ -1,0 +1,49 @@
+# 鸿蒙 aarch64 打包依赖清单（用于 build_bundle_device.py 的全量构建阶段）
+#
+# 与 requirements-bundle.txt（Windows 源全量）不同，这里只保留：
+#   * 能在 aarch64-linux / manylinux_aarch64 上拿到预编译轮子的包
+#   * PsychoPy 在鸿蒙运行真正需要的运行时依赖
+# 已剔除：PyQt6 / pywin32 / wxPython / pypiwin32 / pyWinhook / python-vlc /
+#         psychtoolbox / opencv-python(用 opencv-python-headless) 等
+#         Windows 专属或 GUI 后端包（鸿蒙 UI 走 Electron，不依赖这些）。
+#
+# ⚠️ 第一阶段验证只用 numpy（见 build_bundle_device.py 的 REQS），
+#    本文件在全量构建阶段使用：把 REQS 换成读此文件即可。
+
+numpy
+scipy
+pandas
+matplotlib
+pillow
+pyyaml
+requests
+websockets
+esprima
+openpyxl
+pyzmq
+psutil
+soundfile
+python-dateutil
+six
+packaging
+charset-normalizer
+idna
+urllib3
+certifi
+typing_extensions
+contourpy
+kiwisolver
+cycler
+fonttools
+msgpack
+tqdm
+# PsychoPy 本体及其试验框架依赖（确认 aarch64 轮子可用后再加入）
+# psychopy
+# psychtoolbox
+# moviepy
+# imageio
+# av
+# gevent
+# pyarrow
+# tables
+# xarray

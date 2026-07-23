@@ -448,7 +448,7 @@ export class Experiment {
             args: ["prefs.setDevicesFile", path.join(
                 await electron.paths.user(), "devices.json"
             )]
-        }, 10000).catch(
+        }, 180000).catch(
             err => console.error('Failed to set devices file:', err)
         )
 
@@ -459,7 +459,7 @@ export class Experiment {
                 "currentExperiment",
                 "psychopy.experiment:Experiment"
             ]
-        }, 10000).catch(
+        }, 180000).catch(
             reason => console.error(reason)
         )
         // load from file
@@ -469,7 +469,7 @@ export class Experiment {
                 "currentExperiment.loadFromXML",
                 $state.snapshot(this.file.file)
             ]
-        }, 10000).catch(
+        }, 180000).catch(
             reason => console.error(reason)
         )
         // write script
@@ -483,7 +483,7 @@ export class Experiment {
                 modular: true,
                 expPath: this.file.file
             }
-        }, 10000).catch(
+        }, 180000).catch(
             reason => console.error(reason)
         )
         // save to python/js file
@@ -491,9 +491,15 @@ export class Experiment {
             let savedPath = await electron.files.save(targetFile, script)
             if (typeof savedPath === "string") {
                 targetFile = savedPath
+                console.log(`[writeScript] Experiment compiled and saved to ${targetFile}`);
             }
         } else {
-            console.error(script)
+            // ★ Surface the failure instead of silently returning a fake path.
+            // On HarmonyOS the Python backend (Liaison) is slow to cold-start and
+            // psychopy.writeScript can take minutes; if it timed out or errored we
+            // MUST tell the user, otherwise they can't tell if the .py was written.
+            console.error("[writeScript] Python did not return a script:", script);
+            alert(`实验未能编译为 .${target === "PsychoJS" ? "js" : "py"} 文件。\nPython 后端未返回脚本（可能超时或报错）。\n请打开开发者工具 (Ctrl+Shift+I) 查看控制台详情，或改用"运行于浏览器"（PsychoJS）。`);
         }
 
         return targetFile
@@ -613,9 +619,19 @@ export class Experiment {
             const result = await python.psychojs.browserRun(
                 finalJSCode, expName, "",
                 resourceFiles.length > 0 ? JSON.stringify(resourceFiles) : "",
-                expDir
+                expDir,
+                this.file?.path
             );
             console.log(`[PsychoJS Browser] Result:`, result);
+            // Open the experiment in the system default browser. On HarmonyOS
+            // electron.files.openExternal routes to the MAIN-PROCESS
+            // shell.openExternal, which is the only reliable way to launch the
+            // OS browser here (an in-app Electron window does not display, and
+            // the local server is bound to 0.0.0.0 so the device IP is also
+            // reachable). This matches the original PsychoPy Studio behaviour.
+            if (result && typeof electron?.files?.openExternal === "function") {
+                await electron.files.openExternal(result);
+            }
         } catch (err) {
             console.error(`[PsychoJS Browser] ERROR:`, err);
             alert(`[PsychoJS Browser] Failed: ${err?.message || err}\nCheck console (Ctrl+Shift+I) for details.`);

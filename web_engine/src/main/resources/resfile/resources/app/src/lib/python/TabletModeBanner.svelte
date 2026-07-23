@@ -19,7 +19,7 @@
         onclick={() => showDialog = true}
     >
         <Icon src="/icons/sym-info.svg" size="1rem" />
-        <span class="tablet-label">{t("tablet.banner")}</span>
+        <span class="tablet-label">{t("tablet.modeLabel")}</span>
     </button>
 
     <MessageDialog

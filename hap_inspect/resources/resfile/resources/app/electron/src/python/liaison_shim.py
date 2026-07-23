@@ -1231,8 +1231,19 @@ def cmd_init(args, kwargs):
             _send_alert("8900", "WARNING", f"PsychoPy not installed 鈥?cannot initialize {target}. Basic mode active.")
             return True
         raise
+    # 与 cmd_run 保持一致：把 args[2:] 作为位置参数转发给构造函数。
+    # 否则像 psychopy.tools.Monitor(name) 这种「首参是必填位置参数」的类会报
+    # "missing 1 required positional argument: 'name'"（Monitor Center 把 name 放在 args[2]）。
+    init_args = [_resolve(a) for a in args[2:]]
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
-    obj = cls(**resolved_kwargs)
+    try:
+        obj = cls(*init_args, **resolved_kwargs)
+    except TypeError as e:
+        # 兜底：构造函数仍缺 'name' 时，用注册名顶上，避免 Monitor 等场景直接崩。
+        if "name" in str(e) and "name" not in resolved_kwargs and not init_args:
+            obj = cls(name, **resolved_kwargs)
+        else:
+            raise
     _registry[name] = obj
     return True
 
@@ -1266,6 +1277,13 @@ def cmd_run(args, kwargs):
             return {}
         raise
     resolved_kwargs = {k: _resolve(v) for k, v in kwargs.items()}
+    if not callable(func):
+        # Target resolved to a value (e.g. a list/attribute) rather than a callable.
+        # Usually a psychopy version mismatch; degrade gracefully to fallback.
+        print(f"[liaison-shim] cmd_run target {target!r} resolved to non-callable {type(func).__name__}; skipping call", flush=True)
+        if target.startswith("psychopy.") or target in _SAFE_FALLBACK_TARGETS:
+            return {}
+        return _serialize(func)
     try:
         result = func(*call_args, **resolved_kwargs)
         print(f"[liaison-shim] cmd_run result type={type(result).__name__}", flush=True)
@@ -1308,14 +1326,25 @@ def cmd_call(args, kwargs):
     return _serialized
 
 def cmd_get(args, kwargs):
-    name = args[0]
-    attr = args[1]
-    if name not in _registry:
-        print(f"[liaison-shim] Object '{name}' not registered, returning None", flush=True)
+    # Support both registry form [name, attr] and direct target form [target]
+    if not args:
         return None
-    return _serialize(getattr(_registry[name], attr, None))
+    if len(args) >= 2:
+        name, attr = args[0], args[1]
+        if name not in _registry:
+            print(f"[liaison-shim] Object '{name}' not registered, returning None", flush=True)
+            return None
+        return _serialize(getattr(_registry[name], attr, None))
+    # single-arg: treat as module:attr target (fallback used by optionsFromPython)
+    try:
+        return _serialize(_import_target(args[0]))
+    except (ImportError, AttributeError) as e:
+        print(f"[liaison-shim] cmd_get target {args[0]!r} unresolved: {e}", flush=True)
+        return None
 
 def cmd_set(args, kwargs):
+    if not args or len(args) < 2:
+        return True
     name = args[0]
     attr = args[1]
     value = _resolve(args[2]) if len(args) > 2 else None

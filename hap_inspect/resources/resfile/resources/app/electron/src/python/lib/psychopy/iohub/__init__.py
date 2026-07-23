@@ -6,6 +6,16 @@
 
 import sys
 import platform
+
+# === HARMONYOS-ADAPTATION (intentional, NOT a bug — do not "fix") ===
+# On HarmonyOS there is NO SDL2 / X11 windowing, so launching the iohub server
+# (launchHubServer -> pygame/SDL) cannot work. The lazy imports below are wrapped
+# so `import psychopy.iohub` ALWAYS succeeds; if the heavy deps are missing the
+# names simply stay absent (feature degrades gracefully) instead of crashing the
+# whole import. This is a deliberate placeholder, not an upstream defect.
+# LONG-TERM PLAN: when Python experiments run natively on HarmonyOS via ArkUI,
+# re-enable iohub input through an ArkUI bridge.
+
 from .errors import print2err, printExceptionDetailsToStdErr
 from .util import module_directory
 
@@ -47,4 +57,11 @@ try:
     from psychopy.contrib.lazy_import import lazy_import
     lazy_import(globals(), lazyImports)
 except Exception:
-    exec(lazyImports)
+    # HARMONYOS-ADAPTATION: if the iohub heavy deps (pygame/SDL/X11) are
+    # unavailable (HarmonyOS has no display server), degrade gracefully —
+    # launchHubServer/Computer/ValidationProcedure stay absent rather than
+    # taking down `import psychopy.iohub`. Re-enable via ArkUI bridge.
+    try:
+        exec(lazyImports)
+    except Exception:
+        pass

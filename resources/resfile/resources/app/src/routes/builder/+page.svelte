@@ -1,5 +1,6 @@
 <script>
     import Panel from '$lib/utils/Panel.svelte';
+    import { t } from "$lib/i18n";
     import Frame from '$lib/utils/Frame.svelte';
     import { PaneGroup, Pane, PaneResizer } from "paneforge";
     import Theme from "$lib/utils/Theme.svelte";
@@ -19,7 +20,10 @@
     } from "./callbacks.svelte";
     import { python } from "$lib/globals.svelte";
     import TipsDialog from '../../lib/dialogs/tips/TipsDialog.svelte';
-    import { store } from '$lib/sharedViewStore.svelte.js';
+    import { store, consumeCurrentFile, setActiveView } from '$lib/sharedViewStore.svelte.js';
+
+    // ★ 切到 builder：上边栏标记为 builder（HTTP 重载后从 localStorage 恢复时不跳）
+    setActiveView('builder');
 
     // restore saved state on mount
     if (store.builderState.saved && !current.experiment.file?.file) {
@@ -34,6 +38,15 @@
         }
         if (store.builderState.project) {
             current.project = store.builderState.project
+        }
+    }
+
+    // ★ 转接层：从 coder/runner 切回来时，从 localStorage 恢复 currentFile
+    // consumeCurrentFile 已过滤 source===builder（避免自己回环）
+    {
+        const inherited = consumeCurrentFile('builder');
+        if (inherited && !current.experiment.file?.file) {
+            current.experiment.file = inherited.file
         }
     }
 
@@ -92,7 +105,7 @@
             <PaneGroup direction="horizontal">
                 <Pane defaultSize={3/4}>
                     <Panel 
-                        title=Routines 
+                        title={t("builder.routines")}
                     >
                         <RoutinesNotebook />
                     </Panel>
@@ -102,7 +115,7 @@
 
                 <Pane defaultSize={1/4}>
                     <Panel 
-                        title=Components 
+                        title={t("builder.components")}
                     >
                         <ComponentsPanel />
                     </Panel>
@@ -114,7 +127,7 @@
 
         <Pane defaultSize={1/3}>
             <Panel 
-                title=Flow 
+                title={t("builder.flow")}
                 hspan={4}
             >
                 <FlowPanel />

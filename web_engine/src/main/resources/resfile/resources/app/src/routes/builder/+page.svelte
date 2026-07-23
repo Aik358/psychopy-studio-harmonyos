@@ -1,5 +1,6 @@
 <script>
     import Panel from '$lib/utils/Panel.svelte';
+    import { t } from "$lib/i18n";
     import Frame from '$lib/utils/Frame.svelte';
     import { PaneGroup, Pane, PaneResizer } from "paneforge";
     import Theme from "$lib/utils/Theme.svelte";
@@ -104,7 +105,7 @@
             <PaneGroup direction="horizontal">
                 <Pane defaultSize={3/4}>
                     <Panel 
-                        title=Routines 
+                        title={t("builder.routines")}
                     >
                         <RoutinesNotebook />
                     </Panel>
@@ -114,7 +115,7 @@
 
                 <Pane defaultSize={1/4}>
                     <Panel 
-                        title=Components 
+                        title={t("builder.components")}
                     >
                         <ComponentsPanel />
                     </Panel>
@@ -126,7 +127,7 @@
 
         <Pane defaultSize={1/3}>
             <Panel 
-                title=Flow 
+                title={t("builder.flow")}
                 hspan={4}
             >
                 <FlowPanel />

@@ -1,10 +1,85 @@
 import proc from "child_process";
+import net from "net";
 import logging from "../logging.js";
-import { BrowserWindow } from "electron";
-import tcp from "tcp-port-used";
+import { BrowserWindow, app } from "electron";
+import fs from "fs";
+import path from "path";
 
 export const decoder = new TextDecoder();
 
+// ── 持久化错误日志 ──────────────────────────────
+// 把所有 stderr / liaison 错误写到 userData/psychopy4/.logs/python-errors.log。
+// 即使 UI 卡死、弹窗自动消失，用户也能用 `hdc file recv` 取出完整日志排查问题。
+let _errorLogPath = null;
+function getErrorLogPath() {
+  if (_errorLogPath) return _errorLogPath;
+  try {
+    const dir = path.join(app.getPath("userData"), "psychopy4", ".logs");
+    fs.mkdirSync(dir, { recursive: true });
+    _errorLogPath = path.join(dir, "python-errors.log");
+  } catch (_) {
+    _errorLogPath = null;
+  }
+  return _errorLogPath;
+}
+export function appendErrorLog(msg) {
+  const p = getErrorLogPath();
+  if (!p) return;
+  try {
+    fs.appendFileSync(p, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch (_) {}
+}
+export { getErrorLogPath };
+
+// ── tcp-port-used 可选加载 ──────────────────────────────
+// Electron-OH (鸿蒙) 的 node_modules 可能没有 tcp-port-used 包。
+// 顶层静态 import 会导致整个模块加载失败，所有 Python IPC handler 都不会注册。
+// 改为懒加载：优先用 tcp-port-used，不可用时 fallback 到纯 net 实现。
+let _tcpPortUsed = null;
+async function _getTcpPortUsed() {
+    if (_tcpPortUsed !== null) return _tcpPortUsed;
+    try {
+        const mod = await import("tcp-port-used");
+        _tcpPortUsed = mod.default || mod;
+        logging.log("[utils] tcp-port-used loaded");
+    } catch (_) {
+        _tcpPortUsed = false;
+        logging.log("[utils] tcp-port-used not available, using net fallback");
+    }
+    return _tcpPortUsed;
+}
+
+/**
+ * Check if a TCP port is in use on localhost (pure Node.js net, no deps).
+ */
+function _checkPortNative(port, host) {
+    return new Promise((resolve) => {
+        const tester = net.createConnection({ port, host });
+        tester.once("connect", () => {
+            tester.end();
+            resolve(true);  // port is in use
+        });
+        tester.once("error", (err) => {
+            resolve(err.code === "EADDRINUSE" || false);
+        });
+        // If neither fires within 500ms, assume port is free
+        setTimeout(() => {
+            tester.destroy();
+            resolve(false);
+        }, 500);
+    });
+}
+
+/**
+ * Check if a TCP port is in use. Uses tcp-port-used if available, else net fallback.
+ */
+async function _checkPort(port, host) {
+    const tcp = await _getTcpPortUsed();
+    if (tcp && typeof tcp.check === "function") {
+        return tcp.check(port, host);
+    }
+    return _checkPortNative(port, host);
+}
 
 /**
  * Get an unused localhost address which is safe to start Liaison at
@@ -13,11 +88,11 @@ export async function getSafeAddress() {
     // start with 8002
     let port = 8002
     // check initially
-    let inUse = await tcp.check(port, "localhost")
+    let inUse = await _checkPort(port, "localhost")
     // if in use, iterate and try again
     while (inUse) {
         port += 1
-        inUse = await tcp.check(port, "localhost")
+        inUse = await _checkPort(port, "localhost")
     }
 
     return `localhost:${port}`
@@ -48,6 +123,10 @@ export function output(tag, message) {
     }
     // log message
     logging.log(message, tag?.toUpperCase?.())
+    // Persist real errors so they're never lost (UI freeze / popup auto-dismiss).
+    if (tag === "stderr") {
+        appendErrorLog(typeof message === "object" ? JSON.stringify(message) : String(message));
+    }
     // emit event
     for (let channel of channels) {
         BrowserWindow.getAllWindows().forEach(

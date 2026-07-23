@@ -1,6 +1,6 @@
 import "../../../chunks/internal.js";
 import { D as escape_html, E as attr, a as bind_props, b as setContext, et as snapshot, f as stringify, i as await_block, m as html, n as attr_style, o as derived, s as ensure_array_like, t as attr_class, v as getContext } from "../../../chunks/server.js";
-import { A as SwitchButton, B as PanelButton, C as Component$1, D as pending, E as Param, G as newWindow, H as Button, J as showDevTools, K as openExternal, M as MessageDialog, N as Dialog, O as profiles, P as t, Q as store, R as Menu, S as StandaloneRoutine, T as HasParams, U as Tooltip, V as ToggleButton, W as Icon, X as consumeCurrentFile, Y as showWindow, Z as setActiveView, a as PythonErrors, b as LoopTerminator, et as electron, f as Version, g as parsePath, j as IconButton, m as browseFileSave, n as prefs, nt as projects, o as SetupPython, p as browseFileOpen, q as openIn, rt as python, t as Theme, tt as git, u as setupPython, v as FlowLoop, x as Routine$1, y as LoopInitiator, z as CompactButton } from "../../../chunks/Theme.js";
+import { $ as store, B as CompactButton, C as Component$1, D as mergeProfiles, E as Param, F as t, G as Icon, H as ToggleButton, J as openIn, K as newWindow, M as IconButton, N as MessageDialog, O as pending, P as Dialog, Q as setActiveView, S as StandaloneRoutine, T as HasParams, U as Button, V as PanelButton, W as Tooltip, X as showWindow, Y as showDevTools, Z as consumeCurrentFile, a as PythonErrors, b as LoopTerminator, f as Version, g as parsePath, it as python, j as SwitchButton, k as profiles, m as browseFileSave, n as prefs, nt as git, o as SetupPython, p as browseFileOpen, q as openExternal, rt as projects, t as Theme, tt as electron, u as setupPython, v as FlowLoop, x as Routine$1, y as LoopInitiator, z as Menu } from "../../../chunks/Theme.js";
 import { C as Pane_resizer, D as Panel$3, E as Frame, S as Shortcuts, T as Pane_group, _ as Notebook, a as BugReport, b as Item, c as Notebook_1$1, d as NewProjectDlg, f as UserCtrl, g as Listbook, h as Page, i as Ribbon, l as ParamCtrl, m as ButtonTab, n as Gap, o as PrefsDialog, p as Dialog_1$1, r as Section$1, s as ParamsDialog, t as TipsDialog, u as ProjectCtrl, v as SubMenu, w as Pane, x as current, y as Separator } from "../../../chunks/TipsDialog.js";
 import { t as Dialog_1$2 } from "../../../chunks/pluginManager.js";
 import path from "path-browserify";
@@ -1880,13 +1880,13 @@ function Component($$renderer, $$props) {
 				children: ($$renderer) => {
 					Item($$renderer, {
 						icon: "/icons/btn-edit.svg",
-						label: "Edit Component",
+						label: t("component.editComponent"),
 						onclick: (evt) => showDialog = true
 					});
 					$$renderer.push(`<!----> `);
 					Item($$renderer, {
 						icon: `/icons/sym-dot-${component.disabled ? "blue" : "light"}.svg`,
-						label: `${component.disabled ? "Enable" : "Disable"} Component`,
+						label: t(component.disabled ? "component.enableComponent" : "component.disableComponent"),
 						onclick: (evt) => {
 							current.experiment.history.update(`${component.disabled ? "enable" : "disable"} ${component.name}`);
 							component.params.disabled.val = !component.disabled;
@@ -1895,7 +1895,7 @@ function Component($$renderer, $$props) {
 					$$renderer.push(`<!----> `);
 					Item($$renderer, {
 						icon: "/icons/btn-delete.svg",
-						label: "Delete Component",
+						label: t("component.deleteComponent"),
 						onclick: (evt) => {
 							current.experiment.history.update(`remove ${component.name}`);
 							component.routine.removeComponent(component);
@@ -1951,7 +1951,7 @@ function Canvas($$renderer, $$props) {
 		function $$render_inner($$renderer) {
 			$$renderer.push(`<div class="routine-canvas svelte-1jnlv78"${attr_style("", { "grid-template-rows": `min-content [timeline-top] min-content repeat(${stringify(routine.components.length)}, min-content) [timeline-bottom] min-content` })}><div class="button-container svelte-1jnlv78">`);
 			Button($$renderer, {
-				label: "Routine settings",
+				label: t("routine.settings"),
 				icon: "/icons/btn-settings.svg",
 				tooltip: "Edit settings for this Routine",
 				onclick: () => showDialog = true,
@@ -2118,7 +2118,7 @@ function Notebook_1($$renderer, $$props) {
 				$$renderer.push("<!--[0-->");
 				Dialog($$renderer, {
 					id: "new-routine",
-					title: "New Routine",
+					title: t("routine.newRoutine"),
 					onopen: () => current.inserting.settings.restore.set(),
 					buttons: {
 						OK: (evt) => {
@@ -2193,7 +2193,7 @@ function ComponentButton($$renderer, $$props) {
 			if (!component.hidden) {
 				$$renderer.push("<!--[0-->");
 				Button($$renderer, {
-					label: titleCase(component["__name__"]),
+					label: t(titleCase(component["__name__"])),
 					icon: component.iconSVG,
 					vertical: true,
 					disabled: !(current.routine instanceof Routine$1),
@@ -2202,7 +2202,7 @@ function ComponentButton($$renderer, $$props) {
 				$$renderer.push(`<!----> `);
 				Dialog($$renderer, {
 					id: "new-component",
-					title: `New ${stringify(titleCase(component["__name__"]))}`,
+					title: t("component.newComponent", { name: titleCase(component["__name__"]) }),
 					onopen: () => dlgComponent.restore.set(),
 					buttons: {
 						OK: (evt) => {
@@ -2274,7 +2274,7 @@ function RoutineButton($$renderer, $$props) {
 		if (!component.hidden) {
 			$$renderer.push("<!--[0-->");
 			Button($$renderer, {
-				label: titleCase(component["__name__"]),
+				label: t(titleCase(component["__name__"])),
 				icon: `/icons/components/${stringify(component["__name__"])}.svg`,
 				vertical: true,
 				onclick: newRoutine
@@ -2293,7 +2293,7 @@ function FilterDialog($$renderer, $$props) {
 		function $$render_inner($$renderer) {
 			Dialog($$renderer, {
 				id: "component-filter",
-				title: "Filter Components",
+				title: t("components.filter"),
 				shrink: true,
 				get shown() {
 					return shown;
@@ -2366,7 +2366,7 @@ function Panel$2($$renderer, $$props) {
 				pending.components = await python.liaison.send("app", {
 					command: "run",
 					args: ["psychopy.experiment:getElementProfiles"]
-				}, 1e5).then((data) => Object.assign(profiles.components, data));
+				}, 1e5).then((data) => mergeProfiles(profiles.components, data));
 			} catch (err) {
 				console.error("[refreshProfiles] liaison.send failed:", err);
 			}
@@ -2438,7 +2438,7 @@ function Panel$2($$renderer, $$props) {
 						if (filterProfiles(categProfiles).length) {
 							$$renderer.push("<!--[0-->");
 							Section($$renderer, {
-								label: categ,
+								label: t(categ),
 								children: ($$renderer) => {
 									$$renderer.push(`<!--[-->`);
 									const each_array_1 = ensure_array_like(filterProfiles(categProfiles));
@@ -2571,14 +2571,14 @@ function Routine($$renderer, $$props) {
 						$$renderer.push("<!--[0-->");
 						Item($$renderer, {
 							icon: "/icons/btn-edit.svg",
-							label: "Routine settings",
+							label: t("routine.settings"),
 							onclick: (evt) => show.settingsDlg = true
 						});
 					} else $$renderer.push("<!--[-1-->");
 					$$renderer.push(`<!--]--> `);
 					Item($$renderer, {
 						icon: `/icons/sym-dot-${element.disabled ? "blue" : "light"}.svg`,
-						label: `${element.disabled ? "Enable" : "Disable"} Routine`,
+						label: t(element.disabled ? "routine.enableRoutine" : "routine.disableRoutine"),
 						onclick: (evt) => {
 							current.experiment.history.update(`${element.disabled ? "enable" : "disable"} ${element.name}`);
 							if (element.settings) element.settings.params.disabled.val = !element.disabled;
@@ -2588,13 +2588,13 @@ function Routine($$renderer, $$props) {
 					$$renderer.push(`<!----> `);
 					Item($$renderer, {
 						icon: "/icons/btn-copy.svg",
-						label: "Copy Routine",
+						label: t("routine.copyRoutine"),
 						onclick: (evt) => copyRoutine(element)
 					});
 					$$renderer.push(`<!----> `);
 					Item($$renderer, {
 						icon: "/icons/btn-delete.svg",
-						label: "Remove Routine",
+						label: t("routine.removeRoutine"),
 						onclick: removeRoutine
 					});
 					$$renderer.push(`<!---->`);
@@ -2734,7 +2734,7 @@ function Loop_1($$renderer, $$props) {
 				children: ($$renderer) => {
 					Item($$renderer, {
 						icon: "/icons/btn-delete.svg",
-						label: "Delete Loop",
+						label: t("flow.deleteLoop"),
 						onclick: removeLoop
 					});
 				},
@@ -2855,7 +2855,7 @@ function AddRoutine($$renderer, $$props) {
 		function $$render_inner($$renderer) {
 			$$renderer.push(`<div class="container svelte-1o4sr79">`);
 			Button($$renderer, {
-				label: "Add Routine",
+				label: t("routine.addRoutine"),
 				icon: "/icons/btn-routine.svg",
 				tooltip: "Add a Routine to the experiment flow",
 				onclick: () => {
@@ -2875,7 +2875,7 @@ function AddRoutine($$renderer, $$props) {
 				},
 				children: ($$renderer) => {
 					Item($$renderer, {
-						label: "New Routine...",
+						label: t("routine.newRoutine"),
 						onclick: () => {
 							current.inserting = new Routine$1();
 							showNewRoutineDialog = true;
@@ -2901,7 +2901,7 @@ function AddRoutine($$renderer, $$props) {
 				$$renderer.push("<!--[0-->");
 				Dialog($$renderer, {
 					id: "new-routine",
-					title: "New Routine",
+					title: t("routine.newRoutine"),
 					onopen: () => current.inserting.settings.restore.set(),
 					buttons: {
 						OK: (evt) => {
@@ -2960,7 +2960,7 @@ function AddLoop($$renderer, $$props) {
 		function $$render_inner($$renderer) {
 			$$renderer.push(`<div class="container svelte-i9bjwn">`);
 			Button($$renderer, {
-				label: "Add Loop",
+				label: t("flow.addLoop"),
 				icon: "/icons/btn-loop.svg",
 				tooltip: "Add a loop to the experiment flow",
 				onclick: () => showMenu = true,
@@ -2978,7 +2978,7 @@ function AddLoop($$renderer, $$props) {
 				},
 				children: ($$renderer) => {
 					await_block($$renderer, pending.loops, () => {
-						Item($$renderer, { label: "Loading loops..." });
+						Item($$renderer, { label: t("flow.loadingLoops") });
 					}, (loops) => {
 						$$renderer.push(`<!--[-->`);
 						const each_array = ensure_array_like(Object.entries(loops));
@@ -2987,7 +2987,7 @@ function AddLoop($$renderer, $$props) {
 							if (!loopProfile.hidden) {
 								$$renderer.push("<!--[0-->");
 								Item($$renderer, {
-									label: `New ${stringify(loopProfile.label?.toLowerCase?.() || loopType)}...`,
+									label: t("flow.newLoopNamed", { type: loopProfile.label?.toLowerCase?.() || loopType }),
 									onclick: () => {
 										current.inserting = new LoopInitiator(loopType);
 										current.inserting.exp = current.experiment;
@@ -3008,7 +3008,7 @@ function AddLoop($$renderer, $$props) {
 				$$renderer.push("<!--[0-->");
 				Dialog($$renderer, {
 					id: "new-loop",
-					title: "New loop",
+					title: t("flow.newLoop"),
 					onopen: () => current.inserting.restore.set(),
 					buttons: {
 						OK: (evt) => {},
@@ -3166,7 +3166,7 @@ function _page($$renderer, $$props) {
 													defaultSize: 3 / 4,
 													children: ($$renderer) => {
 														Panel$3($$renderer, {
-															title: "Routines",
+															title: t("builder.routines"),
 															children: ($$renderer) => {
 																Notebook_1($$renderer, {});
 															},
@@ -3182,7 +3182,7 @@ function _page($$renderer, $$props) {
 													defaultSize: 1 / 4,
 													children: ($$renderer) => {
 														Panel$3($$renderer, {
-															title: "Components",
+															title: t("builder.components"),
 															children: ($$renderer) => {
 																Panel$2($$renderer, {});
 															},
@@ -3205,7 +3205,7 @@ function _page($$renderer, $$props) {
 									defaultSize: 1 / 3,
 									children: ($$renderer) => {
 										Panel$3($$renderer, {
-											title: "Flow",
+											title: t("builder.flow"),
 											hspan: 4,
 											children: ($$renderer) => {
 												Panel($$renderer, {});

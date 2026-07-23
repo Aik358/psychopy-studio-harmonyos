@@ -72,6 +72,8 @@
         z-index: 100;
         list-style-type: none;
         padding: .5rem 0;
+        /* 给菜单一个最小宽度，避免中文标签被压缩换行；内容更长时自动撑开 */
+        min-width: 12rem;
     }
     div:focus {
         border-color: var(--blue)

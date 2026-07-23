@@ -8,6 +8,8 @@
     import { t } from "$lib/i18n";
     import { zoom } from "$lib/utils/zoom.svelte.js";
     import ZoomSlider from "$lib/utils/ribbon/ZoomSlider.svelte";
+    import { terminal } from "$lib/python/terminal.svelte.js";
+    import TerminalPanel from "$lib/python/TerminalPanel.svelte";
 
     let {
         currentView = $bindable("builder"),
@@ -66,6 +68,9 @@
             </button>
         {/each}
         <div style="flex-grow:1; margin-left:auto;"></div>
+        <button class="nav-btn terminal-btn" class:active={terminal.open} onclick={() => terminal.toggle()} title="Python Terminal">
+            &gt;_
+        </button>
         <ZoomSlider />
         <LangSwitch />
     </nav>
@@ -77,6 +82,7 @@
         {@render children()}
     </div>
     <TabletModeBanner />
+    <TerminalPanel />
 </div>
 
 <style>

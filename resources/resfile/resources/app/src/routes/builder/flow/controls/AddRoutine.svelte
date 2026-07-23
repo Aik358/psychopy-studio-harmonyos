@@ -1,5 +1,6 @@
 <script>
     import { Routine } from "$lib/experiment"
+    import { t } from "$lib/i18n";
     import { Menu, MenuItem } from '$lib/utils/menu';
     import Dialog from '$lib/utils/dialog/Dialog.svelte';
     import { ParamsNotebook } from '$lib/paramCtrls/index.js';
@@ -17,7 +18,7 @@
 >
     <!-- button to open add Routine menu -->
     <Button 
-        label="Add Routine"
+        label={t("routine.addRoutine")}
         icon="/icons/btn-routine.svg"
         tooltip="Add a Routine to the experiment flow"
         onclick={() => {
@@ -33,7 +34,7 @@
         bind:shown={showMenu}
     >
         <MenuItem 
-            label="New Routine..."
+            label={t("routine.newRoutine")}
             onclick={() => {
                 // create blank Routine
                 current.inserting = new Routine()
@@ -57,7 +58,7 @@
 {#if current.inserting instanceof Routine}
     <Dialog 
         id=new-routine
-        title="New Routine" 
+        title={t("routine.newRoutine")}
         bind:shown={showNewRoutineDialog} 
         onopen={() => current.inserting.settings.restore.set()}
         buttons={{

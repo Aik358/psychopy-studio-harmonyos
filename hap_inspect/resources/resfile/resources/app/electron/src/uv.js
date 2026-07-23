@@ -153,35 +153,25 @@ export class UV {
      * Get known Python environments
      */
     getEnvironments() {
-        // On HarmonyOS: add native Python environment
-        if (isHarmonyOS()) {
-            const nativePy = findNativePython();
-            if (nativePy) {
-                const pyVersion = getPythonVersion(nativePy);
-                if (pyVersion) {
-                    output.push({
-                        executable: nativePy,
-                        psychopyVersion: "native",
-                        pythonVersion: pyVersion
-                    });
-                }
-            }
-        }
-        // On HarmonyOS: add native Python environment
-        if (isHarmonyOS()) {
-            const nativePy = findNativePython();
-            if (nativePy) {
-                const pyVersion = getPythonVersion(nativePy);
-                if (pyVersion) {
-                    output.push({
-                        executable: nativePy,
-                        psychopyVersion: "native",
-                        pythonVersion: pyVersion
-                    });
-                }
-            }
-        }
+        // 先声明数组，避免 TDZ：原实现在 push 之后才声明 `let output`，
+        // 在鸿蒙 + 系统 Python 存在时 `output.push` 会抛
+        // ReferenceError: Cannot access 'output' before initialization，
+        // 导致一个环境都返回不了（前端"检测不出任何环境"）。
         let output = []
+        // On HarmonyOS: add native Python environment
+        if (isHarmonyOS()) {
+            const nativePy = findNativePython();
+            if (nativePy) {
+                const pyVersion = getPythonVersion(nativePy);
+                if (pyVersion) {
+                    output.push({
+                        executable: nativePy,
+                        psychopyVersion: "native",
+                        pythonVersion: pyVersion
+                    });
+                }
+            }
+        }
         // specify Python folder
         let folder = path.join(
             app.getPath("appData"), "psychopy4", ".python"
@@ -206,9 +196,8 @@ export class UV {
                 psychopyVersion: subfolder,
                 pythonVersion: pyVersion
             })
-            
         }
-        
+
         return output
     }
     

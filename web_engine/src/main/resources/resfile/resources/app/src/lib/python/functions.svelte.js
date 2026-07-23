@@ -22,6 +22,18 @@ function handleError(err) {
     status.ready.reject(err)
 }
 
+// 平板形态判定（独立，不依赖 bundle 内嵌 HNP 是否就绪）：无系统 Python 即平板模式运行时。
+// 与 python.harmony.isHarmonyOS() 互为补充——即便 isHarmonyOS IPC 不稳定，
+// 只要设备无系统 Python，也应进入平板模式优雅降级，而非显示「找不到 Python」。
+async function isTabletRuntime() {
+    try { return !!(await python.tablet()); } catch (_) { return false; }
+}
+// 用户已显式切换到「平板模式(bundle)」时，即便内嵌 HNP 未就绪也应回落到无 Python 的平板模式，
+// 不报错（Bundle 内嵌 HNP 只是平板模式下可选的 Python 来源，非必要条件）。
+async function isBundleMode() {
+    try { return (await python.mode()) === 'bundle'; } catch (_) { return false; }
+}
+
 
 export async function installPython(version=undefined, forceReinstall=false) {
     status.message = "Installing packages (this may take a few minutes)..."
@@ -94,9 +106,9 @@ export async function setupPython(version=undefined, forceReinstall=false) {
                 console.error('[setupPython] diagnose() failed:', err);
             }
         }
-        if (isHarmonyOS) {
-            // 平板模式 — 优雅降级，不报错
-            console.log('[setupPython] Tablet mode detected (no Python on HarmonyOS), skipping setup');
+        if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+            // 平板模式 — 优雅降级，不报错：右下角提示应为「平板模式」，而非「找不到 Python」
+            console.log('[setupPython] Tablet mode detected (no Python), skipping setup');
             tabletMode.active = true;
             status.ready.resolve(true);
             _setupCompleted = true;
@@ -137,8 +149,9 @@ export async function setupPython(version=undefined, forceReinstall=false) {
                     console.error('[setupPython] diagnose() failed:', err);
                 }
             }
-            if (isHarmonyOS) {
-                console.log('[setupPython] Tablet mode detected (missingPython on HarmonyOS), skipping setup');
+            if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+                // 平板模式 — 优雅降级，不报错：右下角提示应为「平板模式」，而非「找不到 Python」
+                console.log('[setupPython] Tablet mode detected (missingPython), skipping setup');
                 tabletMode.active = true;
                 status.ready.resolve(true);
                 _setupCompleted = true;

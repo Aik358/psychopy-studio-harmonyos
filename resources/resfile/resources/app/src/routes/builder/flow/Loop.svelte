@@ -1,5 +1,6 @@
 <script>
     import Dialog from '$lib/utils/dialog/Dialog.svelte';
+    import { t } from "$lib/i18n";
     import { Menu, MenuItem } from "$lib/utils/menu"
     import { ParamsNotebook } from '$lib/paramCtrls/index.js';
     import { FlowLoop } from "$lib/experiment/flow.svelte.js";
@@ -126,7 +127,7 @@
 >
     <MenuItem 
         icon="/icons/btn-delete.svg"
-        label="Delete Loop"
+        label={t("flow.deleteLoop")}
         onclick={removeLoop}
     />
 </Menu>

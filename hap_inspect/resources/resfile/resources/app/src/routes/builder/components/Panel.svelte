@@ -2,12 +2,13 @@
     import ComponentButton from './ComponentButton.svelte';
     import ComponentSection from './Section.svelte';
 
-    import { profiles as allProfiles, pending as profilesPending } from '$lib/experiment/profiles.svelte';
+    import { profiles as allProfiles, pending as profilesPending, mergeProfiles } from '$lib/experiment/profiles.svelte';
     import RoutineButton from './RoutineButton.svelte';
     import FilterDialog from './FilterDialog.svelte';
     import { CompactButton } from "$lib/utils/buttons";
     import { PluginManagerDlg } from "$lib/dialogs/pluginManager"
     import { electron, python } from "$lib/globals.svelte";
+    import { t } from "$lib/i18n";
 
     /**
      * Sort Components into ordered categories
@@ -72,24 +73,26 @@
      * Get Components again from PsychoPy
      */
     async function refreshProfiles() {
-        if (await python?.ready) {
-            profilesPending.components = python.liaison.send("app", {
+        // liaison 未连时 sendLiaison 抛错，profilesPending.components reject → 组件消失
+        // 先检查 liaison ready，未连时静默保持 fallback 不刷新
+        let ready = false
+        try {
+            ready = await python?.liaison?.ready?.("app")
+        } catch (_) {}
+        if (!ready) {
+            console.warn("[refreshProfiles] liaison not ready, keeping existing profiles")
+            return
+        }
+        try {
+            profilesPending.components = await python.liaison.send("app", {
                 command: "run",
                 args: ["psychopy.experiment:getElementProfiles"]
-            }, 100000).then(data => {
-                // merge entries individually (preserves reactive tracking & icon overrides)
-                for (const [key, obj] of Object.entries(data)) {
-                    const fb = allProfiles.components[key] || {}
-                    const merged = { ...fb, ...obj }
-                    if (fb.iconSVG) merged.iconSVG = fb.iconSVG
-                    if (fb.iconFile) merged.iconFile = fb.iconFile
-                    if (fb.params) merged.params = fb.params
-                    allProfiles.components[key] = merged
-                }
-            }).catch(err => {
-                console.error('[refreshProfiles] failed:', err)
-                throw err
-            })
+            }, 100000).then(
+                data => mergeProfiles(allProfiles.components, data)
+            )
+        } catch (err) {
+            // liaison 命令报错时不覆盖 profilesPending，避免组件消失
+            console.error("[refreshProfiles] liaison.send failed:", err)
         }
     }
 
@@ -102,7 +105,7 @@
         {#if python?.ready}
             <CompactButton
                 icon="/icons/btn-add.svg"
-                tooltip="Get more..."
+                tooltip={t("comp.getMore")}
                 onclick={evt => showPluginMgr = true}
             />
             <PluginManagerDlg 
@@ -110,13 +113,13 @@
             />
             <CompactButton
                 icon="/icons/btn-refresh.svg"
-                tooltip="Reload Components"
+                tooltip={t("comp.reload")}
                 onclick={refreshProfiles}
             />
         {/if}
         <CompactButton
             icon="/icons/btn-filter.svg"
-            tooltip="Filter..."
+            tooltip={t("comp.filter")}
             onclick={(evt) => showFilterDlg = true}
         />
         <FilterDialog
@@ -127,11 +130,11 @@
     <div class=components>
         {#await python?.ready then ready}
             {#await profilesPending.components}
-                <div class=message>Loading Components...</div>
+                <div class=message>{t("comp.loading")}</div>
             {:then}
                 {#each sortProfiles(allProfiles.components) as [categ, categProfiles]}
                     {#if filterProfiles(categProfiles).length}
-                        <ComponentSection label={categ}>
+                        <ComponentSection label={t(categ)}>
                             {#each filterProfiles(categProfiles) as profile}
                                 {#if profile['__class__'].startsWith("psychopy.experiment.components") || profile['__class__'].endsWith("omponent")}
                                     <ComponentButton 
@@ -149,7 +152,7 @@
             {:catch err}
                 <div class="message error">
                     <div>
-                        Failed to load Components. 
+                        {t("comp.failedLoad")} 
                     </div>
                     <pre>
 {err.error?.join?.("\n")}

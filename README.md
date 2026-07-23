@@ -8,7 +8,7 @@
 
 > **Current: v2026.1.2** — branch `2026.1.2` | Package: `com.a9iska.psychopy`
 
-## Status (2026-07-21)
+## Status (2026-07-24)
 
 ### Core Pipeline: ✅ Fully Working
 
@@ -87,6 +87,15 @@
 | Pavlovia OAuth | ⏳ pending |
 | Theme CSS may fail to load on HarmonyOS WebView | ⚠️ fallback variables in place |
 
+## Recent Updates (2026-07-24)
+
+Build `2026.1.2` (branch `2026.1.2`) — this push supersedes the previous `436fd47` baseline with:
+
+- **ESM browser-run hardening (no Python)**: `psychojs-browser/startServer` now emits a proper ES-module experiment — `<script type="module" src="experiment.js">` plus `psychojs-2026.1.2.js` — so *Run-in-Browser* works identically with or without a Python environment. The PsychoJS path (`psychojs-2026.1.2.js`) is unchanged by design.
+- **Python experiment assembly**: `python/psychopy_worker.py` (`generate` / `conditions` subcommands) assembles the same ESM experiment directory when a Python env + `.psyexp` are available, byte-for-byte matching the no-Python path.
+- **Tablet vs PC mode separation**: Bundle mode (embedded HNP, feasibility-only) is now decoupled from true no-Python tablet mode. Without Python the app gracefully hides Python-only features, but **Run-in-Browser always works**; the bottom-right hint reads "平板模式" instead of "Python not found".
+- **Native libraries**: added `libfreetype.so.6` (PIL / fonts) and `libusb-1.0.so.0` (pyusb), with cross-compile scripts under `tools/`.
+
 ## Build Instructions
 
 **Prerequisites:** DevEco Studio 6.1+, HarmonyOS device (ARM64).
@@ -122,4 +131,4 @@ GPL v3 — same as upstream PsychoPy.
 
 ---
 
-> **Last updated: 2026-07-21**
+> **Last updated: 2026-07-24**

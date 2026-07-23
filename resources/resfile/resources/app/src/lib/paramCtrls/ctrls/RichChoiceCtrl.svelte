@@ -1,5 +1,6 @@
 <script>
     import { optionsFromParam } from "./utils.js"
+    import { t } from "$lib/i18n"
 
     let {
         param=$bindable(),
@@ -26,10 +27,10 @@
                 class:selected={param.val === val}
                 onclick={(evt) => param.val = val}
             >
-                <b>{details.label}</b>
-                <p>{details.body}</p>
+                <b>{t(details.label)}</b>
+                <p>{t(details.body)}</p>
                 {#if details.link}
-                <a href={details.link}>{details.linkText}</a>
+                <a href={details.link}>{t(details.linkText)}</a>
                 {/if}
             </button>
         {/each}

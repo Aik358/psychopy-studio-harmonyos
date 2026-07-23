@@ -2,6 +2,7 @@
     import ChoiceCtrl from "./ctrls/ChoiceCtrl.svelte";
     import SingleLineCtrl from "./ctrls/SingleLineCtrl.svelte";
     import Tooltip from "$lib/utils/tooltip/Tooltip.svelte";
+    import { t } from "$lib/i18n";
 
     /** @prop @type {string} Name (Start or Stop)*/
     export let name;
@@ -14,7 +15,7 @@
         {name}
         {#if params.valueParam !== null && params.valueParam.hint}
         <Tooltip>
-            {params.valueParam.hint}
+            {t(params.valueParam.hint)}
         </Tooltip>
         {/if}
     </label>
@@ -23,7 +24,7 @@
     <div class=param-type>
         {#if params.typeParam.hint}
         <Tooltip>
-            {params.typeParam.hint}
+            {t(params.typeParam.hint)}
         </Tooltip>
         {/if}
         <select disabled={params.typeParam.allowedVals.length == 1} bind:value={params.typeParam.val}>
@@ -37,7 +38,7 @@
     <input class=param-value type="text" bind:value={params.valueParam.val} />
     {/if}
     {#if params.expectedParam !== null}
-    <label class=param-estim-label for="{name}-type">{params.expectedParam.label}</label>
+    <label class=param-estim-label for="{name}-type">{t(params.expectedParam.label)}</label>
     <input class=param-estim type="text" bind:value={params.expectedParam.val} id="{name}-type" />
     {/if}
 </div>

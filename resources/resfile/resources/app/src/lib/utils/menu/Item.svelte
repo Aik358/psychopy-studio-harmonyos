@@ -79,7 +79,6 @@
         justify-items: start;
         gap: 0 .5rem;
         width: 100%;
-        white-space: nowrap;
         margin: 0;
         background-color: transparent;
         border: none;
@@ -89,13 +88,17 @@
     }
     .menu-item .label {
         grid-column-start: label;
+        /* 中文标签较长，禁止换行成两行，保持单行美观 */
+        white-space: nowrap;
     }
     .menu-item .shortcut {
         grid-column-start: shortcut;
         font-family: var(--mono);
         color: var(--outline);
         font-size: .9em;
-        padding-left: 4rem;
+        /* 原来 4rem 的左内边距会无谓撑宽菜单；改为固定外边距，让快捷键列对齐又不浪费空间 */
+        padding-left: 0;
+        margin-left: 1.5rem;
     }
     .menu-item:enabled:hover,
     .menu-item:enabled:focus {

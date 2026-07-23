@@ -1,5 +1,6 @@
 import proc from "child_process";
-import logging from "../logging.js";
+// logging.js lives in the same src/ dir as this file, hence "./logging.js".
+import logging from "./logging.js";
 import { BrowserWindow } from "electron";
 
 // Lazy-load tcp-port-used (may not be available on HarmonyOS)

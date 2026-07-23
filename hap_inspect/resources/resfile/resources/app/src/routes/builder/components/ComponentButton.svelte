@@ -1,5 +1,6 @@
 <script>
     import { StandaloneRoutine, Routine, Component } from '$lib/experiment';
+    import { t } from "$lib/i18n";
     import { Button } from '$lib/utils/buttons';
     import { getContext } from "svelte";
     import Dialog from "$lib/utils/dialog/Dialog.svelte";
@@ -56,7 +57,7 @@
 
 <Dialog 
     id=new-component
-    title="New {titleCase(component['__name__'])}"
+    title={t("component.newComponent", { name: titleCase(component['__name__']) })}
     bind:shown={showDialog}
     onopen={() => dlgComponent.restore.set()}
     buttons={{

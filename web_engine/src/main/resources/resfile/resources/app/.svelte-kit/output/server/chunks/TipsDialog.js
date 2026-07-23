@@ -1,6 +1,6 @@
 import { i as onDestroy, l as on, o as tick } from "./internal.js";
 import { D as escape_html, E as attr, St as run, a as bind_props, b as setContext, d as spread_props, et as snapshot, f as stringify, i as await_block, l as props_id, m as html, n as attr_style, o as derived, r as attributes, s as ensure_array_like, t as attr_class, ut as ATTACHMENT_KEY, v as getContext, y as hasContext } from "./server.js";
-import { $ as devices, B as PanelButton, D as pending, E as Param, F as LANGS, H as Button, I as i18n, K as openExternal, L as DropdownButton, M as MessageDialog, N as Dialog, O as profiles, P as t, R as Menu, U as Tooltip, W as Icon, _ as writeFile, d as tabletMode, et as electron, f as Version, i as Experiment, k as RadioButton, l as CodeEditor, m as browseFileSave, n as prefs, nt as projects$1, p as browseFileOpen, r as Script, rt as python$1, tt as git$1, w as Device, z as CompactButton } from "./Theme.js";
+import { A as RadioButton, B as CompactButton, E as Param, F as t, G as Icon, I as LANGS, L as i18n, N as MessageDialog, O as pending, P as Dialog, R as DropdownButton, U as Button, V as PanelButton, W as Tooltip, _ as writeFile, d as tabletMode, et as devices, f as Version, i as Experiment, it as python$1, k as profiles, l as CodeEditor, m as browseFileSave, n as prefs, nt as git$1, p as browseFileOpen, q as openExternal, r as Script, rt as projects$1, tt as electron, w as Device, z as Menu } from "./Theme.js";
 import { clsx } from "clsx";
 import path from "path-browserify";
 import { marked } from "marked";
@@ -99,6 +99,150 @@ function ZoomSlider($$renderer, $$props) {
 	});
 }
 //#endregion
+//#region src/lib/python/terminal.svelte.js
+function _getTerminal() {
+	if (typeof window === "undefined") return null;
+	if (window.terminal) return window.terminal;
+	if (window.python && window.python.terminal) return window.python.terminal;
+	return null;
+}
+var terminal = {
+	open: false,
+	lines: [],
+	_listenersSetup: false,
+	setup() {
+		if (this._listenersSetup) return;
+		if (!_getTerminal()) {
+			this.lines = [...this.lines, {
+				type: "system",
+				text: "window.terminal not available. Rebuild HAP and retry.",
+				time: Date.now()
+			}];
+			return;
+		}
+		this._listenersSetup = true;
+		try {
+			window.addEventListener("term-stdout", (e) => {
+				this.lines = [...this.lines, {
+					type: "stdout",
+					text: e.detail,
+					time: Date.now()
+				}];
+			});
+		} catch (_) {}
+		try {
+			window.addEventListener("term-stderr", (e) => {
+				this.lines = [...this.lines, {
+					type: "stderr",
+					text: e.detail,
+					time: Date.now()
+				}];
+			});
+		} catch (_) {}
+		this.lines = [...this.lines, {
+			type: "system",
+			text: "Terminal ready. Listening for Python output...",
+			time: Date.now()
+		}];
+	},
+	toggle() {
+		this.open = !this.open;
+		if (this.open) this.setup();
+	},
+	clear() {
+		this.lines = [];
+	},
+	async diagnose() {
+		this.open = true;
+		this.lines = [...this.lines, {
+			type: "system",
+			text: "--- Checking window bridges ---",
+			time: Date.now()
+		}];
+		try {
+			const keys = typeof window !== "undefined" ? Object.keys(window).filter((k) => !k.startsWith("__") && !k.startsWith("webkit") && !k.startsWith("on")).join(", ") : "window is undefined";
+			this.lines = [...this.lines, {
+				type: "stdout",
+				text: "window keys: " + keys.slice(0, 500),
+				time: Date.now()
+			}];
+			this.lines = [...this.lines, {
+				type: "stdout",
+				text: "window.python: " + typeof window.python,
+				time: Date.now()
+			}];
+			this.lines = [...this.lines, {
+				type: "stdout",
+				text: "window.terminal: " + typeof window.terminal,
+				time: Date.now()
+			}];
+			this.lines = [...this.lines, {
+				type: "stdout",
+				text: "window.python.terminal: " + typeof window.python?.terminal,
+				time: Date.now()
+			}];
+		} catch (e) {
+			this.lines = [...this.lines, {
+				type: "stderr",
+				text: "Debug error: " + e.message,
+				time: Date.now()
+			}];
+		}
+		this.lines = [...this.lines, {
+			type: "system",
+			text: "--- Running diagnostics ---",
+			time: Date.now()
+		}];
+		const t = _getTerminal();
+		if (!t) {
+			this.lines = [...this.lines, {
+				type: "stderr",
+				text: "Terminal bridge not available.",
+				time: Date.now()
+			}];
+			return;
+		}
+		try {
+			const result = await t.diagnose();
+			this.lines = [...this.lines, {
+				type: "stdout",
+				text: typeof result === "string" ? result : JSON.stringify(result, null, 2),
+				time: Date.now()
+			}];
+		} catch (e) {
+			this.lines = [...this.lines, {
+				type: "stderr",
+				text: "Diagnostic error: " + (e.message || String(e)),
+				time: Date.now()
+			}];
+		}
+	}
+};
+//#endregion
+//#region src/lib/python/TerminalPanel.svelte
+function TerminalPanel($$renderer, $$props) {
+	$$renderer.component(($$renderer) => {
+		if (terminal.open) {
+			$$renderer.push("<!--[0-->");
+			$$renderer.push(`<div class="terminal-panel svelte-e5l6e8"><div class="terminal-header svelte-e5l6e8"><span>Python Terminal</span> <div class="terminal-actions svelte-e5l6e8"><button class="svelte-e5l6e8">Diagnose</button> <button class="svelte-e5l6e8">Clear</button> <button class="close-btn svelte-e5l6e8">x</button></div></div> <pre class="terminal-output svelte-e5l6e8">
+        <!--[-->`);
+			const each_array = ensure_array_like(terminal.lines);
+			for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
+				let line = each_array[$$index];
+				$$renderer.push(`<!---->
+            <span${attr_class("svelte-e5l6e8", void 0, {
+					"stderr": line.type === "stderr",
+					"system": line.type === "system"
+				})}>${escape_html(line.text)}</span>
+        `);
+			}
+			$$renderer.push(`<!--]-->
+    </pre></div>`);
+		} else $$renderer.push("<!--[-1-->");
+		$$renderer.push(`<!--]-->`);
+	});
+}
+//#endregion
 //#region src/lib/utils/Frame.svelte
 function Frame($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {
@@ -123,7 +267,7 @@ function Frame($$renderer, $$props) {
 			let view = each_array[$$index];
 			$$renderer.push(`<button${attr_class("nav-btn svelte-158299m", void 0, { "active": currentView === view })}>${escape_html(t(`home.${view}`))}</button>`);
 		}
-		$$renderer.push(`<!--]--> <div style="flex-grow:1; margin-left:auto;"></div> `);
+		$$renderer.push(`<!--]--> <div style="flex-grow:1; margin-left:auto;"></div> <button${attr_class("nav-btn terminal-btn svelte-158299m", void 0, { "active": terminal.open })} title="Python Terminal">>_</button> `);
 		ZoomSlider($$renderer, {});
 		$$renderer.push(`<!----> `);
 		LangSwitch($$renderer, {});
@@ -137,6 +281,8 @@ function Frame($$renderer, $$props) {
 		children($$renderer);
 		$$renderer.push(`<!----></div> `);
 		TabletModeBanner($$renderer, {});
+		$$renderer.push(`<!----> `);
+		TerminalPanel($$renderer, {});
 		$$renderer.push(`<!----></div>`);
 		bind_props($$props, { currentView });
 	});
@@ -3685,10 +3831,10 @@ function RichChoiceCtrl($$renderer, $$props) {
 			const each_array = ensure_array_like(options);
 			for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
 				let [val, details] = each_array[$$index];
-				$$renderer.push(`<button${attr_class("rich-ctrl-item svelte-shlk5g", void 0, { "selected": param.val === val })}><b>${escape_html(details.label)}</b> <p>${escape_html(details.body)}</p> `);
+				$$renderer.push(`<button${attr_class("rich-ctrl-item svelte-shlk5g", void 0, { "selected": param.val === val })}><b>${escape_html(t(details.label))}</b> <p>${escape_html(t(details.body))}</p> `);
 				if (details.link) {
 					$$renderer.push("<!--[0-->");
-					$$renderer.push(`<a${attr("href", details.link)}>${escape_html(details.linkText)}</a>`);
+					$$renderer.push(`<a${attr("href", details.link)}>${escape_html(t(details.linkText))}</a>`);
 				} else $$renderer.push("<!--[-1-->");
 				$$renderer.push(`<!--]--></button>`);
 			}
@@ -5326,7 +5472,7 @@ function ParamCtrl($$renderer, $$props) {
 				})}><label class="param-label svelte-a7rlw1"${attr("for", name)}${attr_style("", {
 					"grid-column-start": inline() ? "gap" : "label",
 					"align-self": inline() ? "center" : "end"
-				})}>${escape_html(param.label ? param.label : name)} `);
+				})}>${escape_html(param.label ? t(param.label) : name)} `);
 				if (param.hint) {
 					$$renderer.push("<!--[0-->");
 					Tooltip($$renderer, {
@@ -5339,7 +5485,7 @@ function ParamCtrl($$renderer, $$props) {
 							$$settled = false;
 						},
 						children: ($$renderer) => {
-							$$renderer.push(`<!---->${escape_html(param.hint)}`);
+							$$renderer.push(`<!---->${escape_html(t(param.hint))}`);
 						},
 						$$slots: { default: true }
 					});
@@ -5424,7 +5570,7 @@ function StartStopCtrl($$renderer, $$props) {
 			$$renderer.push("<!--[0-->");
 			Tooltip($$renderer, {
 				children: ($$renderer) => {
-					$$renderer.push(`<!---->${escape_html(params.valueParam.hint)}`);
+					$$renderer.push(`<!---->${escape_html(t(params.valueParam.hint))}`);
 				},
 				$$slots: { default: true }
 			});
@@ -5437,7 +5583,7 @@ function StartStopCtrl($$renderer, $$props) {
 				$$renderer.push("<!--[0-->");
 				Tooltip($$renderer, {
 					children: ($$renderer) => {
-						$$renderer.push(`<!---->${escape_html(params.typeParam.hint)}`);
+						$$renderer.push(`<!---->${escape_html(t(params.typeParam.hint))}`);
 					},
 					$$slots: { default: true }
 				});
@@ -5471,7 +5617,7 @@ function StartStopCtrl($$renderer, $$props) {
 		$$renderer.push(`<!--]--> `);
 		if (params.expectedParam !== null) {
 			$$renderer.push("<!--[0-->");
-			$$renderer.push(`<label class="param-estim-label svelte-1fa03mg"${attr("for", `${stringify(name)}-type`)}>${escape_html(params.expectedParam.label)}</label> <input class="param-estim svelte-1fa03mg" type="text"${attr("value", params.expectedParam.val)}${attr("id", `${stringify(name)}-type`)}/>`);
+			$$renderer.push(`<label class="param-estim-label svelte-1fa03mg"${attr("for", `${stringify(name)}-type`)}>${escape_html(t(params.expectedParam.label))}</label> <input class="param-estim svelte-1fa03mg" type="text"${attr("value", params.expectedParam.val)}${attr("id", `${stringify(name)}-type`)}/>`);
 		} else $$renderer.push("<!--[-1-->");
 		$$renderer.push(`<!--]--></div>`);
 		bind_props($$props, {

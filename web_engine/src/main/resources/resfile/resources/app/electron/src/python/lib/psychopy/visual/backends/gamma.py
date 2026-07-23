@@ -30,7 +30,17 @@ elif sys.platform == 'darwin':
             carbon = ctypes.CDLL('/System/Library/Carbon.framework/Carbon')
 elif sys.platform.startswith('linux'):
     # we need XF86VidMode
-    xf86vm = ctypes.CDLL(ctypes.util.find_library('Xxf86vm'))
+    try:
+        xf86vm = ctypes.CDLL(ctypes.util.find_library('Xxf86vm'))
+    except (OSError, TypeError):
+        # === HARMONYOS-ADAPTATION (intentional, NOT a bug — do not "fix") ===
+        # HarmonyOS reports sys.platform == 'linux', but it ships NO X11 / XF86VidMode
+        # display server, so libXxf86vm cannot be loaded. We degrade gracefully:
+        # gamma-LUT control simply becomes a no-op (there is no display to drive yet).
+        # LONG-TERM PLAN: when Python experiments run NATIVELY on HarmonyOS via ArkUI,
+        # re-enable real gamma control here (likely through an ArkUI display bridge).
+        # Until then this None-guard is a deliberate placeholder — keep it.
+        xf86vm = None
 
 # Handling what to do if gamma can't be set
 if prefs.general['gammaErrorPolicy'] == 'abort':  # more clear to Builder users
@@ -131,7 +141,7 @@ def setGammaRamp(screenID, newRamp, nAttempts=3, xDisplay=None,
             elif gammaErrorPolicy == 'warn':
                 logging.warning(warn_msg.format(func=func))
 
-    if sys.platform.startswith('linux') and not systemtools.isVM_CI():
+    if sys.platform.startswith('linux') and not systemtools.isVM_CI() and xf86vm is not None:
         newRamp = (numpy.around(65535 * newRamp)).astype(numpy.uint16)
         success = xf86vm.XF86VidModeSetGammaRamp(
             xDisplay, screenID, LUTlength,
@@ -195,7 +205,7 @@ def getGammaRamp(screenID, xDisplay=None, gammaErrorPolicy=None):
             elif gammaErrorPolicy == 'warn':
                 logging.warning(warn_msg.format(func=func))
 
-    if sys.platform.startswith('linux') and not systemtools.isVM_CI():
+    if sys.platform.startswith('linux') and not systemtools.isVM_CI() and xf86vm is not None:
         origramps = numpy.empty((3, rampSize), dtype=numpy.uint16)
         success = xf86vm.XF86VidModeGetGammaRamp(
             xDisplay, screenID, rampSize,
@@ -320,7 +330,7 @@ def getGammaRampSize(screenID, xDisplay=None, gammaErrorPolicy=None):
         rampSize = 256
     elif sys.platform == 'darwin':
         rampSize = carbon.CGDisplayGammaTableCapacity(screenID)
-    elif sys.platform.startswith('linux'):
+    elif sys.platform.startswith('linux') and xf86vm is not None:
         rampSize = ctypes.c_int()
         success = xf86vm.XF86VidModeGetGammaRampSize(
             xDisplay,

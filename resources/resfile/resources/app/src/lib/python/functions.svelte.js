@@ -1,6 +1,7 @@
 import { status } from "./globals.svelte.js"
 import { electron, python } from "$lib/globals.svelte";
 import { Version, ppy2py } from "$lib/utils/versions.js";
+import { tabletMode } from "./tabletMode.svelte.js";
 
 // Guard: ensure setup only runs once per session
 var _setupCompleted = false;
@@ -19,6 +20,18 @@ function handleError(err) {
     }
     console.error(err)
     status.ready.reject(err)
+}
+
+// 平板形态判定（独立，不依赖 bundle 内嵌 HNP 是否就绪）：无系统 Python 即平板模式运行时。
+// 与 python.harmony.isHarmonyOS() 互为补充——即便 isHarmonyOS IPC 不稳定，
+// 只要设备无系统 Python，也应进入平板模式优雅降级，而非显示「找不到 Python」。
+async function isTabletRuntime() {
+    try { return !!(await python.tablet()); } catch (_) { return false; }
+}
+// 用户已显式切换到「平板模式(bundle)」时，即便内嵌 HNP 未就绪也应回落到无 Python 的平板模式，
+// 不报错（Bundle 内嵌 HNP 只是平板模式下可选的 Python 来源，非必要条件）。
+async function isBundleMode() {
+    try { return (await python.mode()) === 'bundle'; } catch (_) { return false; }
 }
 
 
@@ -75,6 +88,33 @@ export async function setupPython(version=undefined, forceReinstall=false) {
     status.message = "Looking for Python 3..."
     let hasPython = await python.uv.findPython(version).catch(() => false)
     if (!hasPython) {
+        // 检测是否为平板模式 — 鸿蒙设备无 Python 不应报错
+        let isHarmonyOS = false;
+        try {
+            isHarmonyOS = await python.harmony.isHarmonyOS();
+            console.log('[setupPython] hasPython=false, isHarmonyOS=', isHarmonyOS);
+        } catch(err) {
+            console.error('[setupPython] isHarmonyOS() failed:', err);
+        }
+        // 备选：通过 diagnose() 间接判断（部分 IPC 环境下 isHarmonyOS 不稳定）
+        if (!isHarmonyOS && python.harmony?.diagnose) {
+            try {
+                const diag = await python.harmony.diagnose();
+                console.log('[setupPython] diagnose=', diag);
+                if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+            } catch(err) {
+                console.error('[setupPython] diagnose() failed:', err);
+            }
+        }
+        if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+            // 平板模式 — 优雅降级，不报错：右下角提示应为「平板模式」，而非「找不到 Python」
+            console.log('[setupPython] Tablet mode detected (no Python), skipping setup');
+            tabletMode.active = true;
+            status.ready.resolve(true);
+            _setupCompleted = true;
+            _setupRunning = false;
+            return;
+        }
         status.message = "Python 3 not found"
         handleError(new Error(
             "Python 3.12+ is required. Install via HNP (HarmonyOS Native Package) or harmonybrew."
@@ -92,6 +132,32 @@ export async function setupPython(version=undefined, forceReinstall=false) {
             status.dlg.shown = true
             await installPython(version, true)
         } else if (setupResult && setupResult.missingPython) {
+            // 检测是否为平板模式 — 鸿蒙设备无 Python 不应报错
+            let isHarmonyOS = false;
+            try {
+                isHarmonyOS = await python.harmony.isHarmonyOS();
+                console.log('[setupPython] missingPython=true, isHarmonyOS=', isHarmonyOS);
+            } catch(err) {
+                console.error('[setupPython] isHarmonyOS() failed:', err);
+            }
+            if (!isHarmonyOS && python.harmony?.diagnose) {
+                try {
+                    const diag = await python.harmony.diagnose();
+                    console.log('[setupPython] diagnose=', diag);
+                    if (diag && diag.isHarmonyOS === true) isHarmonyOS = true;
+                } catch(err) {
+                    console.error('[setupPython] diagnose() failed:', err);
+                }
+            }
+            if (isHarmonyOS || await isTabletRuntime() || await isBundleMode()) {
+                // 平板模式 — 优雅降级，不报错：右下角提示应为「平板模式」，而非「找不到 Python」
+                console.log('[setupPython] Tablet mode detected (missingPython), skipping setup');
+                tabletMode.active = true;
+                status.ready.resolve(true);
+                _setupCompleted = true;
+                _setupRunning = false;
+                return;
+            }
             handleError(new Error("Python not found on this system."))
             _setupRunning = false
             return

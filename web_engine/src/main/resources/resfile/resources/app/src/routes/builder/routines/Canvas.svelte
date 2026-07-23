@@ -1,5 +1,6 @@
 <script>
     import { Button } from "$lib/utils/buttons";
+    import { t } from "$lib/i18n";
     import Component from './Component.svelte';
     import TimelineHeader from './Timeline.svelte';
     import EntryPoint from './EntryPoint.svelte';
@@ -18,7 +19,7 @@
 >
     <div class=button-container>
         <Button 
-            label="Routine settings"
+            label={t("routine.settings")}
             icon="/icons/btn-settings.svg"
             tooltip="Edit settings for this Routine"
             onclick={() => showDialog = true}

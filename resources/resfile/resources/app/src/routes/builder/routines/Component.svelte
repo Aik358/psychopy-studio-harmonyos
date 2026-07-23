@@ -1,5 +1,6 @@
 <script>
     import EntryPoint from './EntryPoint.svelte';
+    import { t } from "$lib/i18n";
     import Menu from '$lib/utils/menu/Menu.svelte';
     import MenuItem from '$lib/utils/menu/Item.svelte';
     import { getContext } from "svelte"
@@ -149,12 +150,12 @@
 >
     <MenuItem
         icon="/icons/btn-edit.svg"
-        label="Edit Component"
+        label={t("component.editComponent")}
         onclick={(evt) => showDialog = true}
     />
     <MenuItem
         icon="/icons/sym-dot-{component.disabled ? "blue" : "light"}.svg"
-        label="{component.disabled ? "Enable" : "Disable"} Component"
+        label={t(component.disabled ? "component.enableComponent" : "component.disableComponent")}
         onclick={(evt) => {
             // update history
             current.experiment.history.update(`${component.disabled ? "enable" : "disable"} ${component.name}`);
@@ -164,7 +165,7 @@
     />
     <MenuItem 
         icon="/icons/btn-delete.svg"
-        label="Delete Component"
+        label={t("component.deleteComponent")}
         onclick={(evt) => {
             // update history
             current.experiment.history.update(`remove ${component.name}`);

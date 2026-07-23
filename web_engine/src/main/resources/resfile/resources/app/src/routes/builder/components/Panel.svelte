@@ -2,7 +2,7 @@
     import ComponentButton from './ComponentButton.svelte';
     import ComponentSection from './Section.svelte';
 
-    import { profiles as allProfiles, pending as profilesPending } from '$lib/experiment/profiles.svelte';
+    import { profiles as allProfiles, pending as profilesPending, mergeProfiles } from '$lib/experiment/profiles.svelte';
     import RoutineButton from './RoutineButton.svelte';
     import FilterDialog from './FilterDialog.svelte';
     import { CompactButton } from "$lib/utils/buttons";
@@ -88,7 +88,7 @@
                 command: "run",
                 args: ["psychopy.experiment:getElementProfiles"]
             }, 100000).then(
-                data => Object.assign(allProfiles.components, data)
+                data => mergeProfiles(allProfiles.components, data)
             )
         } catch (err) {
             // liaison 命令报错时不覆盖 profilesPending，避免组件消失
@@ -134,7 +134,7 @@
             {:then}
                 {#each sortProfiles(allProfiles.components) as [categ, categProfiles]}
                     {#if filterProfiles(categProfiles).length}
-                        <ComponentSection label={categ}>
+                        <ComponentSection label={t(categ)}>
                             {#each filterProfiles(categProfiles) as profile}
                                 {#if profile['__class__'].startsWith("psychopy.experiment.components") || profile['__class__'].endsWith("omponent")}
                                     <ComponentButton 

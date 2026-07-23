@@ -59,3 +59,14 @@ dist.bak/
 
 fix_opexternal.ps1
 
+
+# 文件级备份（大目录，不入库）
+_backup_before_poc_*/
+
+# 构建临时目录（不入库）
+ohos_build/
+ohos_build_ft/
+ohos_build_usb/
+builf/
+_probe/
+push_atmgit.py

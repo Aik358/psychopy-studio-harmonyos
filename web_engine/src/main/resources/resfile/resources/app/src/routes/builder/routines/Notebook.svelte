@@ -1,5 +1,6 @@
 <script>
     import RoutineCanvas from './Canvas.svelte';
+    import { t } from "$lib/i18n";
     import StandaloneRoutineCanvas from './Standalone.svelte'
     import { StandaloneRoutine, Routine } from '$lib/experiment';
     import { Notebook, NotebookPage, ButtonTab } from '$lib/utils/notebook';
@@ -63,7 +64,7 @@
 {#if current.inserting instanceof Routine}
     <Dialog 
         id=new-routine
-        title="New Routine" 
+        title={t("routine.newRoutine")} 
         bind:shown={showNewRoutineDialog} 
         onopen={() => current.inserting.settings.restore.set()}
         buttons={{

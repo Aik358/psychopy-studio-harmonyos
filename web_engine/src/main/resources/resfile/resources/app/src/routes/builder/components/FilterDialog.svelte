@@ -1,5 +1,6 @@
 <script>
     import { Dialog } from "$lib/utils/dialog";
+    import { t } from "$lib/i18n";
 
     let {
         filter=$bindable(),
@@ -10,7 +11,7 @@
 
 <Dialog
     id=component-filter
-    title="Filter Components"
+    title={t("components.filter")}
     bind:shown={shown}
     shrink
 >

@@ -8,7 +8,7 @@
 
 > **当前版本: 2026.1.2** — 分支 `2026.1.2` | 包名: `com.a9iska.psychopy`
 
-## 当前状态 (2026-07-21)
+## 当前状态 (2026-07-24)
 
 ### 核心功能：✅ 已完成
 
@@ -87,6 +87,15 @@
 | Pavlovia OAuth | ⏳ 待实现 |
 | 鸿蒙 WebView 主题 CSS 可能加载失败 | ⚠️ 已有回退变量兜底 |
 
+## 近期更新 (2026-07-24)
+
+构建 `2026.1.2`（分支 `2026.1.2`）—— 本次提交在原有 `436fd47` 基线之上包含：
+
+- **ESM 浏览器运行硬化（无 Python 也可）**：`psychojs-browser/startServer` 现在会输出正确的 ES 模块实验（`<script type="module" src="experiment.js">` + `psychojs-2026.1.2.js`），无论有无 Python 环境，「浏览器运行」表现完全一致。固定的 PsychoJS 路径（`psychojs-2026.1.2.js`）按设计保持不变。
+- **Python 实验装配**：`python/psychopy_worker.py`（`generate` / `conditions` 子命令）在具备 Python 环境 + `.psyexp` 时装配同一套 ESM 实验目录，与无 Python 路径字节级一致。
+- **平板模式与电脑模式分离**：Bundle 模式（内置 HNP，仅可行性验证）与真正无 Python 的平板模式解耦。无 Python 时应用会优雅隐藏仅 Python 的功能，但「浏览器运行」始终可用；右下角提示改为「平板模式」而非「找不到 Python」。
+- **原生库**：新增 `libfreetype.so.6`（PIL / 字体）与 `libusb-1.0.so.0`（pyusb），并提供 `tools/` 下的交叉编译脚本。
+
 ## 构建步骤
 
 **环境要求：** DevEco Studio 6.1+、鸿蒙设备（ARM64）。
@@ -122,4 +131,4 @@ GPL v3 — 与上游 PsychoPy 保持一致。
 
 ---
 
-> **最后更新：2026-07-21**
+> **最后更新：2026-07-24**

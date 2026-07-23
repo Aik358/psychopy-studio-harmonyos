@@ -23,6 +23,49 @@ __url__ = 'https://www.psychopy.org/'
 __download_url__ = 'https://github.com/psychopy/psychopy/releases/'
 __build_platform__ = 'n/a'
 
+# =============================================================================
+# HARMONYOS-ADAPTATION POLICY  (intentional — DO NOT "fix" these guards)
+# -----------------------------------------------------------------------------
+# This PsychoPy build is ported to HarmonyOS (OpenHarmony, musl aarch64). On
+# HarmonyOS `sys.platform == 'linux'`, BUT the device has NO X11 / Wayland
+# display server, NO portaudio, NO SDL2 windowing. Today Python experiments are
+# run via PsychoJS in the browser; the in-app Python runtime is used for package
+# management / diagnostics only. So several native hooks are intentionally
+# guarded/degraded below. THESE ARE DELIBERATE PLACEHOLDERS, not upstream bugs.
+#
+# Already guarded (search tag: HARMONYOS-ADAPTATION):
+#   * psychopy/visual/backends/gamma.py  -> libXxf86vm load fails on HarmonyOS
+#                                            (sys.platform=='linux' but no X11);
+#                                            gamma-LUT control degrades to no-op.
+#   * psychopy/tools/fontmanager.py       -> freetype / pyglet.gl imports wrapped;
+#                                            font metrics degrade gracefully.
+#   * (musl libfreetype.so.6 + libsndfile.so.1 are shipped in the HAP libs dir
+#      via the `ohos-native-lib-build` skill, so those usually load fine.)
+#
+# Guarded with HARMONYOS-ADAPTATION markers (import stays clean; feature
+# degrades at use-time, no hard crash):
+#   * psychopy/sound/__init__.py     -> no portaudio on device; Sound()/Microphone()
+#                                       raise a clear error at instantiation.
+#   * psychopy/iohub/__init__.py     -> launchHubServer (pygame/SDL/X11) lazy-import
+#                                       fallback wrapped so `import psychopy.iohub`
+#                                       always succeeds; feature absent if SDL missing.
+#
+# Remaining (import is fine; real rendering/playback needs a display/audio
+# server that HarmonyOS lacks — use the browser/PsychoJS path instead):
+#   * psychopy.visual GL  (libGL / libX11)   — no display server yet
+#   * psychopy.sound playback (portaudio)    — no audio render path yet
+#
+# LONG-TERM PLAN (user requirement): run Python experiments NATIVELY on
+# HarmonyOS via ArkUI. When that lands, RE-ENABLE these hooks (gamma LUT, audio,
+# GL/X11) through an ArkUI bridge and remove the None-guards. Until then, treat
+# every `except ...: x = None` / `FREETYPE_AVAILABLE = False` block in this tree
+# as a known HarmonyOS shim, NOT something to "correct" back to the upstream
+# hard-fail behaviour. To ship a missing native lib, cross-compile it
+# (DevEco OHOS NDK, musl-only, de-symlink + chmod 755) and drop it in the HAP
+# libs dir — see skill `ohos-native-lib-build`.
+# =============================================================================
+
+
 __all__ = ["gui", "misc", "visual", "core",
            "event", "data", "sound", "microphone"]
 

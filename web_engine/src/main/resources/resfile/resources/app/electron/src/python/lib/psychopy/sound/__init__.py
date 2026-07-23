@@ -33,6 +33,15 @@ After importing sound, the sound lib and driver being used will be stored as::
 # Copyright (C) 2002-2018 Jonathan Peirce (C) 2019-2025 Open Science Tools Ltd.
 # Distributed under the terms of the GNU General Public License (GPL).
 
+# === HARMONYOS-ADAPTATION (intentional, NOT a bug — do not "fix") ===
+# On HarmonyOS there is NO portaudio / audio render path, so Sound() and
+# Microphone() raise a clear error at *instantiation* (backends are lazy-loaded
+# via entry points, so `import psychopy.sound` itself is clean). This is a
+# deliberate placeholder, not an upstream defect. LONG-TERM PLAN: when Python
+# experiments render natively on HarmonyOS via ArkUI, enable audio through an
+# ArkUI audio bridge and the backends will work again. Until then, run audio
+# experiments via PsychoJS in the browser (Web Audio).
+
 import sys
 from .audiodevice import *
 from .audioclip import *  # import objects related to AudioClip
